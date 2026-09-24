@@ -33,8 +33,6 @@
       <button class="active" data-page="dashboard">لوحة المتابعة</button>
       <button data-page="customers">العملاء</button>
       <button data-page="sales">السحوبات / الفواتير</button>
-      <button data-page="payments">الدفعات</button>
-      <button data-page="debts">الأجل والمتأخرات</button>
       <button data-page="reports">سجل متابعة العملاء</button>
       <button data-page="mapPage" class="admin-only">الخريطة</button>
       <button data-page="analytics" class="admin-only">التقارير</button>
@@ -49,16 +47,11 @@
       <div class="grid cards dashboard-cards">
         <div class="card"><div class="label">إجمالي العملاء</div><div class="metric" id="mCustomers">0</div></div>
         <div class="card"><div class="label">سحوبات الشهر</div><div class="metric" id="mSales">0</div></div>
-        <div class="card"><div class="label">دفعات الشهر</div><div class="metric" id="mPayments">0</div></div>
-        <div class="card"><div class="label">الرصيد الآجل</div><div class="metric" id="mDebt">0</div></div>
-        <div class="card overdue-card"><div class="label">إجمالي المتأخرات</div><div class="metric" id="mOverdue">0</div></div>
-        <div class="card overdue-card"><div class="label">عملاء متأخرون</div><div class="metric" id="mOverdueCustomers">0</div></div>
-        <div class="card due-card"><div class="label">يستحق خلال 7 أيام</div><div class="metric" id="mDueSoon">0</div></div>
+        <div class="card"><div class="label">العملاء النشطون</div><div class="metric" id="mActive">0</div></div>
+        <div class="card"><div class="label">العملاء المترددون</div><div class="metric" id="mHesitant">0</div></div>
+        <div class="card"><div class="label">العملاء الرافضون</div><div class="metric" id="mRejected">0</div></div>
       </div>
-      <div class="split dashboard-panels">
-        <div class="card"><h3>المتأخرات التي تحتاج متابعة</h3><div id="overdueList"></div></div>
-        <div class="card"><h3>ملخص المندوبين</h3><div id="repSummary"></div></div>
-      </div>
+      <div class="card dashboard-panels"><h3>ملخص المندوبين</h3><div id="repSummary"></div></div>
       <div class="card dashboard-attention"><h3>حالات تحتاج تدخل الإدارة</h3><div id="attentionList"></div></div>
       <div class="card admin-only" style="margin-top:14px"><div class="dashboard-head"><h3>أداء المندوبين</h3><span class="small">الشهر الحالي</span></div><div id="repPerformance"></div></div>
       <div class="card admin-only" style="margin-top:14px"><div class="dashboard-head"><h3>أهداف المنتجات</h3><button class="btn secondary" id="editTargetsBtn">تعديل الأهداف</button></div><div id="targetsDashboard"></div></div>
@@ -66,39 +59,30 @@
 
     <section id="customers" class="section">
       <div class="toolbar"><button class="btn" id="newCustomerBtn">+ عميل جديد</button><input id="customerSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="customerStatusFilter"><option value="">كل الحالات</option><option value="new">جديد</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option></select></div>
-      <div class="table-wrap"><table><thead><tr><th>العميل</th><th>المنطقة</th><th>المندوب</th><th>الحالة</th><th>سحوبات الشهر</th><th>الرصيد</th><th>المتأخرات</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>العميل</th><th>المنطقة</th><th>المندوب</th><th>الحالة</th><th>سحوبات الشهر</th><th>قيمة سحوبات الشهر</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div>
     </section>
 
     <section id="sales" class="section">
       <div class="toolbar"><button class="btn" id="newSaleBtn">+ تسجيل سحب / فاتورة</button><input id="saleSearch" class="search" placeholder="ابحث بالعميل أو المنتج..." /></div>
-      <div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>العميل</th><th>المنتج</th><th>القيمة</th><th>المدفوع</th><th>المتبقي</th><th>الاستحقاق</th><th>الحالة</th><th>المندوب</th></tr></thead><tbody id="salesBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>القيمة</th><th>المرجع</th><th>المندوب</th></tr></thead><tbody id="salesBody"></tbody></table></div>
     </section>
 
-    <section id="payments" class="section">
-      <div class="toolbar"><button class="btn" id="newPaymentBtn">+ تسجيل دفعة</button><input id="paymentSearch" class="search" placeholder="ابحث بالعميل أو المرجع..." /></div>
-      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المبلغ</th><th>المرجع</th><th>المندوب</th></tr></thead><tbody id="paymentsBody"></tbody></table></div>
-    </section>
-
-    <section id="debts" class="section">
-      <div class="toolbar"><select id="receivableFilter"><option value="">كل العملاء عليهم رصيد</option><option value="overdue">متأخرات فقط</option><option value="dueSoon">يستحق خلال 7 أيام</option><option value="current">داخل مدة الأجل</option></select></div>
-      <div class="table-wrap"><table><thead><tr><th>العميل</th><th>الرصيد الإجمالي</th><th>المتأخرات</th><th>يستحق خلال 7 أيام</th><th>أقدم فاتورة</th><th>أيام التأخير</th><th>المندوب</th><th></th></tr></thead><tbody id="debtsBody"></tbody></table></div>
-    </section>
 
     <section id="reports" class="section">
       <div class="toolbar"><button class="btn" id="newReportBtn">+ إضافة متابعة</button><select id="reportTypeFilter"><option value="">كل الحالات</option><option value="sold">تم البيع</option><option value="followup">متابعة لاحقة</option><option value="rejected">رفض</option><option value="management">يحتاج تدخل الإدارة</option></select></div>
-      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المندوب</th><th>الحالة</th><th>الملاحظة</th><th>الإجراء القادم</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المندوب</th><th>نوع المتابعة</th><th>الحالة السابقة</th><th>الحالة الجديدة</th><th>التقرير / السبب</th><th>الإجراء القادم</th><th>المتابعة القادمة</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
     </section>
 
     <section id="mapPage" class="section admin-only">
-      <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="overdue">متأخرات</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option></select></div>
-      <div class="map-legend"><span><i class="legend-dot purple"></i>متأخرات</span><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span></div>
+      <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option></select></div>
+      <div class="map-legend"><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span></div>
       <div id="map"></div>
     </section>
 
     <section id="analytics" class="section admin-only">
       <div class="card report-controls">
         <div class="form-grid">
-          <div><label>نوع التقرير</label><select id="analyticsType"><option value="sales">المبيعات والسحوبات</option><option value="collections">التحصيل</option><option value="receivables">الأجل والمتأخرات</option><option value="reps">أداء المندوبين</option><option value="customers">حركة العملاء</option><option value="followups">متابعة العملاء</option><option value="products">أداء المنتجات مقابل الهدف</option><option value="executive">التقرير الإداري الشامل</option></select></div>
+          <div><label>نوع التقرير</label><select id="analyticsType"><option value="sales">المبيعات والسحوبات</option><option value="reps">أداء المندوبين</option><option value="customers">حركة العملاء</option><option value="followups">متابعة العملاء</option><option value="products">أداء المنتجات مقابل الهدف</option><option value="executive">التقرير الإداري الشامل</option></select></div>
           <div><label>المندوب</label><select id="analyticsRep"><option value="">كل المندوبين</option></select></div>
           <div><label>من تاريخ</label><input type="date" id="analyticsFrom"></div>
           <div><label>إلى تاريخ</label><input type="date" id="analyticsTo"></div>

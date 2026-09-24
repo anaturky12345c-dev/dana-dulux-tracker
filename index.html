@@ -37,9 +37,9 @@
       <button data-page="customers">Customers</button>
       <button data-page="sales">Sales / Withdrawals</button>
       <button data-page="reports">Customer Follow-ups</button>
-      <button data-page="mapPage" class="admin-only">Customer Map</button>
-      <button data-page="analytics" class="admin-only">Reports</button>
-      <button data-page="audit" class="admin-only">Activity Log</button>
+      <button data-page="mapPage" class="management-only">Customer Map</button>
+      <button data-page="analytics" class="management-only">Reports</button>
+      <button data-page="audit" class="full-admin-only">Activity Log</button>
       <button data-page="account">My Account</button>
     </nav>
   </aside>
@@ -65,12 +65,12 @@
       <div class="card" style="margin-top:14px">
         <div class="dashboard-head">
           <div><h3 id="goalsTitle">Goals</h3><div class="small">Current month</div></div>
-          <button class="btn secondary admin-only" id="editGoalsBtn">Edit Goals</button>
+          <button class="btn secondary full-admin-only" id="editGoalsBtn">Edit Goals</button>
         </div>
         <div id="goalsDashboard"></div>
       </div>
 
-      <div class="card admin-only" style="margin-top:14px">
+      <div class="card management-only" style="margin-top:14px">
         <div class="dashboard-head"><h3>Representative Performance</h3><span class="small">Current month</span></div>
         <div id="repPerformance"></div>
       </div>
@@ -113,7 +113,7 @@
       <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Action</th><th>Previous Status</th><th>New Status</th><th>Report / Reason</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
     </section>
 
-    <section id="mapPage" class="section admin-only">
+    <section id="mapPage" class="section management-only">
       <div class="map-toolbar">
         <input id="mapSearch" class="search" placeholder="Search customer or area..." />
         <select id="mapFilter">
@@ -135,7 +135,7 @@
       <div id="map"></div>
     </section>
 
-    <section id="analytics" class="section admin-only">
+    <section id="analytics" class="section management-only">
       <div class="card report-controls">
         <div class="form-grid">
           <div><label>Report Type</label><select id="analyticsType">
@@ -155,7 +155,7 @@
       <div id="printableReport" class="print-report"><div class="empty">Select a report type and date range, then click “Generate Report”.</div></div>
     </section>
 
-    <section id="audit" class="section admin-only">
+    <section id="audit" class="section full-admin-only">
       <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead><tbody id="auditBody"></tbody></table></div>
     </section>
 
@@ -170,7 +170,7 @@
           <div class="full password-policy">At least 14 characters with uppercase, lowercase, number and symbol.</div>
           <div class="full"><button class="btn" id="changePasswordBtn">Change Password</button></div>
         </div>
-        <div id="mfaAccount" class="admin-only mfa-account"></div>
+        <div id="mfaAccount" class="full-admin-only mfa-account"></div>
       </div>
     </section>
   </main>

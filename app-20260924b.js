@@ -146,34 +146,35 @@ function prepareAppShell(){
 }
 function showSecurityGate(title,html,mode){ state.securityGateMode=mode; $('securityGateTitle').textContent=title; $('securityGateBody').innerHTML=html; $('securityGate').classList.remove('hidden'); }
 function hideSecurityGate(){ state.securityGateMode=null; state.mfaFactorId=null; $('securityGate').classList.add('hidden'); $('securityGateBody').innerHTML=''; }
-function showPasswordGate(){ showSecurityGate('تغيير كلمة المرور مطلوب',`<div class="security-warn">لحماية الحساب، لن تفتح بيانات النظام قبل تغيير كلمة المرور الحالية.</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>كلمة المرور الحالية</label><input id="gateCurrentPassword" type="password" autocomplete="current-password"></div><div><label>كلمة المرور الجديدة</label><input id="gateNewPassword" type="password" autocomplete="new-password"></div><div><label>تأكيد كلمة المرور</label><input id="gateConfirmPassword" type="password" autocomplete="new-password"></div><div class="full password-policy">14 حرفاً على الأقل مع حرف كبير وصغير ورقم ورمز.</div><div class="full"><button class="btn" id="gateChangePasswordBtn">تغيير كلمة المرور والمتابعة</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'password'); }
+
+function showPasswordGate(){
+ const ar=lang==='ar';
+ showSecurityGate(ar?'تغيير كلمة المرور مطلوب':'Password change required',`<div class="security-warn">${ar?'لحماية الحساب، لن تفتح بيانات النظام قبل تغيير كلمة المرور الحالية.':'For account security, system data will remain locked until you change the current password.'}</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>${ar?'كلمة المرور الحالية':'Current password'}</label><input id="gateCurrentPassword" type="password" autocomplete="current-password"></div><div><label>${ar?'كلمة المرور الجديدة':'New password'}</label><input id="gateNewPassword" type="password" autocomplete="new-password"></div><div><label>${ar?'تأكيد كلمة المرور':'Confirm password'}</label><input id="gateConfirmPassword" type="password" autocomplete="new-password"></div><div class="full password-policy">${ar?'14 حرفاً على الأقل مع حرف كبير وصغير ورقم ورمز.':'At least 14 characters with uppercase, lowercase, number and symbol.'}</div><div class="full"><button class="btn" id="gateChangePasswordBtn">${ar?'تغيير كلمة المرور والمتابعة':'Change password and continue'}</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'password');
+}
 async function showMFAChallengeGate(){
-  const factors=await sb.auth.mfa.listFactors();
-  const factor=factors.data?.totp?.find(x=>x.status==='verified');
-  if(factors.error||!factor) return showMFAEnrollGate();
-  state.mfaFactorId=factor.id;
-  showSecurityGate('رمز التحقق للإدارة',`<div class="security-warn">أدخل الرمز الحالي من تطبيق المصادقة.</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>رمز التحقق (6 أرقام)</label><input id="mfaChallengeCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><div class="full"><button class="btn" id="verifyMfaChallengeBtn">تحقق وادخل</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'mfa-challenge');
+ const factors=await sb.auth.mfa.listFactors(),factor=factors.data?.totp?.find(x=>x.status==='verified');
+ if(factors.error||!factor)return showMFAEnrollGate();
+ state.mfaFactorId=factor.id;const ar=lang==='ar';
+ showSecurityGate(ar?'رمز التحقق للإدارة':'Admin verification code',`<div class="security-warn">${ar?'أدخل الرمز الحالي من تطبيق المصادقة.':'Enter the current code from your authenticator app.'}</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>${ar?'رمز التحقق (6 أرقام)':'Verification code (6 digits)'}</label><input id="mfaChallengeCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><div class="full"><button class="btn" id="verifyMfaChallengeBtn">${ar?'تحقق وادخل':'Verify and continue'}</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'mfa-challenge');
 }
 async function showMFAEnrollGate(){
-  showSecurityGate('تفعيل التحقق بخطوتين للإدارة','<div class="small">جاري تجهيز رمز الحماية...</div>','mfa-enroll-loading');
-  const listed=await sb.auth.mfa.listFactors();
-  if(listed.data?.totp?.some(x=>x.status==='verified')) return showMFAChallengeGate();
-  for(const f of (listed.data?.totp||[])){ if(f.status!=='verified') await sb.auth.mfa.unenroll({factorId:f.id}).catch(()=>{}); }
-  const {data,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Dana Al-Taj Admin'});
-  if(error){ showSecurityGate('تعذر تفعيل التحقق بخطوتين',`<div class="security-error">${esc(error.message)}</div>`,'mfa-error'); return; }
-  state.mfaFactorId=data.id;
-  showSecurityGate('تفعيل التحقق بخطوتين للإدارة',`<div class="security-warn">امسح QR بتطبيق Google Authenticator أو Microsoft Authenticator ثم أدخل الرمز.</div><img class="mfa-qr" alt="QR للتحقق بخطوتين" src="${esc(data.totp?.qr_code||'')}"><div class="small">المفتاح اليدوي:</div><div class="security-secret">${esc(data.totp?.secret||'')}</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>رمز التحقق</label><input id="mfaEnrollCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><div class="full"><button class="btn" id="verifyMfaEnrollBtn">تفعيل الحماية</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'mfa-enroll');
+ const ar=lang==='ar';showSecurityGate(ar?'تفعيل التحقق بخطوتين للإدارة':'Enable admin two-factor authentication',`<div class="small">${ar?'جاري تجهيز رمز الحماية...':'Preparing security code...'}</div>`,'mfa-enroll-loading');
+ const listed=await sb.auth.mfa.listFactors();if(listed.data?.totp?.some(x=>x.status==='verified'))return showMFAChallengeGate();
+ for(const f of (listed.data?.totp||[])){if(f.status!=='verified')await sb.auth.mfa.unenroll({factorId:f.id}).catch(()=>{});}
+ const {data,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Dana Al-Taj Admin'});
+ if(error){showSecurityGate(ar?'تعذر تفعيل التحقق بخطوتين':'Could not enable two-factor authentication',`<div class="security-error">${esc(error.message)}</div>`,'mfa-error');return;}
+ state.mfaFactorId=data.id;
+ showSecurityGate(ar?'تفعيل التحقق بخطوتين للإدارة':'Enable admin two-factor authentication',`<div class="security-warn">${ar?'امسح QR بتطبيق Google Authenticator أو Microsoft Authenticator ثم أدخل الرمز.':'Scan the QR code with Google Authenticator or Microsoft Authenticator, then enter the code.'}</div><img class="mfa-qr" alt="MFA QR" src="${esc(data.totp?.qr_code||'')}"><div class="small">${ar?'المفتاح اليدوي:':'Manual key:'}</div><div class="security-secret">${esc(data.totp?.secret||'')}</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>${ar?'رمز التحقق':'Verification code'}</label><input id="mfaEnrollCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><div class="full"><button class="btn" id="verifyMfaEnrollBtn">${ar?'تفعيل الحماية':'Enable protection'}</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'mfa-enroll');
 }
 async function verifyMFA(code){
-  const msg=$('gateSecurityMsg');
-  if(!/^\d{6}$/.test(code||'')){ if(msg) msg.textContent='أدخل رمزاً صحيحاً من 6 أرقام.'; return; }
-  if(msg) msg.textContent='جاري التحقق...';
-  const challenge=await sb.auth.mfa.challenge({factorId:state.mfaFactorId});
-  if(challenge.error){ if(msg) msg.textContent='تعذر إنشاء التحقق.'; return; }
-  const verified=await sb.auth.mfa.verify({factorId:state.mfaFactorId,challengeId:challenge.data.id,code});
-  if(verified.error){ if(msg) msg.textContent='الرمز غير صحيح أو انتهت صلاحيته.'; return; }
-  await sb.auth.refreshSession(); await loadProfile();
+ const msg=$('gateSecurityMsg'),ar=lang==='ar';
+ if(!/^\d{6}$/.test(code||'')){if(msg)msg.textContent=ar?'أدخل رمزاً صحيحاً من 6 أرقام.':'Enter a valid 6-digit code.';return;}
+ if(msg)msg.textContent=ar?'جاري التحقق...':'Verifying...';
+ const challenge=await sb.auth.mfa.challenge({factorId:state.mfaFactorId});if(challenge.error){if(msg)msg.textContent=ar?'تعذر إنشاء التحقق.':'Could not start verification.';return;}
+ const verified=await sb.auth.mfa.verify({factorId:state.mfaFactorId,challengeId:challenge.data.id,code});if(verified.error){if(msg)msg.textContent=ar?'الرمز غير صحيح أو انتهت صلاحيته.':'The code is invalid or expired.';return;}
+ await sb.auth.refreshSession();await loadProfile();
 }
+
 async function enforceSecurityBeforeData(){
   prepareAppShell();
   if(state.profile.must_change_password){ showPasswordGate(); return; }

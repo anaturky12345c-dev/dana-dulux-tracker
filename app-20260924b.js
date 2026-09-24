@@ -74,39 +74,51 @@ const monthRiyadh=()=>todayRiyadh().slice(0,7);
 const isAdmin=()=>state.profile?.role==='admin';
 
 function applyLanguage(){
- document.documentElement.lang=lang;
- document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+ document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
  const set=(sel,txt)=>{const e=document.querySelector(sel);if(e)e.textContent=txt;};
  const ph=(id,txt)=>{const e=$(id);if(e)e.placeholder=txt;};
+ const heads=(id,arr)=>{const hs=document.querySelectorAll('#'+id+' thead th');arr.forEach((x,i)=>{if(hs[i])hs[i].textContent=x;});};
+
+ set('.brand',lang==='ar'?'دانة التاج':'Dana Al-Taj');set('.sub',lang==='ar'?'إدارة مبيعات ديلوكس':'Dulux Sales Management');
  set('#login h2',lang==='ar'?'نظام إدارة مبيعات ديلوكس':'Dulux Sales Management');
  ph('loginUser',t('username'));ph('loginPass',t('password'));if($('loginBtn'))$('loginBtn').textContent=t('signIn');
- if($('logoutBtn'))$('logoutBtn').textContent=t('signOut');
- if($('closeModalBtn'))$('closeModalBtn').textContent=t('close');
- document.querySelector('[data-page="dashboard"]')?.replaceChildren(document.createTextNode(t('dashboard')));
- document.querySelector('[data-page="customers"]')?.replaceChildren(document.createTextNode(t('customers')));
- document.querySelector('[data-page="sales"]')?.replaceChildren(document.createTextNode(t('sales')));
- document.querySelector('[data-page="reports"]')?.replaceChildren(document.createTextNode(t('followups')));
- document.querySelector('[data-page="mapPage"]')?.replaceChildren(document.createTextNode(t('map')));
- document.querySelector('[data-page="analytics"]')?.replaceChildren(document.createTextNode(t('reports')));
- document.querySelector('[data-page="audit"]')?.replaceChildren(document.createTextNode(t('audit')));
- document.querySelector('[data-page="account"]')?.replaceChildren(document.createTextNode(t('account')));
- if($('langBtn'))$('langBtn').textContent=t('language');
- if($('langBtnLogin'))$('langBtnLogin').textContent=t('language');
- if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');
- if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');
- if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');
- ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));
- if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');
+ if($('logoutBtn'))$('logoutBtn').textContent=t('signOut');if($('closeModalBtn'))$('closeModalBtn').textContent=t('close');
+ if($('langBtn'))$('langBtn').textContent=t('language');if($('langBtnLogin'))$('langBtnLogin').textContent=t('language');
+
+ const nav={dashboard:'dashboard',customers:'customers',sales:'sales',reports:'followups',mapPage:'map',analytics:'reports',audit:'audit',account:'account'};
+ for(const [p,k] of Object.entries(nav)){const e=document.querySelector('[data-page="'+p+'"]');if(e)e.textContent=t(k);}
+
+ if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');
+ ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
+
  set('#dashboard .dashboard-panels h3',t('repSummary'));set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#goalsTitle',t('goals'));
+ const goalSmall=document.querySelector('#goalsTitle + .small');if(goalSmall)goalSmall.textContent=t('currentMonth');
+ const rp=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head h3');if(rp)rp.textContent=t('repPerformance');
+ const rpSmall=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head .small');if(rpSmall)rpSmall.textContent=t('currentMonth');
  const cards=[['customers','totalCustomers'],['sales-month','salesThisMonth'],['active','activeCustomers'],['hesitant','hesitantCustomers'],['rejected','rejectedCustomers']];
  for(const [k,l] of cards){const c=document.querySelector('[data-dashboard-link="'+k+'"]');if(c){const x=c.querySelector('.label'),h=c.querySelector('.card-hint');if(x)x.textContent=t(l);if(h)h.textContent=t('clickView');}}
+
  const st=$('customerStatusFilter');if(st){st.options[0].text=t('allStatuses');for(let i=1;i<st.options.length;i++)st.options[i].text=t(st.options[i].value);}
  const sp=$('salePeriodFilter');if(sp){sp.options[0].text=t('allDates');sp.options[1].text=t('thisMonth');}
  const rf=$('reportActionFilter');if(rf){rf.options[0].text=t('allActions');for(let i=1;i<rf.options.length;i++)rf.options[i].text=t(rf.options[i].value);}
  const mf=$('mapFilter');if(mf){mf.options[0].text=lang==='ar'?'كل العملاء':'All Customers';for(let i=1;i<mf.options.length;i++){const v=mf.options[i].value;mf.options[i].text=v==='frequent'?(lang==='ar'?'سحب متكرر هذا الشهر':'Repeated sale this month'):t(v);}}
  const ar=$('analyticsRep');if(ar&&ar.options.length)ar.options[0].text=t('allReps');
+
+ heads('customers',[t('customer'),t('area'),t('representative'),t('status'),t('salesCountMonth'),t('salesValueMonth'),'']);
+ heads('sales',[t('date'),t('customer'),t('product'),t('quantity'),t('value'),t('reference'),t('representative'),lang==='ar'?'الإجراءات':'Actions']);
+ heads('reports',[t('recordedAt'),t('customer'),t('representative'),t('action'),t('previousStatus'),t('newStatus'),t('reason'),lang==='ar'?'الإجراءات':'Actions']);
+ heads('audit',[lang==='ar'?'الوقت':'Time',lang==='ar'?'المستخدم':'User',t('action'),lang==='ar'?'الكيان':'Entity',lang==='ar'?'التفاصيل':'Details']);
+
+ const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span><i class="legend-dot blue"></i>${t('new')}</span>`;
+
+ const at=$('analyticsType');if(at){const labs={sales:lang==='ar'?'المبيعات والسحوبات':'Sales / Withdrawals',reps:t('repPerformance'),customers:lang==='ar'?'حركة العملاء':'Customer Activity',followups:t('followups'),products:lang==='ar'?'أداء المنتجات مقابل الهدف':'Product Goal Performance',executive:lang==='ar'?'التقرير الإداري الشامل':'Management Summary'};for(const o of at.options)o.text=labs[o.value]||o.value;}
+ const labels=document.querySelectorAll('#analytics label');const al=[t('reportType'),t('representative'),t('from'),t('to')];al.forEach((x,i)=>{if(labels[i])labels[i].textContent=x;});if($('generateReportBtn'))$('generateReportBtn').textContent=t('generateReport');if($('printReportBtn'))$('printReportBtn').textContent=t('printPdf');
+ const empty=$('printableReport')?.querySelector('.empty');if(empty&&!state.profile)empty.textContent=lang==='ar'?'حدد نوع التقرير والفترة ثم اضغط عرض التقرير.':'Select a report type and date range, then generate the report.';
+
+ set('#account h3',t('accountSecurity'));const accLabels=document.querySelectorAll('#account label');const acc=[lang==='ar'?'كلمة المرور الحالية':'Current Password',lang==='ar'?'كلمة المرور الجديدة':'New Password',lang==='ar'?'تأكيد كلمة المرور الجديدة':'Confirm New Password'];acc.forEach((x,i)=>{if(accLabels[i])accLabels[i].textContent=x;});const pol=document.querySelector('#account .password-policy');if(pol)pol.textContent=lang==='ar'?'14 حرفاً على الأقل مع حرف كبير وصغير ورقم ورمز.':'At least 14 characters with uppercase, lowercase, number and symbol.';if($('changePasswordBtn'))$('changePasswordBtn').textContent=lang==='ar'?'تغيير كلمة المرور':'Change Password';
+
  const pt=$('pageTitle');if(pt){const active=document.querySelector('.nav-grid button.active');if(active)pt.textContent=active.textContent;}
- renderAll();
+ if(state.profile){renderAll();if(document.querySelector('#mapPage.section.active'))drawMapMarkers();if(document.querySelector('#audit.section.active'))renderAudit();if(document.querySelector('#account.section.active'))renderSecurityStatus();}
 }
 function toggleLanguage(){lang=lang==='ar'?'en':'ar';localStorage.setItem('dana_lang',lang);applyLanguage();}
 

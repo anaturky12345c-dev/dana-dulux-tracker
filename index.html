@@ -1,1 +1,112 @@
-The requested file reference is not currently visible. Use files.search or files.list to rediscover the file, then retry with a returned ref_id or file_id.
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>نظام متابعة دلوكس - دانة التاج</title>
+  <meta name="theme-color" content="#111827" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com https://*.tile.openstreetmap.org; connect-src 'self' https://bmpxtvhqpjvlyeoseuvz.supabase.co wss://bmpxtvhqpjvlyeoseuvz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; worker-src 'none'; upgrade-insecure-requests" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div id="login" class="login">
+  <div class="login-card">
+    <h2>نظام متابعة دلوكس</h2>
+    <p>متابعة العملاء والسحوبات والسداد والأجل.</p>
+    <div class="row">
+      <input id="loginUser" autocomplete="username" placeholder="اسم المستخدم" />
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="كلمة المرور" />
+      <button class="btn" id="loginBtn">دخول</button>
+      <div id="loginMsg" class="small"></div>
+    </div>
+  </div>
+</div>
+<div id="securityGate" class="security-gate hidden">
+  <div class="security-card"><h2 id="securityGateTitle">تأمين الحساب</h2><div id="securityGateBody"></div></div>
+</div>
+<div class="app">
+  <aside>
+    <div class="brand">دانة التاج</div>
+    <div class="sub">متابعة دلوكس — النظام الأونلاين</div>
+    <nav class="nav-grid">
+      <button class="active" data-page="dashboard">لوحة المتابعة</button>
+      <button data-page="customers">العملاء</button>
+      <button data-page="sales">السحوبات / الفواتير</button>
+      <button data-page="payments">الدفعات</button>
+      <button data-page="debts">الأجل والمتأخرات</button>
+      <button data-page="reports">تقارير المندوبين</button>
+      <button data-page="mapPage" class="admin-only">الخريطة</button>
+      <button data-page="audit" class="admin-only">سجل العمليات</button>
+      <button data-page="account">حسابي</button>
+    </nav>
+  </aside>
+  <main>
+    <div class="topbar"><div><h1 id="pageTitle">لوحة المتابعة</h1><div class="role" id="roleText"></div></div><button class="btn secondary" id="logoutBtn">تسجيل خروج</button></div>
+
+    <section id="dashboard" class="section active">
+      <div class="notice">الأجل 30 يوماً لكل فاتورة. أي دفعة تُوزع تلقائياً على أقدم فاتورة غير مسددة أولاً.</div>
+      <div class="grid cards dashboard-cards">
+        <div class="card"><div class="label">إجمالي العملاء</div><div class="metric" id="mCustomers">0</div></div>
+        <div class="card"><div class="label">سحوبات الشهر</div><div class="metric" id="mSales">0</div></div>
+        <div class="card"><div class="label">دفعات الشهر</div><div class="metric" id="mPayments">0</div></div>
+        <div class="card"><div class="label">الرصيد الآجل</div><div class="metric" id="mDebt">0</div></div>
+        <div class="card overdue-card"><div class="label">إجمالي المتأخرات</div><div class="metric" id="mOverdue">0</div></div>
+        <div class="card overdue-card"><div class="label">عملاء متأخرون</div><div class="metric" id="mOverdueCustomers">0</div></div>
+        <div class="card due-card"><div class="label">يستحق خلال 7 أيام</div><div class="metric" id="mDueSoon">0</div></div>
+      </div>
+      <div class="split dashboard-panels">
+        <div class="card"><h3>المتأخرات التي تحتاج متابعة</h3><div id="overdueList"></div></div>
+        <div class="card"><h3>ملخص المندوبين</h3><div id="repSummary"></div></div>
+      </div>
+      <div class="card dashboard-attention"><h3>حالات تحتاج تدخل الإدارة</h3><div id="attentionList"></div></div>
+    </section>
+
+    <section id="customers" class="section">
+      <div class="toolbar"><button class="btn" id="newCustomerBtn">+ عميل جديد</button><input id="customerSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="customerStatusFilter"><option value="">كل الحالات</option><option value="new">جديد</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="stopped">متوقف</option></select></div>
+      <div class="table-wrap"><table><thead><tr><th>العميل</th><th>المنطقة</th><th>المندوب</th><th>الحالة</th><th>سحوبات الشهر</th><th>الرصيد</th><th>المتأخرات</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div>
+    </section>
+
+    <section id="sales" class="section">
+      <div class="toolbar"><button class="btn" id="newSaleBtn">+ تسجيل سحب / فاتورة</button><input id="saleSearch" class="search" placeholder="ابحث بالعميل أو المنتج..." /></div>
+      <div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>العميل</th><th>المنتج</th><th>القيمة</th><th>المدفوع</th><th>المتبقي</th><th>الاستحقاق</th><th>الحالة</th><th>المندوب</th></tr></thead><tbody id="salesBody"></tbody></table></div>
+    </section>
+
+    <section id="payments" class="section">
+      <div class="toolbar"><button class="btn" id="newPaymentBtn">+ تسجيل دفعة</button><input id="paymentSearch" class="search" placeholder="ابحث بالعميل أو المرجع..." /></div>
+      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المبلغ</th><th>طريقة السداد</th><th>المرجع</th><th>المندوب</th></tr></thead><tbody id="paymentsBody"></tbody></table></div>
+    </section>
+
+    <section id="debts" class="section">
+      <div class="toolbar"><select id="receivableFilter"><option value="">كل العملاء عليهم رصيد</option><option value="overdue">متأخرات فقط</option><option value="dueSoon">يستحق خلال 7 أيام</option><option value="current">داخل مدة الأجل</option></select></div>
+      <div class="table-wrap"><table><thead><tr><th>العميل</th><th>الرصيد الإجمالي</th><th>المتأخرات</th><th>يستحق خلال 7 أيام</th><th>أقدم فاتورة</th><th>أيام التأخير</th><th>المندوب</th><th></th></tr></thead><tbody id="debtsBody"></tbody></table></div>
+    </section>
+
+    <section id="reports" class="section">
+      <div class="toolbar"><button class="btn" id="newReportBtn">+ تقرير متابعة</button><select id="reportTypeFilter"><option value="">كل الحالات</option><option value="sold">تم البيع</option><option value="followup">متابعة لاحقة</option><option value="rejected">رفض</option><option value="management">يحتاج تدخل الإدارة</option></select></div>
+      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المندوب</th><th>الحالة</th><th>الملاحظة</th><th>الإجراء القادم</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+    </section>
+
+    <section id="mapPage" class="section admin-only">
+      <div class="map-note">البنفسجي له الأولوية: العميل لديه مبلغ تجاوز 30 يوماً. النجمة الخضراء تعني أكثر من سحب واحد خلال الشهر بدون متأخرات.</div>
+      <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="overdue">متأخرات</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option><option value="stopped">متوقف</option></select></div>
+      <div class="map-legend"><span><i class="legend-dot purple"></i>متأخرات</span><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span><span><i class="legend-dot gray"></i>متوقف</span></div>
+      <div id="map"></div>
+    </section>
+
+    <section id="audit" class="section admin-only"><div class="table-wrap"><table><thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الكيان</th><th>التفاصيل</th></tr></thead><tbody id="auditBody"></tbody></table></div></section>
+
+    <section id="account" class="section">
+      <div class="card security-account"><h3>أمان الحساب</h3><div id="securityStatus" class="notice">جاري فحص إعدادات الأمان...</div><div class="form-grid"><div class="full"><label>كلمة المرور الحالية</label><input id="currentPassword" type="password" autocomplete="current-password" /></div><div><label>كلمة المرور الجديدة</label><input id="newPassword" type="password" autocomplete="new-password" /></div><div><label>تأكيد كلمة المرور الجديدة</label><input id="confirmPassword" type="password" autocomplete="new-password" /></div><div class="full password-policy">14 حرفاً على الأقل، وتحتوي حرفاً كبيراً وصغيراً ورقماً ورمزاً.</div><div class="full"><button class="btn" id="changePasswordBtn">تغيير كلمة المرور</button></div></div><div id="mfaAccount" class="admin-only mfa-account"></div></div>
+    </section>
+  </main>
+</div>
+<div id="modal" class="modal"><div class="modal-card"><div class="modal-head"><h3 id="modalTitle"></h3><button class="close" id="closeModalBtn">إغلاق</button></div><div id="modalContent"></div></div></div>
+<div id="flash" class="flash hidden"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
+<script src="./config.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

@@ -13,6 +13,7 @@
 <body>
 <div id="login" class="login">
   <div class="login-card">
+    <div class="login-lang"><button class="btn secondary" id="langBtnLogin" type="button">العربية</button></div>
     <h2>Dulux Sales Management</h2>
     <div class="row">
       <input id="loginUser" autocomplete="username" placeholder="Username" />
@@ -46,7 +47,7 @@
   <main>
     <div class="topbar">
       <div><h1 id="pageTitle">Dashboard</h1><div class="role" id="roleText"></div></div>
-      <button class="btn secondary" id="logoutBtn">Sign out</button>
+      <div class="top-actions"><button class="btn secondary" id="langBtn" type="button">العربية</button><button class="btn secondary" id="logoutBtn">Sign out</button></div>
     </div>
 
     <section id="dashboard" class="section active">
@@ -96,7 +97,7 @@
         <input id="saleSearch" class="search" placeholder="Search customer, product or reference..." />
         <select id="salePeriodFilter"><option value="">All Dates</option><option value="month">This Month</option></select>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Value</th><th>Reference</th><th>Representative</th></tr></thead><tbody id="salesBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Value</th><th>Reference</th><th>Representative</th><th>Actions</th></tr></thead><tbody id="salesBody"></tbody></table></div>
     </section>
 
     <section id="reports" class="section">
@@ -109,7 +110,7 @@
           <option value="sample_request">Customer requests product sample</option>
         </select>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Action</th><th>Previous Status</th><th>New Status</th><th>Report / Reason</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Action</th><th>Previous Status</th><th>New Status</th><th>Report / Reason</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
     </section>
 
     <section id="mapPage" class="section admin-only">

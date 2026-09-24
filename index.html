@@ -37,6 +37,7 @@
       <button data-page="debts">الأجل والمتأخرات</button>
       <button data-page="reports">سجل متابعة العملاء</button>
       <button data-page="mapPage" class="admin-only">الخريطة</button>
+      <button data-page="analytics" class="admin-only">التقارير</button>
       <button data-page="audit" class="admin-only">سجل العمليات</button>
       <button data-page="account">حسابي</button>
     </nav>
@@ -59,6 +60,8 @@
         <div class="card"><h3>ملخص المندوبين</h3><div id="repSummary"></div></div>
       </div>
       <div class="card dashboard-attention"><h3>حالات تحتاج تدخل الإدارة</h3><div id="attentionList"></div></div>
+      <div class="card admin-only" style="margin-top:14px"><div class="dashboard-head"><h3>أداء المندوبين</h3><span class="small">الشهر الحالي</span></div><div id="repPerformance"></div></div>
+      <div class="card admin-only" style="margin-top:14px"><div class="dashboard-head"><h3>أهداف المنتجات</h3><button class="btn secondary" id="editTargetsBtn">تعديل الأهداف</button></div><div id="targetsDashboard"></div></div>
     </section>
 
     <section id="customers" class="section">
@@ -87,9 +90,22 @@
     </section>
 
     <section id="mapPage" class="section admin-only">
-      <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="overdue">متأخرات</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option><option value="stopped">متوقف</option></select></div>
+      <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="overdue">متأخرات</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option></select></div>
       <div class="map-legend"><span><i class="legend-dot purple"></i>متأخرات</span><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span></div>
       <div id="map"></div>
+    </section>
+
+    <section id="analytics" class="section admin-only">
+      <div class="card report-controls">
+        <div class="form-grid">
+          <div><label>نوع التقرير</label><select id="analyticsType"><option value="sales">المبيعات والسحوبات</option><option value="collections">التحصيل</option><option value="receivables">الأجل والمتأخرات</option><option value="reps">أداء المندوبين</option><option value="customers">حركة العملاء</option><option value="followups">متابعة العملاء</option><option value="products">أداء المنتجات مقابل الهدف</option><option value="executive">التقرير الإداري الشامل</option></select></div>
+          <div><label>المندوب</label><select id="analyticsRep"><option value="">كل المندوبين</option></select></div>
+          <div><label>من تاريخ</label><input type="date" id="analyticsFrom"></div>
+          <div><label>إلى تاريخ</label><input type="date" id="analyticsTo"></div>
+          <div class="full"><button class="btn" id="generateReportBtn">عرض التقرير</button> <button class="btn secondary" id="printReportBtn">تصدير PDF / طباعة</button></div>
+        </div>
+      </div>
+      <div id="printableReport" class="print-report"><div class="empty">حدد نوع التقرير والفترة ثم اضغط «عرض التقرير».</div></div>
     </section>
 
     <section id="audit" class="section admin-only"><div class="table-wrap"><table><thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الكيان</th><th>التفاصيل</th></tr></thead><tbody id="auditBody"></tbody></table></div></section>

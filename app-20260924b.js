@@ -23,8 +23,6 @@ const dateOnly = d => d ? new Intl.DateTimeFormat('ar-SA',{dateStyle:'medium',ti
 const todayRiyadh = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const monthRiyadh = () => todayRiyadh().slice(0,7);
 const dateMs = d => Date.parse(d+'T00:00:00Z');
-const diffDays = (from,to) => Math.floor((dateMs(to)-dateMs(from))/86400000);
-const addDays = (d,n) => new Date(dateMs(d)+n*86400000).toISOString().slice(0,10);
 const isAdmin = () => state.profile?.role === 'admin';
 
 function addBaseMap(map){
@@ -37,12 +35,6 @@ function addBaseMap(map){
 function flash(msg,bad=false){ const f=$('flash'); f.textContent=msg; f.style.background=bad?'#991b1b':'#111827'; f.classList.remove('hidden'); setTimeout(()=>f.classList.add('hidden'),3600); }
 function badgeStatus(s){ const cls={new:'b-info',active:'b-good',hesitant:'b-warn',rejected:'b-bad'}[s]||'b-gray'; return `<span class="badge ${cls}">${esc(STATUS[s]||s)}</span>`; }
 function badgeReport(s){ const cls={sold:'b-good',followup:'b-warn',rejected:'b-bad',management:'b-bad'}[s]||'b-gray'; return `<span class="badge ${cls}">${esc(REPORT[s]||s)}</span>`; }
-function invoiceStatusBadge(info){
-  if(info.outstanding<=0) return '<span class="badge b-good">مسددة</span>';
-  if(info.overdue) return `<span class="badge b-purple">متأخرة ${info.overdueDays} يوم</span>`;
-  if(info.dueSoon) return `<span class="badge b-warn">تستحق خلال ${info.daysToDue} يوم</span>`;
-  return '<span class="badge b-info">داخل الأجل</span>';
-}
 function showConfigMessage(){ $('loginMsg').textContent='تعذر تحميل إعدادات النظام.'; $('loginBtn').disabled=true; }
 function getLoginGuard(){ try{return JSON.parse(localStorage.getItem('dana_login_guard_v1')||'{}')}catch(_){return {}} }
 function setLoginGuard(v){ localStorage.setItem('dana_login_guard_v1',JSON.stringify(v)); }
@@ -333,7 +325,7 @@ function openReportForm(id=null){
   setTimeout(()=>{const x=$('rCustomer');if(x)x.addEventListener('change',updateReportStatusFields);updateReportStatusFields();},0);
 }
 async function addReport(){
-  const note=$('rNote').value.trim();
+  const note=$('rNote').value.trim(), newStatus=$('rNewStatus').value||null;
   if(note.length<5)return flash('اكتب تقريراً أو سبباً واضحاً قبل الحفظ',true);
   const {error}=await sb.rpc('add_report',{
     p_customer_id:Number($('rCustomer').value),
@@ -341,10 +333,10 @@ async function addReport(){
     p_note:note,
     p_next_action:$('rNext').value.trim()||null,
     p_next_followup_date:$('rFollowDate').value||null,
-    p_new_status:$('rNewStatus').value||null
+    p_new_status:newStatus
   });
   if(error)return flash(error.message.includes('status unchanged')?'اختر حالة مختلفة أو بدون تغيير.':'تعذر حفظ المتابعة: '+error.message,true);
-  closeModal();flash('تم حفظ المتابعة'+($('rNewStatus')?.value?' وتحديث حالة العميل':''));await refreshAll();
+  closeModal();flash('تم حفظ المتابعة'+(newStatus?' وتحديث حالة العميل':''));await refreshAll();
 }
 
 function markerIcon(category){const star=category==='frequent'?'★':'';return L.divIcon({className:'map-pin-wrap',html:`<div class="map-pin pin-${category}"><span>${star}</span></div>`,iconSize:[30,30],iconAnchor:[15,28],popupAnchor:[0,-28]});}
@@ -381,7 +373,7 @@ async function changePassword(forced=false){
 async function renderSecurityStatus(){const box=$('securityStatus');if(!box||!state.profile)return;const changed=state.profile.password_changed_at?dateTime(state.profile.password_changed_at):'لم تُسجل بعد';box.innerHTML=`كلمة المرور: <b>${state.profile.must_change_password?'يجب تغييرها':'محدثة'}</b><br>آخر تغيير: ${esc(changed)}<br>الجلسة تُغلق بعد 20 دقيقة من عدم الاستخدام وبحد أقصى 8 ساعات.`;const m=$('mfaAccount');if(!m||!isAdmin())return;const [aal,factors]=await Promise.all([sb.auth.mfa.getAuthenticatorAssuranceLevel(),sb.auth.mfa.listFactors()]);const verified=(factors.data?.totp||[]).some(x=>x.status==='verified');m.innerHTML=`<h4>التحقق بخطوتين للإدارة</h4><div class="${verified?'security-good':'security-warn'}">${verified?'مفعّل. مستوى الجلسة: '+esc(aal.data?.currentLevel||'-'):'غير مفعّل.'}</div>`;}
 
 function gotoPage(id){
-  if(state.securityGateMode)return;if(state.profile?.must_change_password)return showPasswordGate();if(!isAdmin()&&(id==='mapPage'||id==='audit'||id==='analytics'))return;document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.nav-grid button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));const titles={dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',reports:'سجل متابعة العملاء',analytics:'التقارير',mapPage:'خريطة العملاء',audit:'سجل العمليات',account:'حسابي'};$('pageTitle').textContent=titles[id]||'';if(id==='mapPage')setTimeout(renderMap,100);if(id==='analytics')setupAnalytics();if(id==='audit')renderAudit();if(id==='account')renderSecurityStatus();
+  if(state.securityGateMode)return;if(state.profile?.must_change_password)return showPasswordGate();if(!isAdmin()&&(id==='mapPage'||id==='audit'||id==='analytics'))return;document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.nav-grid button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));const titles={dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',reports:'متابعة العملاء',analytics:'التقارير',mapPage:'خريطة العملاء',audit:'سجل العمليات',account:'حسابي'};$('pageTitle').textContent=titles[id]||'';if(id==='mapPage')setTimeout(renderMap,100);if(id==='analytics')setupAnalytics();if(id==='audit')renderAudit();if(id==='account')renderSecurityStatus();
 }
 
 $('loginBtn').addEventListener('click',login); $('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()}); $('logoutBtn').addEventListener('click',()=>logout()); $('closeModalBtn').addEventListener('click',closeModal); $('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});

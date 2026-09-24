@@ -35,7 +35,7 @@
       <button data-page="sales">السحوبات / الفواتير</button>
       <button data-page="payments">الدفعات</button>
       <button data-page="debts">الأجل والمتأخرات</button>
-      <button data-page="reports">تقارير المندوبين</button>
+      <button data-page="reports">سجل متابعة العملاء</button>
       <button data-page="mapPage" class="admin-only">الخريطة</button>
       <button data-page="audit" class="admin-only">سجل العمليات</button>
       <button data-page="account">حسابي</button>
@@ -62,7 +62,7 @@
     </section>
 
     <section id="customers" class="section">
-      <div class="toolbar"><button class="btn" id="newCustomerBtn">+ عميل جديد</button><input id="customerSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="customerStatusFilter"><option value="">كل الحالات</option><option value="new">جديد</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="stopped">متوقف</option></select></div>
+      <div class="toolbar"><button class="btn" id="newCustomerBtn">+ عميل جديد</button><input id="customerSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="customerStatusFilter"><option value="">كل الحالات</option><option value="new">جديد</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option></select></div>
       <div class="table-wrap"><table><thead><tr><th>العميل</th><th>المنطقة</th><th>المندوب</th><th>الحالة</th><th>سحوبات الشهر</th><th>الرصيد</th><th>المتأخرات</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div>
     </section>
 
@@ -73,7 +73,7 @@
 
     <section id="payments" class="section">
       <div class="toolbar"><button class="btn" id="newPaymentBtn">+ تسجيل دفعة</button><input id="paymentSearch" class="search" placeholder="ابحث بالعميل أو المرجع..." /></div>
-      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المبلغ</th><th>طريقة السداد</th><th>المرجع</th><th>المندوب</th></tr></thead><tbody id="paymentsBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المبلغ</th><th>المرجع</th><th>المندوب</th></tr></thead><tbody id="paymentsBody"></tbody></table></div>
     </section>
 
     <section id="debts" class="section">
@@ -82,13 +82,13 @@
     </section>
 
     <section id="reports" class="section">
-      <div class="toolbar"><button class="btn" id="newReportBtn">+ تقرير متابعة</button><select id="reportTypeFilter"><option value="">كل الحالات</option><option value="sold">تم البيع</option><option value="followup">متابعة لاحقة</option><option value="rejected">رفض</option><option value="management">يحتاج تدخل الإدارة</option></select></div>
+      <div class="toolbar"><button class="btn" id="newReportBtn">+ إضافة متابعة</button><select id="reportTypeFilter"><option value="">كل الحالات</option><option value="sold">تم البيع</option><option value="followup">متابعة لاحقة</option><option value="rejected">رفض</option><option value="management">يحتاج تدخل الإدارة</option></select></div>
       <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المندوب</th><th>الحالة</th><th>الملاحظة</th><th>الإجراء القادم</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
     </section>
 
     <section id="mapPage" class="section admin-only">
       <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="overdue">متأخرات</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option><option value="stopped">متوقف</option></select></div>
-      <div class="map-legend"><span><i class="legend-dot purple"></i>متأخرات</span><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span><span><i class="legend-dot gray"></i>متوقف</span></div>
+      <div class="map-legend"><span><i class="legend-dot purple"></i>متأخرات</span><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span></div>
       <div id="map"></div>
     </section>
 

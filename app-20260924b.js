@@ -5,25 +5,110 @@ const cfg = window.DANA_CONFIG || {};
 const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_URL.includes('PASTE_') && !cfg.SUPABASE_ANON_KEY.includes('PASTE_');
 const sb = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}) : null;
 const USERS = {admin:'admin@dana.local',majdi:'majdi@dana.local',saeed:'saeed@dana.local',yaqoub:'yaqoub@dana.local',omar:'omar@dana.local'};
-const STATUS = {new:'جديد',active:'نشط',hesitant:'متردد',rejected:'رافض'};
-const REPORT = {sold:'تم البيع',followup:'متابعة لاحقة',rejected:'رفض',management:'يحتاج تدخل الإدارة'};
-const ACTION = {customer_created:'إضافة عميل',status_changed:'تغيير حالة',sale_added:'إضافة سحب / فاتورة',payment_added:'تسجيل دفعة',report_added:'إضافة تقرير',location_corrected:'تصحيح موقع',password_changed:'تغيير كلمة المرور'};
+
+let lang=localStorage.getItem('dana_lang')||'ar';
+const I18N={
+ ar:{
+  signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعة العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
+  new:'جديد',active:'نشط',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
+  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',
+  dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
+  company:'الشركة',newCustomers:'عملاء جدد',productSales:'مبيعات المنتجات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
+  edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
+  customer:'العميل',representative:'المندوب',area:'المنطقة',phone:'الجوال',status:'الحالة',action:'الإجراء',reason:'التقرير / السبب',product:'المنتج',quantity:'الكمية',value:'القيمة',reference:'المرجع',date:'التاريخ',
+  totalCustomers:'إجمالي العملاء',salesThisMonth:'سحوبات الشهر',activeCustomers:'العملاء النشطون',hesitantCustomers:'العملاء المترددون',rejectedCustomers:'العملاء الرافضون',clickView:'اضغط للعرض',
+  repSummary:'ملخص المندوبين',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
+  allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة...',newCustomer:'+ عميل جديد',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
+  recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',thisMonth:'هذا الشهر',
+  addFollowup:'+ إضافة متابعة',allActions:'كل الإجراءات',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
+  reportType:'نوع التقرير',allReps:'كل المندوبين',from:'من تاريخ',to:'إلى تاريخ',generateReport:'عرض التقرير',printPdf:'تصدير PDF / طباعة',
+  username:'اسم المستخدم',password:'كلمة المرور',language:'English',accountSecurity:'أمان الحساب',
+  noData:'لا توجد بيانات.',confirmDelete:'هل أنت متأكد من الحذف؟',saved:'تم الحفظ',deleted:'تم الحذف',updated:'تم التعديل'
+ },
+ en:{
+  signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
+  new:'New',active:'Active',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
+  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',
+  dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
+  company:'Company',newCustomers:'New customers',productSales:'Product sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
+  edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
+  customer:'Customer',representative:'Representative',area:'Area',phone:'Phone',status:'Status',action:'Action',reason:'Report / Reason',product:'Product',quantity:'Quantity',value:'Value',reference:'Reference',date:'Date',
+  totalCustomers:'Total Customers',salesThisMonth:'Sales This Month',activeCustomers:'Active Customers',hesitantCustomers:'Hesitant Customers',rejectedCustomers:'Rejected Customers',clickView:'Click to view',
+  repSummary:'Representative Summary',managementIntervention:'Management Intervention',goals:'Goals',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
+  allStatuses:'All Statuses',searchCustomer:'Search customer or area...',newCustomer:'+ New Customer',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
+  recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',thisMonth:'This Month',
+  addFollowup:'+ Add Follow-up',allActions:'All Actions',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
+  reportType:'Report Type',allReps:'All Representatives',from:'From',to:'To',generateReport:'Generate Report',printPdf:'Export PDF / Print',
+  username:'Username',password:'Password',language:'العربية',accountSecurity:'Account Security',
+  noData:'No data.',confirmDelete:'Are you sure you want to delete this record?',saved:'Saved',deleted:'Deleted',updated:'Updated'
+ }
+};
+const t=k=>I18N[lang][k]??k;
+const statusLabel=k=>t(k);
+const actionLabel=k=>I18N[lang][k]||k||'-';
+const productLabel=k=>I18N[lang][k]||k||'-';
+const STATUS_KEYS=['new','active','hesitant','rejected'];
+const CHANGE_STATUS_KEYS=['active','hesitant','rejected'];
+const FOLLOW_ACTION_KEYS=['admin_intervention','review_next_week','sample_request'];
+const PRODUCT_KEYS=['dulux_emulsion','dulux_oil','leafs_tinting','dulux_polyurethane'];
+const ACTION = {
+ customer_created:'Customer created',customer_updated:'Customer updated',customer_deleted:'Customer deleted',
+ status_changed:'Status changed',sale_added:'Sale / withdrawal added',sale_updated:'Sale updated',sale_deleted:'Sale deleted',
+ report_added:'Follow-up added',report_updated:'Follow-up updated',report_deleted:'Follow-up deleted',
+ location_corrected:'Location corrected',password_changed:'Password changed',performance_goal_updated:'Performance goal updated'
+};
 const MAX_IDLE_MS = 20*60*1000;
 const MAX_SESSION_MS = 8*60*60*1000;
 const LOGIN_LOCK_MS = 5*60*1000;
 const LOGIN_FAIL_LIMIT = 5;
 const PAGE_SIZE = 1000;
-const state = {session:null,profile:null,customers:[],sales:[],reports:[],profiles:[],targets:[],map:null,markerLayer:null,mapLocations:[],pickerMap:null,pickerMarker:null,securityGateMode:null,mfaFactorId:null,lastActivity:Date.now(),activityCache:new Map()};
-const $ = id => document.getElementById(id);
-const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-const fmt = n => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:2}).format(Number(n||0));
-const money = n => fmt(n)+' ر.س';
-const dateTime = iso => iso ? new Intl.DateTimeFormat('ar-SA',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Riyadh'}).format(new Date(iso)) : '-';
-const dateOnly = d => d ? new Intl.DateTimeFormat('ar-SA',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z')) : '-';
-const todayRiyadh = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const monthRiyadh = () => todayRiyadh().slice(0,7);
-const dateMs = d => Date.parse(d+'T00:00:00Z');
-const isAdmin = () => state.profile?.role === 'admin';
+const state={session:null,profile:null,customers:[],sales:[],reports:[],profiles:[],goals:[],map:null,markerLayer:null,mapLocations:[],pickerMap:null,pickerMarker:null,securityGateMode:null,mfaFactorId:null,lastActivity:Date.now(),activityCache:new Map(),customerMonthOnly:false};
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const fmt=n=>new Intl.NumberFormat(lang==='ar'?'ar-SA':'en-US',{maximumFractionDigits:2}).format(Number(n||0));
+const money=n=>lang==='ar'?fmt(n)+' ر.س':'SAR '+fmt(n);
+const dateTime=iso=>iso?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Riyadh'}).format(new Date(iso)):'-';
+const dateOnly=d=>d?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z')):'-';
+const todayRiyadh=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const monthRiyadh=()=>todayRiyadh().slice(0,7);
+const isAdmin=()=>state.profile?.role==='admin';
+
+function applyLanguage(){
+ document.documentElement.lang=lang;
+ document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+ const set=(sel,txt)=>{const e=document.querySelector(sel);if(e)e.textContent=txt;};
+ const ph=(id,txt)=>{const e=$(id);if(e)e.placeholder=txt;};
+ set('#login h2',lang==='ar'?'نظام إدارة مبيعات ديلوكس':'Dulux Sales Management');
+ ph('loginUser',t('username'));ph('loginPass',t('password'));if($('loginBtn'))$('loginBtn').textContent=t('signIn');
+ if($('logoutBtn'))$('logoutBtn').textContent=t('signOut');
+ if($('closeModalBtn'))$('closeModalBtn').textContent=t('close');
+ document.querySelector('[data-page="dashboard"]')?.replaceChildren(document.createTextNode(t('dashboard')));
+ document.querySelector('[data-page="customers"]')?.replaceChildren(document.createTextNode(t('customers')));
+ document.querySelector('[data-page="sales"]')?.replaceChildren(document.createTextNode(t('sales')));
+ document.querySelector('[data-page="reports"]')?.replaceChildren(document.createTextNode(t('followups')));
+ document.querySelector('[data-page="mapPage"]')?.replaceChildren(document.createTextNode(t('map')));
+ document.querySelector('[data-page="analytics"]')?.replaceChildren(document.createTextNode(t('reports')));
+ document.querySelector('[data-page="audit"]')?.replaceChildren(document.createTextNode(t('audit')));
+ document.querySelector('[data-page="account"]')?.replaceChildren(document.createTextNode(t('account')));
+ if($('langBtn'))$('langBtn').textContent=t('language');
+ if($('langBtnLogin'))$('langBtnLogin').textContent=t('language');
+ if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');
+ if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');
+ if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');
+ ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));
+ if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');
+ set('#dashboard .dashboard-panels h3',t('repSummary'));set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#goalsTitle',t('goals'));
+ const cards=[['customers','totalCustomers'],['sales-month','salesThisMonth'],['active','activeCustomers'],['hesitant','hesitantCustomers'],['rejected','rejectedCustomers']];
+ for(const [k,l] of cards){const c=document.querySelector('[data-dashboard-link="'+k+'"]');if(c){const x=c.querySelector('.label'),h=c.querySelector('.card-hint');if(x)x.textContent=t(l);if(h)h.textContent=t('clickView');}}
+ const st=$('customerStatusFilter');if(st){st.options[0].text=t('allStatuses');for(let i=1;i<st.options.length;i++)st.options[i].text=t(st.options[i].value);}
+ const sp=$('salePeriodFilter');if(sp){sp.options[0].text=t('allDates');sp.options[1].text=t('thisMonth');}
+ const rf=$('reportActionFilter');if(rf){rf.options[0].text=t('allActions');for(let i=1;i<rf.options.length;i++)rf.options[i].text=t(rf.options[i].value);}
+ const mf=$('mapFilter');if(mf){mf.options[0].text=lang==='ar'?'كل العملاء':'All Customers';for(let i=1;i<mf.options.length;i++){const v=mf.options[i].value;mf.options[i].text=v==='frequent'?(lang==='ar'?'سحب متكرر هذا الشهر':'Repeated sale this month'):t(v);}}
+ const ar=$('analyticsRep');if(ar&&ar.options.length)ar.options[0].text=t('allReps');
+ const pt=$('pageTitle');if(pt){const active=document.querySelector('.nav-grid button.active');if(active)pt.textContent=active.textContent;}
+ renderAll();
+}
+function toggleLanguage(){lang=lang==='ar'?'en':'ar';localStorage.setItem('dana_lang',lang);applyLanguage();}
 
 function addBaseMap(map){
   const layer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});

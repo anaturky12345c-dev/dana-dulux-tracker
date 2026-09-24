@@ -1,106 +1,183 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>نظام متابعة دلوكس - دانة التاج</title>
+  <title>Dana Al-Taj - Dulux Sales Management</title>
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com https://server.arcgisonline.com https://server.arcgisonline.com; connect-src 'self' https://bmpxtvhqpjvlyeoseuvz.supabase.co wss://bmpxtvhqpjvlyeoseuvz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; worker-src 'none'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com https://server.arcgisonline.com; connect-src 'self' https://bmpxtvhqpjvlyeoseuvz.supabase.co wss://bmpxtvhqpjvlyeoseuvz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; worker-src 'none'; upgrade-insecure-requests" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="./styles-20260924b.css" />
 </head>
 <body>
 <div id="login" class="login">
   <div class="login-card">
-    <h2>نظام متابعة دلوكس</h2>
+    <h2>Dulux Sales Management</h2>
     <div class="row">
-      <input id="loginUser" autocomplete="username" placeholder="اسم المستخدم" />
-      <input id="loginPass" type="password" autocomplete="current-password" placeholder="كلمة المرور" />
-      <button class="btn" id="loginBtn">دخول</button>
+      <input id="loginUser" autocomplete="username" placeholder="Username" />
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="Password" />
+      <button class="btn" id="loginBtn">Sign in</button>
       <div id="loginMsg" class="small"></div>
     </div>
   </div>
 </div>
+
 <div id="securityGate" class="security-gate hidden">
-  <div class="security-card"><h2 id="securityGateTitle">تأمين الحساب</h2><div id="securityGateBody"></div></div>
+  <div class="security-card"><h2 id="securityGateTitle">Account Security</h2><div id="securityGateBody"></div></div>
 </div>
+
 <div class="app">
   <aside>
-    <div class="brand">دانة التاج</div>
-    <div class="sub">متابعة دلوكس</div>
+    <div class="brand">Dana Al-Taj</div>
+    <div class="sub">Dulux Sales Management</div>
     <nav class="nav-grid">
-      <button class="active" data-page="dashboard">لوحة المتابعة</button>
-      <button data-page="customers">العملاء</button>
-      <button data-page="sales">السحوبات / الفواتير</button>
-      <button data-page="reports">متابعة العملاء</button>
-      <button data-page="mapPage" class="admin-only">الخريطة</button>
-      <button data-page="analytics" class="admin-only">التقارير</button>
-      <button data-page="audit" class="admin-only">سجل العمليات</button>
-      <button data-page="account">حسابي</button>
+      <button class="active" data-page="dashboard">Dashboard</button>
+      <button data-page="customers">Customers</button>
+      <button data-page="sales">Sales / Withdrawals</button>
+      <button data-page="reports">Customer Follow-ups</button>
+      <button data-page="mapPage" class="admin-only">Customer Map</button>
+      <button data-page="analytics" class="admin-only">Reports</button>
+      <button data-page="audit" class="admin-only">Activity Log</button>
+      <button data-page="account">My Account</button>
     </nav>
   </aside>
+
   <main>
-    <div class="topbar"><div><h1 id="pageTitle">لوحة المتابعة</h1><div class="role" id="roleText"></div></div><button class="btn secondary" id="logoutBtn">تسجيل خروج</button></div>
+    <div class="topbar">
+      <div><h1 id="pageTitle">Dashboard</h1><div class="role" id="roleText"></div></div>
+      <button class="btn secondary" id="logoutBtn">Sign out</button>
+    </div>
 
     <section id="dashboard" class="section active">
       <div class="grid cards dashboard-cards">
-        <div class="card"><div class="label">إجمالي العملاء</div><div class="metric" id="mCustomers">0</div></div>
-        <div class="card"><div class="label">سحوبات الشهر</div><div class="metric" id="mSales">0</div></div>
-        <div class="card"><div class="label">العملاء النشطون</div><div class="metric" id="mActive">0</div></div>
-        <div class="card"><div class="label">العملاء المترددون</div><div class="metric" id="mHesitant">0</div></div>
-        <div class="card"><div class="label">العملاء الرافضون</div><div class="metric" id="mRejected">0</div></div>
+        <div class="card metric-card" data-dashboard-link="customers"><div class="label">Total Customers</div><div class="metric" id="mCustomers">0</div><div class="card-hint">Click to view</div></div>
+        <div class="card metric-card" data-dashboard-link="sales-month"><div class="label">Sales This Month</div><div class="metric" id="mSales">0</div><div class="card-hint">Click to view</div></div>
+        <div class="card metric-card" data-dashboard-link="active"><div class="label">Active Customers</div><div class="metric" id="mActive">0</div><div class="card-hint">Click to view</div></div>
+        <div class="card metric-card" data-dashboard-link="hesitant"><div class="label">Hesitant Customers</div><div class="metric" id="mHesitant">0</div><div class="card-hint">Click to view</div></div>
+        <div class="card metric-card" data-dashboard-link="rejected"><div class="label">Rejected Customers</div><div class="metric" id="mRejected">0</div><div class="card-hint">Click to view</div></div>
       </div>
-      <div class="card dashboard-panels"><h3>ملخص المندوبين</h3><div id="repSummary"></div></div>
-      <div class="card dashboard-attention"><h3>حالات تحتاج تدخل الإدارة</h3><div id="attentionList"></div></div>
-      <div class="card admin-only" style="margin-top:14px"><div class="dashboard-head"><h3>أداء المندوبين</h3><span class="small">الشهر الحالي</span></div><div id="repPerformance"></div></div>
-      <div class="card admin-only" style="margin-top:14px"><div class="dashboard-head"><h3>أهداف المنتجات</h3><button class="btn secondary" id="editTargetsBtn">تعديل الأهداف</button></div><div id="targetsDashboard"></div></div>
+
+      <div class="card dashboard-panels"><h3>Representative Summary</h3><div id="repSummary"></div></div>
+      <div class="card dashboard-attention"><h3>Management Intervention</h3><div id="attentionList"></div></div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="dashboard-head">
+          <div><h3 id="goalsTitle">Goals</h3><div class="small">Current month</div></div>
+          <button class="btn secondary admin-only" id="editGoalsBtn">Edit Goals</button>
+        </div>
+        <div id="goalsDashboard"></div>
+      </div>
+
+      <div class="card admin-only" style="margin-top:14px">
+        <div class="dashboard-head"><h3>Representative Performance</h3><span class="small">Current month</span></div>
+        <div id="repPerformance"></div>
+      </div>
     </section>
 
     <section id="customers" class="section">
-      <div class="toolbar"><button class="btn" id="newCustomerBtn">+ عميل جديد</button><input id="customerSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="customerStatusFilter"><option value="">كل الحالات</option><option value="new">جديد</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option></select></div>
-      <div class="table-wrap"><table><thead><tr><th>العميل</th><th>المنطقة</th><th>المندوب</th><th>الحالة</th><th>سحوبات الشهر</th><th>قيمة سحوبات الشهر</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div>
+      <div class="toolbar">
+        <button class="btn" id="newCustomerBtn">+ New Customer</button>
+        <input id="customerSearch" class="search" placeholder="Search customer or area..." />
+        <select id="customerStatusFilter">
+          <option value="">All Statuses</option>
+          <option value="new">New</option>
+          <option value="active">Active</option>
+          <option value="hesitant">Hesitant</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Customer</th><th>Area</th><th>Representative</th><th>Status</th><th>Sales Count This Month</th><th>Sales Value This Month</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div>
     </section>
 
     <section id="sales" class="section">
-      <div class="toolbar"><button class="btn" id="newSaleBtn">+ تسجيل سحب / فاتورة</button><input id="saleSearch" class="search" placeholder="ابحث بالعميل أو المنتج..." /></div>
-      <div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>القيمة</th><th>المرجع</th><th>المندوب</th></tr></thead><tbody id="salesBody"></tbody></table></div>
+      <div class="toolbar">
+        <button class="btn" id="newSaleBtn">+ Record Sale / Withdrawal</button>
+        <input id="saleSearch" class="search" placeholder="Search customer, product or reference..." />
+        <select id="salePeriodFilter"><option value="">All Dates</option><option value="month">This Month</option></select>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Value</th><th>Reference</th><th>Representative</th></tr></thead><tbody id="salesBody"></tbody></table></div>
     </section>
 
-
     <section id="reports" class="section">
-      <div class="toolbar"><button class="btn" id="newReportBtn">+ إضافة متابعة</button><select id="reportTypeFilter"><option value="">كل الحالات</option><option value="sold">تم البيع</option><option value="followup">متابعة لاحقة</option><option value="rejected">رفض</option><option value="management">يحتاج تدخل الإدارة</option></select></div>
-      <div class="table-wrap"><table><thead><tr><th>وقت التسجيل</th><th>العميل</th><th>المندوب</th><th>نوع المتابعة</th><th>الحالة السابقة</th><th>الحالة الجديدة</th><th>التقرير / السبب</th><th>الإجراء القادم</th><th>المتابعة القادمة</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+      <div class="toolbar">
+        <button class="btn" id="newReportBtn">+ Add Follow-up</button>
+        <select id="reportActionFilter">
+          <option value="">All Actions</option>
+          <option value="admin_intervention">Management intervention</option>
+          <option value="review_next_week">Review customer next week</option>
+          <option value="sample_request">Customer requests product sample</option>
+        </select>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Action</th><th>Previous Status</th><th>New Status</th><th>Report / Reason</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
     </section>
 
     <section id="mapPage" class="section admin-only">
-      <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option></select></div>
-      <div class="map-legend"><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span></div>
+      <div class="map-toolbar">
+        <input id="mapSearch" class="search" placeholder="Search customer or area..." />
+        <select id="mapFilter">
+          <option value="">All Customers</option>
+          <option value="frequent">Repeated sale this month</option>
+          <option value="active">Active</option>
+          <option value="hesitant">Hesitant</option>
+          <option value="rejected">Rejected</option>
+          <option value="new">New</option>
+        </select>
+      </div>
+      <div class="map-legend">
+        <span><i class="legend-dot green star">★</i>Repeated sale</span>
+        <span><i class="legend-dot green"></i>Active</span>
+        <span><i class="legend-dot yellow"></i>Hesitant</span>
+        <span><i class="legend-dot red"></i>Rejected</span>
+        <span><i class="legend-dot blue"></i>New</span>
+      </div>
       <div id="map"></div>
     </section>
 
     <section id="analytics" class="section admin-only">
       <div class="card report-controls">
         <div class="form-grid">
-          <div><label>نوع التقرير</label><select id="analyticsType"><option value="sales">المبيعات والسحوبات</option><option value="reps">أداء المندوبين</option><option value="customers">حركة العملاء</option><option value="followups">متابعة العملاء</option><option value="products">أداء المنتجات مقابل الهدف</option><option value="executive">التقرير الإداري الشامل</option></select></div>
-          <div><label>المندوب</label><select id="analyticsRep"><option value="">كل المندوبين</option></select></div>
-          <div><label>من تاريخ</label><input type="date" id="analyticsFrom"></div>
-          <div><label>إلى تاريخ</label><input type="date" id="analyticsTo"></div>
-          <div class="full"><button class="btn" id="generateReportBtn">عرض التقرير</button> <button class="btn secondary" id="printReportBtn">تصدير PDF / طباعة</button></div>
+          <div><label>Report Type</label><select id="analyticsType">
+            <option value="sales">Sales / Withdrawals</option>
+            <option value="reps">Representative Performance</option>
+            <option value="customers">Customer Activity</option>
+            <option value="followups">Customer Follow-ups</option>
+            <option value="products">Product Goal Performance</option>
+            <option value="executive">Management Summary</option>
+          </select></div>
+          <div><label>Representative</label><select id="analyticsRep"><option value="">All Representatives</option></select></div>
+          <div><label>From</label><input type="date" id="analyticsFrom"></div>
+          <div><label>To</label><input type="date" id="analyticsTo"></div>
+          <div class="full"><button class="btn" id="generateReportBtn">Generate Report</button> <button class="btn secondary" id="printReportBtn">Export PDF / Print</button></div>
         </div>
       </div>
-      <div id="printableReport" class="print-report"><div class="empty">حدد نوع التقرير والفترة ثم اضغط «عرض التقرير».</div></div>
+      <div id="printableReport" class="print-report"><div class="empty">Select a report type and date range, then click “Generate Report”.</div></div>
     </section>
 
-    <section id="audit" class="section admin-only"><div class="table-wrap"><table><thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الكيان</th><th>التفاصيل</th></tr></thead><tbody id="auditBody"></tbody></table></div></section>
+    <section id="audit" class="section admin-only">
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead><tbody id="auditBody"></tbody></table></div>
+    </section>
 
     <section id="account" class="section">
-      <div class="card security-account"><h3>أمان الحساب</h3><div id="securityStatus" class="notice">جاري فحص إعدادات الأمان...</div><div class="form-grid"><div class="full"><label>كلمة المرور الحالية</label><input id="currentPassword" type="password" autocomplete="current-password" /></div><div><label>كلمة المرور الجديدة</label><input id="newPassword" type="password" autocomplete="new-password" /></div><div><label>تأكيد كلمة المرور الجديدة</label><input id="confirmPassword" type="password" autocomplete="new-password" /></div><div class="full password-policy">14 حرفاً على الأقل، وتحتوي حرفاً كبيراً وصغيراً ورقماً ورمزاً.</div><div class="full"><button class="btn" id="changePasswordBtn">تغيير كلمة المرور</button></div></div><div id="mfaAccount" class="admin-only mfa-account"></div></div>
+      <div class="card security-account">
+        <h3>Account Security</h3>
+        <div id="securityStatus" class="notice">Checking security settings...</div>
+        <div class="form-grid">
+          <div class="full"><label>Current Password</label><input id="currentPassword" type="password" autocomplete="current-password" /></div>
+          <div><label>New Password</label><input id="newPassword" type="password" autocomplete="new-password" /></div>
+          <div><label>Confirm New Password</label><input id="confirmPassword" type="password" autocomplete="new-password" /></div>
+          <div class="full password-policy">At least 14 characters with uppercase, lowercase, number and symbol.</div>
+          <div class="full"><button class="btn" id="changePasswordBtn">Change Password</button></div>
+        </div>
+        <div id="mfaAccount" class="admin-only mfa-account"></div>
+      </div>
     </section>
   </main>
 </div>
-<div id="modal" class="modal"><div class="modal-card"><div class="modal-head"><h3 id="modalTitle"></h3><button class="close" id="closeModalBtn">إغلاق</button></div><div id="modalContent"></div></div></div>
+
+<div id="modal" class="modal"><div class="modal-card"><div class="modal-head"><h3 id="modalTitle"></h3><button class="close" id="closeModalBtn">Close</button></div><div id="modalContent"></div></div></div>
 <div id="flash" class="flash hidden"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js"></script>

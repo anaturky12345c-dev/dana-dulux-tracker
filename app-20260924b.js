@@ -13,7 +13,7 @@ const MAX_SESSION_MS = 8*60*60*1000;
 const LOGIN_LOCK_MS = 5*60*1000;
 const LOGIN_FAIL_LIMIT = 5;
 const PAGE_SIZE = 1000;
-const state = {session:null,profile:null,customers:[],sales:[],payments:[],allocations:[],reports:[],profiles:[],targets:[],map:null,markerLayer:null,mapLocations:[],pickerMap:null,pickerMarker:null,securityGateMode:null,mfaFactorId:null,lastActivity:Date.now(),financeCache:new Map()};
+const state = {session:null,profile:null,customers:[],sales:[],reports:[],profiles:[],targets:[],map:null,markerLayer:null,mapLocations:[],pickerMap:null,pickerMarker:null,securityGateMode:null,mfaFactorId:null,lastActivity:Date.now(),activityCache:new Map()};
 const $ = id => document.getElementById(id);
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const fmt = n => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:2}).format(Number(n||0));
@@ -122,8 +122,8 @@ function showLogin(message=''){ hideSecurityGate(); $('login').classList.remove(
 function showApp(){ prepareAppShell(); gotoPage('dashboard'); }
 async function logout(message=''){
   try{ if(sb) await sb.auth.signOut(); }catch(_){}
-  state.session=null;state.profile=null;state.customers=[];state.sales=[];state.payments=[];state.allocations=[];state.reports=[];state.profiles=[];state.financeCache.clear();state.lastActivity=Date.now();
-  ['customersBody','salesBody','paymentsBody','debtsBody','reportsBody','auditBody'].forEach(id=>{const el=$(id);if(el)el.innerHTML='';});
+  state.session=null;state.profile=null;state.customers=[];state.sales=[];state.reports=[];state.profiles=[];state.targets=[];state.activityCache.clear();state.lastActivity=Date.now();
+  ['customersBody','salesBody','reportsBody','auditBody'].forEach(id=>{const el=$(id);if(el)el.innerHTML='';});
   showLogin(message);
 }
 
@@ -137,107 +137,162 @@ async function loadPaged(makeQuery,label){
   return out;
 }
 async function refreshAll(){
-  await Promise.all([loadProfiles(),loadCustomers(),loadSales(),loadPayments(),loadAllocations(),loadReports(),loadTargets()]);
-  state.financeCache.clear(); renderAll();
+  await Promise.all([loadProfiles(),loadCustomers(),loadSales(),loadReports(),loadTargets()]);
+  state.activityCache.clear(); renderAll();
 }
 async function loadProfiles(){ const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name'); state.profiles=error?[]:(data||[]); }
 async function loadCustomers(){
-  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,current_debt,oldest_invoice_date,created_at,assigned_rep,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,created_at,assigned_rep,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
   if(error){console.error(error);flash('تعذر تحميل العملاء',true);return;} state.customers=data||[];
 }
-async function loadSales(){ state.sales=await loadPaged((a,b)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,due_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(a,b),'السحوبات'); }
-async function loadPayments(){ state.payments=await loadPaged((a,b)=>sb.from('payments').select('id,customer_id,amount,payment_method,reference,note,business_date,created_at,rep_id,customer:customers(name),rep:profiles!payments_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(a,b),'الدفعات'); }
-async function loadAllocations(){ state.allocations=await loadPaged((a,b)=>sb.from('payment_allocations').select('id,payment_id,sale_id,amount,created_at').order('id',{ascending:true}).range(a,b),'توزيع الدفعات'); }
-async function loadReports(){ state.reports=await loadPaged((a,b)=>sb.from('reports').select('id,customer_id,report_type,note,next_action,next_followup_date,created_at,business_date,rep_id,customer:customers(name),rep:profiles!reports_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(a,b),'التقارير'); }
+async function loadSales(){ state.sales=await loadPaged((a,b)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(a,b),'السحوبات'); }
+async function loadReports(){ state.reports=await loadPaged((a,b)=>sb.from('reports').select('id,customer_id,report_type,note,next_action,next_followup_date,old_status,new_status,created_at,business_date,rep_id,customer:customers(name),rep:profiles!reports_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(a,b),'التقارير'); }
 async function loadTargets(){const {data,error}=await sb.from('sales_targets').select('id,product,weekly_target,exception_75,updated_at').order('id');state.targets=error?[]:(data||[]);}
 
-function allocationTotals(){ const m=new Map(); for(const a of state.allocations) m.set(Number(a.sale_id),(m.get(Number(a.sale_id))||0)+Number(a.amount||0)); return m; }
-function invoiceInfo(s,allocs=null){
-  const map=allocs||allocationTotals(); const paid=Math.min(Number(s.amount||0),Number(map.get(Number(s.id))||0)); const outstanding=Math.max(0,Number(s.amount||0)-paid); const today=todayRiyadh(); const due=s.due_date||addDays(s.business_date,30); const daysToDue=diffDays(today,due); const overdue=outstanding>0 && daysToDue<0; const overdueDays=overdue?Math.abs(daysToDue):0; const dueSoon=outstanding>0 && daysToDue>=0 && daysToDue<=7;
-  return {paid,outstanding,due,daysToDue,overdue,overdueDays,dueSoon};
+function activityForCustomer(cid){
+  cid=Number(cid); if(state.activityCache.has(cid)) return state.activityCache.get(cid);
+  const month=monthRiyadh(); let monthSalesCount=0,monthSalesValue=0,lastSale=null;
+  for(const x of state.sales){
+    if(Number(x.customer_id)!==cid) continue;
+    if(String(x.business_date||'').startsWith(month)){monthSalesCount++;monthSalesValue+=Number(x.amount||0);}
+    if(!lastSale||new Date(x.created_at)>new Date(lastSale.created_at)) lastSale=x;
+  }
+  const out={monthSalesCount,monthSalesValue,lastSale}; state.activityCache.set(cid,out); return out;
 }
-function financeForCustomer(cid){
-  cid=Number(cid); if(state.financeCache.has(cid)) return state.financeCache.get(cid);
-  const allocs=allocationTotals(); const invoices=state.sales.filter(s=>Number(s.customer_id)===cid); let balance=0,overdue=0,dueSoon=0,overdueDays=0,oldest=null; const month=monthRiyadh(); let monthSalesCount=0,monthSalesValue=0; let lastSale=null;
-  for(const s of invoices){ const f=invoiceInfo(s,allocs); balance+=f.outstanding; if(f.overdue){overdue+=f.outstanding;overdueDays=Math.max(overdueDays,f.overdueDays);} if(f.dueSoon) dueSoon+=f.outstanding; if(f.outstanding>0 && (!oldest||s.business_date<oldest)) oldest=s.business_date; if(String(s.business_date||'').startsWith(month)){monthSalesCount++;monthSalesValue+=Number(s.amount||0);} if(!lastSale||new Date(s.created_at)>new Date(lastSale.created_at)) lastSale=s; }
-  const payments=state.payments.filter(p=>Number(p.customer_id)===cid); const monthPayments=payments.filter(p=>String(p.business_date||'').startsWith(month)).reduce((a,p)=>a+Number(p.amount||0),0);
-  const out={balance,overdue,dueSoon,overdueDays,oldest,monthSalesCount,monthSalesValue,monthPayments,lastSale}; state.financeCache.set(cid,out); return out;
-}
-function customerCategory(c){ const f=financeForCustomer(c.id); if(f.overdue>0)return 'overdue'; if(f.monthSalesCount>1)return 'frequent'; return c.status||'new'; }
-function renderAll(){ renderDashboard();renderCustomers();renderSales();renderPayments();renderDebts();renderReports();renderExtraDashboard(); }
+function customerCategory(c){ const a=activityForCustomer(c.id); if(a.monthSalesCount>1)return 'frequent'; return c.status||'new'; }
+function renderAll(){ renderDashboard();renderCustomers();renderSales();renderReports();renderExtraDashboard(); }
 
 function renderDashboard(){
-  const month=monthRiyadh(); const fins=state.customers.map(c=>({c,f:financeForCustomer(c.id)}));
-  const monthSales=state.sales.filter(s=>String(s.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
-  const monthPayments=state.payments.filter(p=>String(p.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
-  const totalDebt=fins.reduce((a,x)=>a+x.f.balance,0), overdue=fins.reduce((a,x)=>a+x.f.overdue,0), dueSoon=fins.reduce((a,x)=>a+x.f.dueSoon,0); const overdueRows=fins.filter(x=>x.f.overdue>0).sort((a,b)=>b.f.overdueDays-a.f.overdueDays||b.f.overdue-a.f.overdue);
-  $('mCustomers').textContent=state.customers.length; $('mSales').textContent=money(monthSales); $('mPayments').textContent=money(monthPayments); $('mDebt').textContent=money(totalDebt); $('mOverdue').textContent=money(overdue); $('mOverdueCustomers').textContent=overdueRows.length; $('mDueSoon').textContent=money(dueSoon);
-  $('overdueList').innerHTML=overdueRows.length?overdueRows.slice(0,10).map(x=>`<div class="event overdue-event"><b>${esc(x.c.name)}</b><div class="finance-danger">متأخرات ${money(x.f.overdue)} — ${x.f.overdueDays} يوم تأخير</div><div class="small">الرصيد الكلي ${money(x.f.balance)} — ${esc(x.c.rep?.full_name||'-')}</div></div>`).join(''):'<div class="small">لا توجد متأخرات حالياً.</div>';
-  const attention=state.reports.filter(r=>r.report_type==='management'); $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<div class="event"><b>${esc(r.customer?.name||'-')}</b><div>${esc(r.note)}</div><div class="small">${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')} — ${esc(r.next_action||'')}</div></div>`).join(''):'<div class="small">لا توجد حالات حالياً.</div>';
+  const month=monthRiyadh();
+  const monthSales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
+  $('mCustomers').textContent=state.customers.length;
+  $('mSales').textContent=money(monthSales);
+  $('mActive').textContent=state.customers.filter(c=>c.status==='active').length;
+  $('mHesitant').textContent=state.customers.filter(c=>c.status==='hesitant').length;
+  $('mRejected').textContent=state.customers.filter(c=>c.status==='rejected').length;
+
+  const attention=state.reports.filter(r=>r.report_type==='management');
+  $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<div class="event"><b>${esc(r.customer?.name||'-')}</b><div>${esc(r.note)}</div><div class="small">${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')} — ${esc(r.next_action||'')}</div></div>`).join(''):'<div class="small">لا توجد حالات حالياً.</div>';
+
   if(isAdmin()){
     const reps=state.profiles.filter(p=>p.role==='rep');
-    $('repSummary').innerHTML=reps.map(p=>{ const cs=state.customers.filter(c=>c.assigned_rep===p.id); const fs=cs.map(c=>financeForCustomer(c.id)); const debt=fs.reduce((a,x)=>a+x.balance,0), od=fs.reduce((a,x)=>a+x.overdue,0); const sm=state.sales.filter(s=>s.rep_id===p.id&&String(s.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0); return `<div class="event"><b>${esc(p.full_name)}</b><div class="small">${cs.length} عميل — سحوبات الشهر ${money(sm)}</div><div class="small">الرصيد ${money(debt)}${od>0?` — <span class="finance-danger">متأخرات ${money(od)}</span>`:''}</div></div>`; }).join('')||'<div class="small">لا يوجد مندوبون مفعّلون.</div>';
+    $('repSummary').innerHTML=reps.map(p=>{
+      const cs=state.customers.filter(c=>c.assigned_rep===p.id);
+      const sm=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
+      const fm=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)).length;
+      return `<div class="event"><b>${esc(p.full_name)}</b><div class="small">${cs.length} عميل — سحوبات الشهر ${money(sm)} — ${fm} متابعة</div></div>`;
+    }).join('')||'<div class="small">لا يوجد مندوبون مفعّلون.</div>';
   } else {
-    const fsum=fins.reduce((o,x)=>({debt:o.debt+x.f.balance,overdue:o.overdue+x.f.overdue,due:o.due+x.f.dueSoon}),{debt:0,overdue:0,due:0}); $('repSummary').innerHTML=`<div class="event"><b>حسابات عملائك</b><div class="small">الرصيد ${money(fsum.debt)}</div><div class="small">المتأخرات ${money(fsum.overdue)} — يستحق خلال 7 أيام ${money(fsum.due)}</div></div>`;
+    const mySales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
+    const myReports=state.reports.filter(x=>String(x.business_date||'').startsWith(month)).length;
+    $('repSummary').innerHTML=`<div class="event"><b>نشاطك هذا الشهر</b><div class="small">السحوبات ${money(mySales)} — المتابعات ${myReports}</div></div>`;
   }
 }
 
 function renderExtraDashboard(){
  if(!isAdmin())return;
  const month=monthRiyadh(), reps=state.profiles.filter(p=>p.role==='rep');
- const perf=$('repPerformance'); if(perf) perf.innerHTML='<div class="table-wrap"><table><thead><tr><th>المندوب</th><th>العملاء</th><th>عملاء جدد</th><th>السحوبات</th><th>التحصيل</th><th>المتأخرات</th><th>المتابعات</th></tr></thead><tbody>'+reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id), sales=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date).startsWith(month)), pays=state.payments.filter(x=>x.rep_id===p.id&&String(x.business_date).startsWith(month)), rs=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date).startsWith(month)), od=cs.reduce((a,c)=>a+financeForCustomer(c.id).overdue,0), nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;return `<tr><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${money(sales.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${money(pays.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${od?'<span class="finance-danger">'+money(od)+'</span>':'-'}</td><td>${rs.length}</td></tr>`}).join('')+'</tbody></table></div>';
- const td=$('targetsDashboard'); if(td){const salesByProduct=new Map();for(const x of state.sales.filter(x=>String(x.business_date).startsWith(month)))salesByProduct.set(x.product,(salesByProduct.get(x.product)||0)+Number(x.amount||0));td.innerHTML='<div class="table-wrap"><table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>الهدف الشهري</th><th>المحقق هذا الشهر</th><th>النسبة</th></tr></thead><tbody>'+state.targets.map(t=>{const monthly=Number(t.weekly_target)*4,got=salesByProduct.get(t.product)||0,pct=monthly?Math.round(got/monthly*100):0;return `<tr><td>${esc(t.product)}</td><td>${money(t.weekly_target)}</td><td>${money(monthly)}</td><td>${money(got)}</td><td>${pct}%</td></tr>`}).join('')+'</tbody></table></div>';}
+ const perf=$('repPerformance');
+ if(perf) perf.innerHTML='<div class="table-wrap"><table><thead><tr><th>المندوب</th><th>العملاء</th><th>عملاء جدد</th><th>العملاء النشطون</th><th>السحوبات</th><th>المتابعات</th></tr></thead><tbody>'+
+ reps.map(p=>{
+   const cs=state.customers.filter(c=>c.assigned_rep===p.id);
+   const sales=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month));
+   const rs=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month));
+   const nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;
+   const active=cs.filter(c=>c.status==='active').length;
+   return `<tr><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${active}</td><td>${money(sales.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${rs.length}</td></tr>`;
+ }).join('')+'</tbody></table></div>';
+
+ const td=$('targetsDashboard');
+ if(td){
+   const salesByProduct=new Map();
+   for(const x of state.sales.filter(x=>String(x.business_date).startsWith(month))) salesByProduct.set(x.product,(salesByProduct.get(x.product)||0)+Number(x.amount||0));
+   td.innerHTML='<div class="table-wrap"><table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>الهدف الشهري</th><th>المحقق هذا الشهر</th><th>النسبة</th></tr></thead><tbody>'+
+   state.targets.map(t=>{const monthly=Number(t.weekly_target)*4,got=salesByProduct.get(t.product)||0,pct=monthly?Math.round(got/monthly*100):0;return `<tr><td>${esc(t.product)}</td><td>${money(t.weekly_target)}</td><td>${money(monthly)}</td><td>${money(got)}</td><td>${pct}%</td></tr>`}).join('')+'</tbody></table></div>';
+ }
 }
+
 function openTargetsEditor(){openModal('تعديل أهداف المنتجات','<div class="table-wrap"><table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>أقل هدف أسبوعي</th></tr></thead><tbody>'+state.targets.map(t=>`<tr><td>${esc(t.product)}</td><td><input type="number" min="0" step="1" data-target-input="${t.id}" value="${Number(t.weekly_target)}"></td><td>${money(t.exception_75?Number(t.weekly_target)*.75:Number(t.weekly_target))}</td></tr>`).join('')+'</tbody></table></div><div style="margin-top:12px"><button class="btn" id="saveTargetsBtn">حفظ الأهداف</button></div>');}
 async function saveTargets(){for(const t of state.targets){const el=document.querySelector('[data-target-input="'+t.id+'"]');const v=Number(el?.value);if(!(v>=0))return flash('تحقق من الأهداف',true);if(v!==Number(t.weekly_target)){const {error}=await sb.rpc('update_sales_target',{p_id:t.id,p_weekly_target:v});if(error)return flash('تعذر تعديل الهدف: '+error.message,true);}}closeModal();flash('تم تحديث الأهداف');await refreshAll();}
 function reportRange(){return {from:$('analyticsFrom').value,to:$('analyticsTo').value,rep:$('analyticsRep').value,type:$('analyticsType').value};}
 function inRange(d,a,b){const x=String(d||'').slice(0,10);return (!a||x>=a)&&(!b||x<=b);}
 function generateAnalytics(){
- const {from,to,rep,type}=reportRange();if(!from||!to)return flash('حدد تاريخ البداية والنهاية',true);if(from>to)return flash('تاريخ البداية يجب أن يكون قبل النهاية',true);
- const repName=rep?(state.profiles.find(p=>p.id===rep)?.full_name||''):'كل المندوبين', sales=state.sales.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)), pays=state.payments.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)), rs=state.reports.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)), customers=state.customers.filter(c=>!rep||c.assigned_rep===rep);
+ const {from,to,rep,type}=reportRange();
+ if(!from||!to)return flash('حدد تاريخ البداية والنهاية',true);
+ if(from>to)return flash('تاريخ البداية يجب أن يكون قبل النهاية',true);
+
+ const repName=rep?(state.profiles.find(p=>p.id===rep)?.full_name||''):'كل المندوبين';
+ const sales=state.sales.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep));
+ const rs=state.reports.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep));
+ const customers=state.customers.filter(c=>!rep||c.assigned_rep===rep);
  let title='',body='',summary='';
- const salesTotal=sales.reduce((a,x)=>a+Number(x.amount||0),0),payTotal=pays.reduce((a,x)=>a+Number(x.amount||0),0),overdue=customers.reduce((a,c)=>a+financeForCustomer(c.id).overdue,0);
- if(type==='sales'){title='تقرير المبيعات والسحوبات';summary=`إجمالي السحوبات: <b>${money(salesTotal)}</b> — عدد الفواتير: <b>${sales.length}</b>`;body='<table><thead><tr><th>التاريخ</th><th>العميل</th><th>المنتج</th><th>القيمة</th><th>المندوب</th></tr></thead><tbody>'+sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.product)}</td><td>${money(x.amount)}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';}
- else if(type==='collections'){title='تقرير التحصيل';summary=`إجمالي التحصيل: <b>${money(payTotal)}</b> — عدد الدفعات: <b>${pays.length}</b>`;body='<table><thead><tr><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>المندوب</th></tr></thead><tbody>'+pays.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${money(x.amount)}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';}
- else if(type==='receivables'){title='تقرير الأجل والمتأخرات';summary=`إجمالي المتأخرات الحالية: <b>${money(overdue)}</b>`;body='<table><thead><tr><th>العميل</th><th>الرصيد</th><th>المتأخرات</th><th>أيام التأخير</th><th>المندوب</th></tr></thead><tbody>'+customers.filter(c=>financeForCustomer(c.id).balance>0).map(c=>{const f=financeForCustomer(c.id);return `<tr><td>${esc(c.name)}</td><td>${money(f.balance)}</td><td>${money(f.overdue)}</td><td>${f.overdueDays||'-'}</td><td>${esc(c.rep?.full_name||'-')}</td></tr>`}).join('')+'</tbody></table>';}
- else if(type==='followups'){title='تقرير متابعة العملاء';summary=`عدد المتابعات: <b>${rs.length}</b>`;body='<table><thead><tr><th>التاريخ</th><th>العميل</th><th>المندوب</th><th>النتيجة</th><th>الملاحظة</th><th>الإجراء القادم</th></tr></thead><tbody>'+rs.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td><td>${esc(REPORT[x.report_type]||x.report_type)}</td><td>${esc(x.note)}</td><td>${esc(x.next_action||'-')}</td></tr>`).join('')+'</tbody></table>';}
- else if(type==='customers'){title='تقرير حركة العملاء';const created=customers.filter(c=>inRange(c.created_at,from,to));summary=`عملاء جدد خلال الفترة: <b>${created.length}</b> — إجمالي العملاء: <b>${customers.length}</b>`;body='<table><thead><tr><th>العميل</th><th>المنطقة</th><th>الحالة</th><th>المندوب</th><th>سحوبات الفترة</th></tr></thead><tbody>'+customers.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.area||'-')}</td><td>${esc(STATUS[c.status]||c.status)}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${sales.filter(x=>Number(x.customer_id)===Number(c.id)).length}</td></tr>`).join('')+'</tbody></table>';}
- else if(type==='reps'){title='تقرير أداء المندوبين';const reps=state.profiles.filter(p=>p.role==='rep'&&(!rep||p.id===rep));body='<table><thead><tr><th>المندوب</th><th>العملاء</th><th>السحوبات</th><th>التحصيل</th><th>المتابعات</th><th>المتأخرات الحالية</th></tr></thead><tbody>'+reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=sales.filter(x=>x.rep_id===p.id),pp=pays.filter(x=>x.rep_id===p.id),rr=rs.filter(x=>x.rep_id===p.id);return `<tr><td>${esc(p.full_name)}</td><td>${cs.length}</td><td>${money(ss.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${money(pp.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${rr.length}</td><td>${money(cs.reduce((a,c)=>a+financeForCustomer(c.id).overdue,0))}</td></tr>`}).join('')+'</tbody></table>';summary='ملخص أداء المندوبين خلال الفترة المحددة.';}
- else if(type==='products'){title='تقرير أداء المنتجات مقابل الهدف';body='<table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>مبيعات الفترة</th></tr></thead><tbody>'+state.targets.map(t=>`<tr><td>${esc(t.product)}</td><td>${money(t.weekly_target)}</td><td>${money(sales.filter(x=>x.product===t.product).reduce((a,x)=>a+Number(x.amount||0),0))}</td></tr>`).join('')+'</tbody></table>';summary=`إجمالي مبيعات الفترة: <b>${money(salesTotal)}</b>`;}
- else {title='التقرير الإداري الشامل';summary=`السحوبات: <b>${money(salesTotal)}</b> — التحصيل: <b>${money(payTotal)}</b> — المتأخرات الحالية: <b>${money(overdue)}</b> — المتابعات: <b>${rs.length}</b>`;body='<h3>أهم العملاء المتأخرين</h3><table><thead><tr><th>العميل</th><th>المتأخرات</th><th>أيام التأخير</th><th>المندوب</th></tr></thead><tbody>'+customers.filter(c=>financeForCustomer(c.id).overdue>0).sort((a,b)=>financeForCustomer(b.id).overdue-financeForCustomer(a.id).overdue).slice(0,20).map(c=>{const f=financeForCustomer(c.id);return `<tr><td>${esc(c.name)}</td><td>${money(f.overdue)}</td><td>${f.overdueDays}</td><td>${esc(c.rep?.full_name||'-')}</td></tr>`}).join('')+'</tbody></table>';}
+ const salesTotal=sales.reduce((a,x)=>a+Number(x.amount||0),0);
+
+ if(type==='sales'){
+   title='تقرير المبيعات والسحوبات';
+   summary=`إجمالي السحوبات: <b>${money(salesTotal)}</b> — عدد السحوبات: <b>${sales.length}</b>`;
+   body='<table><thead><tr><th>التاريخ</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>القيمة</th><th>المندوب</th></tr></thead><tbody>'+sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.product)}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';
+ } else if(type==='followups'){
+   title='تقرير متابعة العملاء';
+   summary=`عدد المتابعات: <b>${rs.length}</b> — تغييرات الحالة: <b>${rs.filter(x=>x.new_status).length}</b>`;
+   body='<table><thead><tr><th>التاريخ</th><th>العميل</th><th>المندوب</th><th>النوع</th><th>من</th><th>إلى</th><th>التقرير / السبب</th><th>الإجراء القادم</th></tr></thead><tbody>'+rs.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td><td>${esc(REPORT[x.report_type]||x.report_type)}</td><td>${x.old_status?esc(STATUS[x.old_status]||x.old_status):'-'}</td><td>${x.new_status?esc(STATUS[x.new_status]||x.new_status):'-'}</td><td>${esc(x.note)}</td><td>${esc(x.next_action||'-')}</td></tr>`).join('')+'</tbody></table>';
+ } else if(type==='customers'){
+   title='تقرير حركة العملاء';
+   const created=customers.filter(c=>inRange(c.created_at,from,to));
+   summary=`عملاء جدد خلال الفترة: <b>${created.length}</b> — إجمالي العملاء: <b>${customers.length}</b>`;
+   body='<table><thead><tr><th>العميل</th><th>المنطقة</th><th>الحالة الحالية</th><th>المندوب</th><th>سحوبات الفترة</th><th>قيمة السحوبات</th></tr></thead><tbody>'+customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return `<tr><td>${esc(c.name)}</td><td>${esc(c.area||'-')}</td><td>${esc(STATUS[c.status]||c.status)}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${ss.length}</td><td>${money(ss.reduce((a,x)=>a+Number(x.amount||0),0))}</td></tr>`}).join('')+'</tbody></table>';
+ } else if(type==='reps'){
+   title='تقرير أداء المندوبين';
+   const reps=state.profiles.filter(p=>p.role==='rep'&&(!rep||p.id===rep));
+   summary='ملخص أداء المندوبين خلال الفترة المحددة.';
+   body='<table><thead><tr><th>المندوب</th><th>العملاء</th><th>عملاء جدد</th><th>السحوبات</th><th>المتابعات</th><th>تغييرات الحالة</th></tr></thead><tbody>'+reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=sales.filter(x=>x.rep_id===p.id),rr=rs.filter(x=>x.rep_id===p.id),nc=cs.filter(c=>inRange(c.created_at,from,to)).length;return `<tr><td>${esc(p.full_name)}</td><td>${cs.length}</td><td>${nc}</td><td>${money(ss.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${rr.length}</td><td>${rr.filter(x=>x.new_status).length}</td></tr>`}).join('')+'</tbody></table>';
+ } else if(type==='products'){
+   title='تقرير أداء المنتجات مقابل الهدف';
+   summary=`إجمالي مبيعات الفترة: <b>${money(salesTotal)}</b>`;
+   body='<table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>مبيعات الفترة</th></tr></thead><tbody>'+state.targets.map(t=>`<tr><td>${esc(t.product)}</td><td>${money(t.weekly_target)}</td><td>${money(sales.filter(x=>x.product===t.product).reduce((a,x)=>a+Number(x.amount||0),0))}</td></tr>`).join('')+'</tbody></table>';
+ } else {
+   title='التقرير الإداري الشامل';
+   const created=customers.filter(c=>inRange(c.created_at,from,to)).length;
+   const changed=rs.filter(x=>x.new_status).length;
+   summary=`السحوبات: <b>${money(salesTotal)}</b> — العملاء الجدد: <b>${created}</b> — المتابعات: <b>${rs.length}</b> — تغييرات الحالة: <b>${changed}</b>`;
+   const byCustomer=customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return {c,value:ss.reduce((a,x)=>a+Number(x.amount||0),0),count:ss.length};}).filter(x=>x.count>0).sort((a,b)=>b.value-a.value).slice(0,20);
+   body='<h3>أعلى العملاء سحباً خلال الفترة</h3><table><thead><tr><th>العميل</th><th>عدد السحوبات</th><th>قيمة السحوبات</th><th>الحالة</th><th>المندوب</th></tr></thead><tbody>'+byCustomer.map(x=>`<tr><td>${esc(x.c.name)}</td><td>${x.count}</td><td>${money(x.value)}</td><td>${esc(STATUS[x.c.status]||x.c.status)}</td><td>${esc(x.c.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';
+ }
+
  $('printableReport').innerHTML=`<div class="report-letterhead"><h2>شركة دانة التاج التجارية</h2><h1>${title}</h1><div>الفترة: ${dateOnly(from)} إلى ${dateOnly(to)} — المندوب: ${esc(repName)}</div></div><div class="report-summary">${summary}</div><div class="report-body">${body||'<div class="empty">لا توجد بيانات في الفترة المحددة.</div>'}</div><div class="report-footer">تاريخ إعداد التقرير: ${dateOnly(todayRiyadh())}</div>`;
 }
+
 function setupAnalytics(){const r=$('analyticsRep');if(r)r.innerHTML='<option value="">كل المندوبين</option>'+state.profiles.filter(p=>p.role==='rep').map(p=>`<option value="${p.id}">${esc(p.full_name)}</option>`).join('');const d=new Date(),to=todayRiyadh(),from=to.slice(0,8)+'01';if($('analyticsFrom')&&!$('analyticsFrom').value)$('analyticsFrom').value=from;if($('analyticsTo')&&!$('analyticsTo').value)$('analyticsTo').value=to;}
 function renderCustomers(){
-  const q=$('customerSearch').value.trim().toLowerCase(), f=$('customerStatusFilter').value; const rows=state.customers.filter(c=>(!f||c.status===f)&&(!q||`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q)));
-  $('customersBody').innerHTML=rows.length?rows.map(c=>{const x=financeForCustomer(c.id);return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${x.monthSalesCount}</td><td>${money(x.balance)}</td><td>${x.overdue>0?`<span class="finance-danger">${money(x.overdue)}</span>`:'-'}</td><td><button class="btn secondary" data-open-customer="${c.id}">عرض</button></td></tr>`}).join(''):'<tr><td colspan="8" class="empty">لا توجد نتائج.</td></tr>';
+  const q=$('customerSearch').value.trim().toLowerCase(), f=$('customerStatusFilter').value;
+  const rows=state.customers.filter(c=>(!f||c.status===f)&&(!q||`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q)));
+  $('customersBody').innerHTML=rows.length?rows.map(c=>{const a=activityForCustomer(c.id);return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${a.monthSalesCount}</td><td>${money(a.monthSalesValue)}</td><td><button class="btn secondary" data-open-customer="${c.id}">عرض</button></td></tr>`}).join(''):'<tr><td colspan="7" class="empty">لا توجد نتائج.</td></tr>';
 }
 function renderSales(){
-  const q=$('saleSearch').value.trim().toLowerCase(), allocs=allocationTotals(); const rows=state.sales.filter(s=>!q||`${s.customer?.name||''} ${s.product||''}`.toLowerCase().includes(q));
-  $('salesBody').innerHTML=rows.length?rows.map(s=>{const f=invoiceInfo(s,allocs);return `<tr><td>${dateOnly(s.business_date)}</td><td>${esc(s.customer?.name||'-')}</td><td>${esc(s.product)}</td><td>${money(s.amount)}</td><td>${money(f.paid)}</td><td>${money(f.outstanding)}</td><td>${dateOnly(f.due)}</td><td>${invoiceStatusBadge(f)}</td><td>${esc(s.rep?.full_name||'-')}</td></tr>`}).join(''):'<tr><td colspan="9" class="empty">لا توجد سحوبات.</td></tr>';
+  const q=$('saleSearch').value.trim().toLowerCase();
+  const rows=state.sales.filter(x=>!q||`${x.customer?.name||''} ${x.product||''} ${x.order_ref||''}`.toLowerCase().includes(q));
+  $('salesBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.product)}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.order_ref||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">لا توجد سحوبات.</td></tr>';
 }
-function renderPayments(){
-  const q=$('paymentSearch').value.trim().toLowerCase(); const rows=state.payments.filter(p=>!q||`${p.customer?.name||''} ${p.reference||''}`.toLowerCase().includes(q));
-  $('paymentsBody').innerHTML=rows.length?rows.map(p=>`<tr><td>${dateTime(p.created_at)}</td><td>${esc(p.customer?.name||'-')}</td><td>${money(p.amount)}</td><td>${esc(p.reference||'-')}</td><td>${esc(p.rep?.full_name||'-')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">لا توجد دفعات.</td></tr>';
+function renderReports(){
+  const f=$('reportTypeFilter').value;
+  const rows=state.reports.filter(r=>!f||r.report_type===f);
+  $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${badgeReport(r.report_type)}</td><td>${r.old_status?badgeStatus(r.old_status):'-'}</td><td>${r.new_status?badgeStatus(r.new_status):'-'}</td><td>${esc(r.note)}</td><td>${esc(r.next_action||'-')}</td><td>${dateOnly(r.next_followup_date)}</td></tr>`).join(''):'<tr><td colspan="9" class="empty">لا توجد متابعات.</td></tr>';
 }
-function renderDebts(){
-  const filter=$('receivableFilter').value; let rows=state.customers.map(c=>({c,f:financeForCustomer(c.id)})).filter(x=>x.f.balance>0); if(filter==='overdue')rows=rows.filter(x=>x.f.overdue>0); else if(filter==='dueSoon')rows=rows.filter(x=>x.f.dueSoon>0); else if(filter==='current')rows=rows.filter(x=>x.f.overdue===0); rows.sort((a,b)=>b.f.overdueDays-a.f.overdueDays||b.f.balance-a.f.balance);
-  $('debtsBody').innerHTML=rows.length?rows.map(x=>`<tr><td><b>${esc(x.c.name)}</b></td><td>${money(x.f.balance)}</td><td>${x.f.overdue>0?`<span class="finance-danger">${money(x.f.overdue)}</span>`:'-'}</td><td>${x.f.dueSoon>0?money(x.f.dueSoon):'-'}</td><td>${dateOnly(x.f.oldest)}</td><td>${x.f.overdueDays?`<span class="finance-danger">${x.f.overdueDays} يوم</span>`:'-'}</td><td>${esc(x.c.rep?.full_name||'-')}</td><td><button class="btn secondary" data-open-customer="${x.c.id}">عرض</button></td></tr>`).join(''):'<tr><td colspan="8" class="empty">لا توجد نتائج.</td></tr>';
-}
-function renderReports(){ const f=$('reportTypeFilter').value; const rows=state.reports.filter(r=>!f||r.report_type===f); $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${badgeReport(r.report_type)}</td><td>${esc(r.note)}</td><td>${esc(r.next_action||'-')}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">لا توجد متابعات.</td></tr>'; }
 
 async function openCustomer(id){
-  const c=state.customers.find(x=>Number(x.id)===Number(id)); if(!c)return; const f=financeForCustomer(id); const allocs=allocationTotals();
+  const c=state.customers.find(x=>Number(x.id)===Number(id)); if(!c)return;
+  const a=activityForCustomer(id);
   const hs=await sb.from('customer_status_history').select('id,old_status,new_status,reason,method,created_at,actor:profiles!customer_status_history_changed_by_fkey(full_name)').eq('customer_id',id).order('created_at',{ascending:false});
-  const invoices=state.sales.filter(s=>Number(s.customer_id)===Number(id)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)); const pays=state.payments.filter(p=>Number(p.customer_id)===Number(id)); const reps=state.reports.filter(r=>Number(r.customer_id)===Number(id));
+  const sales=state.sales.filter(x=>Number(x.customer_id)===Number(id)).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
+  const reps=state.reports.filter(r=>Number(r.customer_id)===Number(id));
   openModal(c.name,`<div class="detail-grid"><div><b>المنطقة</b>${esc(c.area||'-')}</div><div><b>المندوب</b>${esc(c.rep?.full_name||'-')}</div><div><b>الحالة</b>${badgeStatus(c.status)}</div><div><b>الجوال</b>${esc(c.phone||'-')}</div></div>
-  <div class="account-summary"><div><b>الرصيد الآجل</b><strong>${money(f.balance)}</strong></div><div class="overdue"><b>المتأخرات</b><strong>${money(f.overdue)}</strong></div><div><b>يستحق خلال 7 أيام</b><strong>${money(f.dueSoon)}</strong></div><div><b>سحوبات الشهر</b><strong>${f.monthSalesCount}</strong></div><div><b>أيام التأخير</b><strong>${f.overdueDays||0}</strong></div></div>
-  <div class="toolbar"><button class="btn" data-add-sale="${c.id}">+ سحب</button><button class="btn good" data-add-payment="${c.id}">+ دفعة</button><button class="btn secondary" data-change-status="${c.id}">تغيير الحالة</button><button class="btn secondary" data-add-report="${c.id}">+ تقرير</button></div>
-  <h4>الفواتير / السحوبات</h4><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>المنتج</th><th>القيمة</th><th>المدفوع</th><th>المتبقي</th><th>الاستحقاق</th><th>الحالة</th></tr></thead><tbody>${invoices.length?invoices.map(s=>{const x=invoiceInfo(s,allocs);return `<tr><td>${dateOnly(s.business_date)}</td><td>${esc(s.product)}</td><td>${money(s.amount)}</td><td>${money(x.paid)}</td><td>${money(x.outstanding)}</td><td>${dateOnly(x.due)}</td><td>${invoiceStatusBadge(x)}</td></tr>`}).join(''):'<tr><td colspan="7" class="empty">لا توجد فواتير.</td></tr>'}</tbody></table></div>
-  <h4>الدفعات</h4><div class="table-wrap"><table><thead><tr><th>الوقت</th><th>المبلغ</th><th>المرجع</th></tr></thead><tbody>${pays.length?pays.map(p=>`<tr><td>${dateTime(p.created_at)}</td><td>${money(p.amount)}</td><td>${esc(PAY_METHOD[p.payment_method]||p.payment_method)}</td><td>${esc(p.reference||'-')}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">لا توجد دفعات.</td></tr>'}</tbody></table></div>
+  <div class="account-summary"><div><b>سحوبات الشهر</b><strong>${a.monthSalesCount}</strong></div><div><b>قيمة سحوبات الشهر</b><strong>${money(a.monthSalesValue)}</strong></div><div><b>آخر سحب</b><strong>${a.lastSale?dateOnly(a.lastSale.business_date):'-'}</strong></div></div>
+  <div class="toolbar"><button class="btn" data-add-sale="${c.id}">+ سحب</button>${isAdmin()?`<button class="btn secondary" data-change-status="${c.id}">تغيير الحالة</button>`:''}<button class="btn secondary" data-add-report="${c.id}">+ متابعة</button></div>
+  <h4>السحوبات</h4><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>المنتج</th><th>الكمية</th><th>القيمة</th><th>المرجع</th></tr></thead><tbody>${sales.length?sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.product)}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.order_ref||'-')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">لا توجد سحوبات.</td></tr>'}</tbody></table></div>
   <h4>تاريخ حالة العميل</h4><div class="timeline">${(hs.data||[]).length?(hs.data||[]).map(h=>`<div class="event"><div class="status-flow">${h.old_status?badgeStatus(h.old_status):'<span class="badge b-gray">بداية</span>'}<span class="status-arrow">←</span>${badgeStatus(h.new_status)}</div><div>${esc(h.reason||'')}</div><div class="small">${dateTime(h.created_at)} — ${esc(h.actor?.full_name||'-')}${h.method?' — '+esc(h.method):''}</div></div>`).join(''):'<div class="small">لا يوجد سجل.</div>'}</div>
-  <h4>سجل متابعة العميل</h4><div class="timeline">${reps.length?reps.map(r=>`<div class="event"><b>${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')} — ${esc(REPORT[r.report_type]||r.report_type)}</b><div>${esc(r.note)}</div><div class="small">الإجراء القادم: ${esc(r.next_action||'-')}</div></div>`).join(''):'<div class="small">لا توجد متابعات.</div>'}</div>`);
+  <h4>سجل متابعة العميل</h4><div class="timeline">${reps.length?reps.map(r=>`<div class="event"><b>${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')} — ${esc(REPORT[r.report_type]||r.report_type)}</b>${r.new_status?`<div class="status-flow">${badgeStatus(r.old_status)}<span class="status-arrow">←</span>${badgeStatus(r.new_status)}</div>`:''}<div>${esc(r.note)}</div><div class="small">الإجراء القادم: ${esc(r.next_action||'-')}${r.next_followup_date?' — '+dateOnly(r.next_followup_date):''}</div></div>`).join(''):'<div class="small">لا توجد متابعات.</div>'}</div>`);
 }
+
 function openModal(title,html){ $('modalTitle').textContent=title; $('modalContent').innerHTML=html; $('modal').classList.add('open'); }
 function closeModal(){ if(state.pickerMap){try{state.pickerMap.remove()}catch(_){} state.pickerMap=null;state.pickerMarker=null;} $('modal').classList.remove('open'); }
 function customerOptions(selected=null){ return state.customers.map(c=>`<option value="${c.id}" ${Number(selected)===Number(c.id)?'selected':''}>${esc(c.name)}</option>`).join(''); }
@@ -254,15 +309,43 @@ async function createCustomer(){ const name=$('fName').value.trim(),area=$('fAre
 function openStatusForm(id){const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c)return;openModal('تغيير حالة العميل',`<div class="danger-note">الحالة السابقة تبقى محفوظة في السجل.</div><div class="form-grid" style="margin-top:10px"><div><label>الحالة الحالية</label><input value="${esc(STATUS[c.status])}" readonly></div><div><label>الحالة الجديدة</label><select id="stNew">${Object.entries(STATUS).filter(([k])=>k!==c.status).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><div><label>طريقة المتابعة</label><select id="stMethod"><option>زيارة</option><option>اتصال</option><option>عرض سعر</option><option>تجربة منتج</option><option>تفاوض</option><option>أخرى</option></select></div><div class="full"><label>سبب التغيير</label><textarea id="stReason" rows="3"></textarea></div><div class="full"><button class="btn" id="saveStatusBtn" data-id="${id}">حفظ التغيير</button></div></div>`);}
 async function changeStatus(id){const reason=$('stReason').value.trim();if(reason.length<5)return flash('اكتب سبباً واضحاً',true);const {error}=await sb.rpc('change_customer_status',{p_customer_id:id,p_new_status:$('stNew').value,p_reason:reason,p_method:$('stMethod').value});if(error)return flash('تعذر تغيير الحالة: '+error.message,true);closeModal();flash('تم حفظ الحالة');await refreshAll();}
 
-function openSaleForm(id=null){openModal('تسجيل سحب / فاتورة',`<div class="notice">مدة الأجل 30 يوماً من تاريخ التسجيل. بعد الحفظ لا تُعدّل الفاتورة ولا تُحذف.</div><div class="form-grid"><div><label>العميل</label><select id="sCustomer">${customerOptions(id)}</select></div><div><label>المنتج</label><input id="sProduct" placeholder="مثال: دلوكس داخلي"></div><div><label>الكمية</label><input id="sQty" type="number" min="0.01" step="0.01"></div><div><label>قيمة الفاتورة</label><input id="sAmount" type="number" min="0.01" step="0.01"></div><div class="full"><label>مرجع الطلبية / رقم الفاتورة (اختياري)</label><input id="sRef"></div><div class="full"><button class="btn" id="saveSaleBtn">حفظ السحب</button></div></div>`);}
-async function addSale(){const cid=Number($('sCustomer').value),product=$('sProduct').value.trim(),qty=Number($('sQty').value),amount=Number($('sAmount').value);if(!product||!(qty>0)||!(amount>0))return flash('أكمل بيانات السحب بشكل صحيح',true);const {error}=await sb.rpc('add_sale',{p_customer_id:cid,p_product:product,p_quantity:qty,p_amount:amount,p_order_ref:$('sRef').value.trim()||null});if(error)return flash('تعذر تسجيل السحب: '+error.message,true);closeModal();flash('تم تسجيل الفاتورة وأصبح استحقاقها بعد 30 يوماً');await refreshAll();}
+function openSaleForm(id=null){openModal('تسجيل سحب / فاتورة',`<div class="notice">بعد الحفظ لا تُعدّل عملية السحب ولا تُحذف.</div><div class="form-grid"><div><label>العميل</label><select id="sCustomer">${customerOptions(id)}</select></div><div><label>المنتج</label><input id="sProduct" placeholder="مثال: دلوكس داخلي"></div><div><label>الكمية</label><input id="sQty" type="number" min="0.01" step="0.01"></div><div><label>قيمة الفاتورة</label><input id="sAmount" type="number" min="0.01" step="0.01"></div><div class="full"><label>مرجع الطلبية / رقم الفاتورة (اختياري)</label><input id="sRef"></div><div class="full"><button class="btn" id="saveSaleBtn">حفظ السحب</button></div></div>`);}
+async function addSale(){const cid=Number($('sCustomer').value),product=$('sProduct').value.trim(),qty=Number($('sQty').value),amount=Number($('sAmount').value);if(!product||!(qty>0)||!(amount>0))return flash('أكمل بيانات السحب بشكل صحيح',true);const {error}=await sb.rpc('add_sale',{p_customer_id:cid,p_product:product,p_quantity:qty,p_amount:amount,p_order_ref:$('sRef').value.trim()||null});if(error)return flash('تعذر تسجيل السحب: '+error.message,true);closeModal();flash('تم تسجيل السحب');await refreshAll();}
 
-function updatePaymentBalanceBox(){const cid=Number($('pCustomer')?.value||0),box=$('paymentBalance');if(!box)return;const f=financeForCustomer(cid);box.innerHTML=`الرصيد الحالي: <b>${money(f.balance)}</b>${f.overdue>0?` — <span class="finance-danger">المتأخرات ${money(f.overdue)}</span>`:''}<br><span class="small">الدفعة ستذهب تلقائياً إلى أقدم فاتورة غير مسددة أولاً.</span>`;}
-function openPaymentForm(id=null){openModal('تسجيل دفعة عميل',`<div class="notice">يتم توزيع الدفعة آلياً على أقدم فاتورة غير مسددة أولاً. لا يمكن حذف الدفعة أو تعديلها بعد الحفظ.</div><div class="form-grid"><div><label>العميل</label><select id="pCustomer">${customerOptions(id)}</select></div><div><label>المبلغ</label><input id="pAmount" type="number" min="0.01" step="0.01"></div><div><label>المرجع (اختياري)</label><input id="pReference" placeholder="رقم مرجع إن وجد"></div><div class="full"><label>ملاحظة (اختياري)</label><textarea id="pNote" rows="2"></textarea></div><div id="paymentBalance" class="full payment-balance"></div><div class="full"><button class="btn good" id="savePaymentBtn">حفظ الدفعة</button></div></div>`);setTimeout(()=>{const s=$('pCustomer');if(s)s.addEventListener('change',updatePaymentBalanceBox);updatePaymentBalanceBox();},0);}
-async function addPayment(){const cid=Number($('pCustomer').value),amount=Number($('pAmount').value);if(!(amount>0))return flash('أدخل مبلغ دفعة صحيح',true);const fin=financeForCustomer(cid);if(fin.balance<=0)return flash('لا يوجد رصيد مستحق على هذا العميل',true);if(amount>fin.balance)return flash('الدفعة أكبر من رصيد العميل الحالي',true);const {error}=await sb.rpc('add_payment',{p_customer_id:cid,p_amount:amount,p_payment_method:'other',p_reference:$('pReference').value.trim()||null,p_note:$('pNote').value.trim()||null});if(error){console.error(error);const msg=error.message.includes('exceeds')?'الدفعة أكبر من الرصيد الحالي.':error.message.includes('no outstanding')?'لا يوجد رصيد مستحق.':'تعذر تسجيل الدفعة: '+error.message;return flash(msg,true);}closeModal();flash('تم تسجيل الدفعة وتوزيعها على أقدم الفواتير');await refreshAll();}
-
-function openReportForm(id=null){openModal('إضافة متابعة عميل',`<div class="danger-note">التقرير سجل دائم ولا يُعدّل أو يُحذف.</div><div class="form-grid"><div><label>العميل</label><select id="rCustomer">${customerOptions(id)}</select></div><div><label>الحالة</label><select id="rType"><option value="sold">تم البيع</option><option value="followup">متابعة لاحقة</option><option value="rejected">رفض</option><option value="management">يحتاج تدخل الإدارة</option></select></div><div class="full"><label>الملاحظة</label><textarea id="rNote" rows="4"></textarea></div><div><label>الإجراء القادم</label><input id="rNext"></div><div><label>موعد المتابعة القادمة</label><input id="rFollowDate" type="date"></div><div class="full"><button class="btn" id="saveReportBtn">حفظ المتابعة</button></div></div>`);}
-async function addReport(){const note=$('rNote').value.trim();if(note.length<5)return flash('اكتب ملاحظة واضحة',true);const {error}=await sb.rpc('add_report',{p_customer_id:Number($('rCustomer').value),p_report_type:$('rType').value,p_note:note,p_next_action:$('rNext').value.trim()||null,p_next_followup_date:$('rFollowDate').value||null});if(error)return flash('تعذر حفظ المتابعة: '+error.message,true);closeModal();flash('تم حفظ المتابعة');await refreshAll();}
+function updateReportStatusFields(){
+  const cid=Number($('rCustomer')?.value||0), c=state.customers.find(x=>Number(x.id)===cid);
+  const current=$('rCurrentStatus'), next=$('rNewStatus');
+  if(!c||!current||!next)return;
+  current.value=STATUS[c.status]||c.status;
+  next.innerHTML='<option value="">بدون تغيير الحالة</option>'+Object.entries(STATUS).filter(([k])=>k!==c.status).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+}
+function openReportForm(id=null){
+  const selected=state.customers.find(c=>Number(c.id)===Number(id))||state.customers[0];
+  openModal('إضافة متابعة عميل',`<div class="danger-note">التقرير/السبب إلزامي، وإذا تغيّرت حالة العميل يُحفظ الانتقال وسببه في السجل.</div><div class="form-grid">
+  <div><label>العميل</label><select id="rCustomer">${customerOptions(selected?.id||null)}</select></div>
+  <div><label>نوع المتابعة</label><select id="rType"><option value="sold">تم البيع</option><option value="followup">متابعة لاحقة</option><option value="rejected">رفض</option><option value="management">يحتاج تدخل الإدارة</option></select></div>
+  <div><label>الحالة الحالية</label><input id="rCurrentStatus" readonly></div>
+  <div><label>الحالة الجديدة</label><select id="rNewStatus"></select></div>
+  <div class="full"><label>تقرير المندوب / سبب التغيير</label><textarea id="rNote" rows="4" placeholder="اكتب نتيجة المتابعة وسبب تغير موقف العميل إن تم تغيير الحالة"></textarea></div>
+  <div><label>الإجراء القادم</label><input id="rNext"></div>
+  <div><label>موعد المتابعة القادمة</label><input id="rFollowDate" type="date"></div>
+  <div class="full"><button class="btn" id="saveReportBtn">حفظ المتابعة</button></div></div>`);
+  setTimeout(()=>{const x=$('rCustomer');if(x)x.addEventListener('change',updateReportStatusFields);updateReportStatusFields();},0);
+}
+async function addReport(){
+  const note=$('rNote').value.trim();
+  if(note.length<5)return flash('اكتب تقريراً أو سبباً واضحاً قبل الحفظ',true);
+  const {error}=await sb.rpc('add_report',{
+    p_customer_id:Number($('rCustomer').value),
+    p_report_type:$('rType').value,
+    p_note:note,
+    p_next_action:$('rNext').value.trim()||null,
+    p_next_followup_date:$('rFollowDate').value||null,
+    p_new_status:$('rNewStatus').value||null
+  });
+  if(error)return flash(error.message.includes('status unchanged')?'اختر حالة مختلفة أو بدون تغيير.':'تعذر حفظ المتابعة: '+error.message,true);
+  closeModal();flash('تم حفظ المتابعة'+($('rNewStatus')?.value?' وتحديث حالة العميل':''));await refreshAll();
+}
 
 function markerIcon(category){const star=category==='frequent'?'★':'';return L.divIcon({className:'map-pin-wrap',html:`<div class="map-pin pin-${category}"><span>${star}</span></div>`,iconSize:[30,30],iconAnchor:[15,28],popupAnchor:[0,-28]});}
 async function renderMap(){
@@ -271,8 +354,20 @@ async function renderMap(){
   const {data,error}=await sb.from('customer_locations').select('customer_id,lat,lng'); if(error){console.error(error);return flash('تعذر تحميل الخريطة',true);} state.mapLocations=data||[]; drawMapMarkers(); setTimeout(()=>state.map.invalidateSize(),60);
 }
 function drawMapMarkers(){
-  if(!state.map||!state.markerLayer)return; state.markerLayer.clearLayers(); const filter=$('mapFilter')?.value||'', q=($('mapSearch')?.value||'').trim().toLowerCase(); const bounds=[];
-  for(const x of state.mapLocations){const c=state.customers.find(z=>Number(z.id)===Number(x.customer_id));if(!c||x.lat==null||x.lng==null)continue;const f=financeForCustomer(c.id),category=customerCategory(c);if(filter&&category!==filter)continue;if(q&&!`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q))continue;const m=L.marker([x.lat,x.lng],{icon:markerIcon(category)}).addTo(state.markerLayer);const div=document.createElement('div');div.dir='rtl';div.style.minWidth='230px';div.innerHTML=`<b>${esc(c.name)}</b><br>${esc(c.area||'')}<br>${esc(c.rep?.full_name||'')}<br>الحالة: ${esc(STATUS[c.status]||c.status)}${category==='frequent'?'<br><b class="finance-ok">★ سحب أكثر من مرة هذا الشهر</b>':''}<div class="popup-finance">الرصيد: ${money(f.balance)}<br>${f.overdue>0?`<span class="popup-overdue">متأخرات: ${money(f.overdue)} — ${f.overdueDays} يوم</span><br>`:''}يستحق خلال 7 أيام: ${money(f.dueSoon)}<br>سحوبات الشهر: ${f.monthSalesCount}</div>`;const btn=document.createElement('button');btn.className='btn secondary';btn.style.marginTop='7px';btn.textContent='فتح العميل';btn.addEventListener('click',()=>openCustomer(c.id));div.appendChild(btn);m.bindPopup(div);bounds.push([x.lat,x.lng]);}
+  if(!state.map||!state.markerLayer)return;
+  state.markerLayer.clearLayers();
+  const filter=$('mapFilter')?.value||'', q=($('mapSearch')?.value||'').trim().toLowerCase(), bounds=[];
+  for(const x of state.mapLocations){
+    const c=state.customers.find(z=>Number(z.id)===Number(x.customer_id));
+    if(!c||x.lat==null||x.lng==null)continue;
+    const a=activityForCustomer(c.id),category=customerCategory(c);
+    if(filter&&category!==filter)continue;
+    if(q&&!`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q))continue;
+    const m=L.marker([x.lat,x.lng],{icon:markerIcon(category)}).addTo(state.markerLayer);
+    const div=document.createElement('div');div.dir='rtl';div.style.minWidth='230px';
+    div.innerHTML=`<b>${esc(c.name)}</b><br>${esc(c.area||'')}<br>${esc(c.rep?.full_name||'')}<br>الحالة: ${esc(STATUS[c.status]||c.status)}${category==='frequent'?'<br><b class="finance-ok">★ سحب أكثر من مرة هذا الشهر</b>':''}<div class="popup-finance">سحوبات الشهر: ${a.monthSalesCount}<br>قيمة سحوبات الشهر: ${money(a.monthSalesValue)}</div>`;
+    const btn=document.createElement('button');btn.className='btn secondary';btn.style.marginTop='7px';btn.textContent='فتح العميل';btn.addEventListener('click',()=>openCustomer(c.id));div.appendChild(btn);m.bindPopup(div);bounds.push([x.lat,x.lng]);
+  }
   if(bounds.length) state.map.fitBounds(bounds,{padding:[30,30],maxZoom:14});
 }
 
@@ -286,16 +381,16 @@ async function changePassword(forced=false){
 async function renderSecurityStatus(){const box=$('securityStatus');if(!box||!state.profile)return;const changed=state.profile.password_changed_at?dateTime(state.profile.password_changed_at):'لم تُسجل بعد';box.innerHTML=`كلمة المرور: <b>${state.profile.must_change_password?'يجب تغييرها':'محدثة'}</b><br>آخر تغيير: ${esc(changed)}<br>الجلسة تُغلق بعد 20 دقيقة من عدم الاستخدام وبحد أقصى 8 ساعات.`;const m=$('mfaAccount');if(!m||!isAdmin())return;const [aal,factors]=await Promise.all([sb.auth.mfa.getAuthenticatorAssuranceLevel(),sb.auth.mfa.listFactors()]);const verified=(factors.data?.totp||[]).some(x=>x.status==='verified');m.innerHTML=`<h4>التحقق بخطوتين للإدارة</h4><div class="${verified?'security-good':'security-warn'}">${verified?'مفعّل. مستوى الجلسة: '+esc(aal.data?.currentLevel||'-'):'غير مفعّل.'}</div>`;}
 
 function gotoPage(id){
-  if(state.securityGateMode)return;if(state.profile?.must_change_password)return showPasswordGate();if(!isAdmin()&&(id==='mapPage'||id==='audit'||id==='analytics'))return;document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.nav-grid button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));const titles={dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',payments:'الدفعات',debts:'الأجل والمتأخرات',reports:'سجل متابعة العملاء',analytics:'التقارير',mapPage:'خريطة العملاء',audit:'سجل العمليات',account:'حسابي'};$('pageTitle').textContent=titles[id]||'';if(id==='mapPage')setTimeout(renderMap,100);if(id==='analytics')setupAnalytics();if(id==='audit')renderAudit();if(id==='account')renderSecurityStatus();
+  if(state.securityGateMode)return;if(state.profile?.must_change_password)return showPasswordGate();if(!isAdmin()&&(id==='mapPage'||id==='audit'||id==='analytics'))return;document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.nav-grid button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));const titles={dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',reports:'سجل متابعة العملاء',analytics:'التقارير',mapPage:'خريطة العملاء',audit:'سجل العمليات',account:'حسابي'};$('pageTitle').textContent=titles[id]||'';if(id==='mapPage')setTimeout(renderMap,100);if(id==='analytics')setupAnalytics();if(id==='audit')renderAudit();if(id==='account')renderSecurityStatus();
 }
 
 $('loginBtn').addEventListener('click',login); $('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()}); $('logoutBtn').addEventListener('click',()=>logout()); $('closeModalBtn').addEventListener('click',closeModal); $('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});
 document.querySelectorAll('.nav-grid button').forEach(b=>b.addEventListener('click',()=>gotoPage(b.dataset.page)));
-$('customerSearch').addEventListener('input',renderCustomers); $('customerStatusFilter').addEventListener('change',renderCustomers); $('saleSearch').addEventListener('input',renderSales); $('paymentSearch').addEventListener('input',renderPayments); $('receivableFilter').addEventListener('change',renderDebts); $('reportTypeFilter').addEventListener('change',renderReports); $('mapSearch').addEventListener('input',drawMapMarkers); $('mapFilter').addEventListener('change',drawMapMarkers);
+$('customerSearch').addEventListener('input',renderCustomers); $('customerStatusFilter').addEventListener('change',renderCustomers); $('saleSearch').addEventListener('input',renderSales); $('reportTypeFilter').addEventListener('change',renderReports); $('mapSearch').addEventListener('input',drawMapMarkers); $('mapFilter').addEventListener('change',drawMapMarkers);
 $('editTargetsBtn')?.addEventListener('click',openTargetsEditor); $('generateReportBtn')?.addEventListener('click',generateAnalytics); $('printReportBtn')?.addEventListener('click',()=>{generateAnalytics();setTimeout(()=>window.print(),50);});
-$('newCustomerBtn').addEventListener('click',openCustomerForm); $('newSaleBtn').addEventListener('click',()=>openSaleForm()); $('newPaymentBtn').addEventListener('click',()=>openPaymentForm()); $('newReportBtn').addEventListener('click',()=>openReportForm()); $('changePasswordBtn').addEventListener('click',()=>changePassword(false));
-$('customersBody').addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));}); $('debtsBody').addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});
-$('modalContent').addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-add-payment]')))openPaymentForm(Number(b.dataset.addPayment));else if((b=e.target.closest('#savePaymentBtn')))addPayment();else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('#saveTargetsBtn')))saveTargets();});
+$('newCustomerBtn').addEventListener('click',openCustomerForm); $('newSaleBtn').addEventListener('click',()=>openSaleForm()); $('newReportBtn').addEventListener('click',()=>openReportForm()); $('changePasswordBtn').addEventListener('click',()=>changePassword(false));
+$('customersBody').addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});
+$('modalContent').addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('#saveTargetsBtn')))saveTargets();});
 $('securityGateBody').addEventListener('click',e=>{let b;if((b=e.target.closest('#gateChangePasswordBtn')))changePassword(true);else if((b=e.target.closest('#verifyMfaEnrollBtn')))verifyMFA($('mfaEnrollCode')?.value||'');else if((b=e.target.closest('#verifyMfaChallengeBtn')))verifyMFA($('mfaChallengeCode')?.value||'');});
 ['pointerdown','keydown','touchstart','scroll'].forEach(evt=>window.addEventListener(evt,()=>{state.lastActivity=Date.now();},{passive:true})); setInterval(()=>{if(state.session&&Date.now()-state.lastActivity>MAX_IDLE_MS)logout('تم تسجيل خروجك تلقائياً بعد 20 دقيقة بدون استخدام.');},30000);
 if(!configured) showConfigMessage(); else sb.auth.onAuthStateChange((_event,session)=>{if(!session&&!$('login').classList.contains('hidden'))return;if(!session)showLogin();}); if(configured) loadProfile();

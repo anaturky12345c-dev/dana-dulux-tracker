@@ -213,148 +213,132 @@ async function loadPaged(makeQuery,label){
   }
   return out;
 }
+
 async function refreshAll(){
-  await Promise.all([loadProfiles(),loadCustomers(),loadSales(),loadReports(),loadTargets()]);
+  await Promise.all([loadProfiles(),loadCustomers(),loadSales(),loadReports(),loadGoals()]);
   state.activityCache.clear(); renderAll();
 }
-async function loadProfiles(){ const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name'); state.profiles=error?[]:(data||[]); }
+async function loadProfiles(){const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name');state.profiles=error?[]:(data||[]);}
 async function loadCustomers(){
   const {data,error}=await sb.from('customers').select('id,name,area,phone,status,created_at,assigned_rep,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
-  if(error){console.error(error);flash('تعذر تحميل العملاء',true);return;} state.customers=data||[];
+  if(error){console.error(error);flash(lang==='ar'?'تعذر تحميل العملاء':'Could not load customers',true);return;}state.customers=data||[];
 }
-async function loadSales(){ state.sales=await loadPaged((a,b)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(a,b),'السحوبات'); }
-async function loadReports(){ state.reports=await loadPaged((a,b)=>sb.from('reports').select('id,customer_id,report_type,note,next_action,next_followup_date,old_status,new_status,created_at,business_date,rep_id,customer:customers(name),rep:profiles!reports_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(a,b),'التقارير'); }
-async function loadTargets(){const {data,error}=await sb.from('sales_targets').select('id,product,weekly_target,exception_75,updated_at').order('id');state.targets=error?[]:(data||[]);}
+async function loadSales(){state.sales=await loadPaged((x,y)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(x,y),lang==='ar'?'السحوبات':'sales');}
+async function loadReports(){state.reports=await loadPaged((x,y)=>sb.from('reports').select('id,customer_id,report_type,action_code,note,old_status,new_status,created_at,business_date,rep_id,customer:customers(name),rep:profiles!reports_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(x,y),lang==='ar'?'المتابعات':'follow-ups');}
+async function loadGoals(){const {data,error}=await sb.from('performance_goals').select('id,scope_type,rep_id,goal_type,product_code,monthly_target,updated_at').order('scope_type').order('rep_id').order('goal_type').order('product_code');state.goals=error?[]:(data||[]);}
 
 function activityForCustomer(cid){
-  cid=Number(cid); if(state.activityCache.has(cid)) return state.activityCache.get(cid);
-  const month=monthRiyadh(); let monthSalesCount=0,monthSalesValue=0,lastSale=null;
-  for(const x of state.sales){
-    if(Number(x.customer_id)!==cid) continue;
-    if(String(x.business_date||'').startsWith(month)){monthSalesCount++;monthSalesValue+=Number(x.amount||0);}
-    if(!lastSale||new Date(x.created_at)>new Date(lastSale.created_at)) lastSale=x;
-  }
-  const out={monthSalesCount,monthSalesValue,lastSale}; state.activityCache.set(cid,out); return out;
+ cid=Number(cid);if(state.activityCache.has(cid))return state.activityCache.get(cid);
+ const month=monthRiyadh();let monthSalesCount=0,monthSalesValue=0,lastSale=null;
+ for(const x of state.sales){if(Number(x.customer_id)!==cid)continue;if(String(x.business_date||'').startsWith(month)){monthSalesCount++;monthSalesValue+=Number(x.amount||0);}if(!lastSale||new Date(x.created_at)>new Date(lastSale.created_at))lastSale=x;}
+ const out={monthSalesCount,monthSalesValue,lastSale};state.activityCache.set(cid,out);return out;
 }
-function customerCategory(c){ const a=activityForCustomer(c.id); if(a.monthSalesCount>1)return 'frequent'; return c.status||'new'; }
-function renderAll(){ renderDashboard();renderCustomers();renderSales();renderReports();renderExtraDashboard(); }
+function customerCategory(c){const x=activityForCustomer(c.id);if(x.monthSalesCount>1)return 'frequent';return c.status||'new';}
+function renderAll(){if(!$('mCustomers'))return;renderDashboard();renderCustomers();renderSales();renderReports();renderGoalsDashboard();renderRepPerformance();}
+
+function badgeStatus(k){const cls={new:'b-info',active:'b-good',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
+function goalFor(scope,repId,type,product=null){return state.goals.find(g=>g.scope_type===scope&&(scope==='company'||g.rep_id===repId)&&g.goal_type===type&&(type==='new_customers'||g.product_code===product));}
+function goalProgress(goal,achieved,isMoney=true){
+ const target=Number(goal?.monthly_target||0),pct=target>0?Math.round(achieved/target*100):0,remaining=Math.max(0,target-achieved);
+ return `<div class="goal-progress"><div class="goal-numbers"><span>${t('goal')}: <b>${isMoney?money(target):fmt(target)}</b></span><span>${t('achieved')}: <b>${isMoney?money(achieved):fmt(achieved)}</b></span><span>${t('remaining')}: <b>${isMoney?money(remaining):fmt(remaining)}</b></span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.min(100,pct)}%"></div></div><div class="small">${t('progress')}: ${pct}%</div></div>`;
+}
 
 function renderDashboard(){
-  const month=monthRiyadh();
-  const monthSales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
-  $('mCustomers').textContent=state.customers.length;
-  $('mSales').textContent=money(monthSales);
-  $('mActive').textContent=state.customers.filter(c=>c.status==='active').length;
-  $('mHesitant').textContent=state.customers.filter(c=>c.status==='hesitant').length;
-  $('mRejected').textContent=state.customers.filter(c=>c.status==='rejected').length;
-
-  const attention=state.reports.filter(r=>r.report_type==='management');
-  $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<div class="event"><b>${esc(r.customer?.name||'-')}</b><div>${esc(r.note)}</div><div class="small">${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')} — ${esc(r.next_action||'')}</div></div>`).join(''):'<div class="small">لا توجد حالات حالياً.</div>';
-
-  if(isAdmin()){
-    const reps=state.profiles.filter(p=>p.role==='rep');
-    $('repSummary').innerHTML=reps.map(p=>{
-      const cs=state.customers.filter(c=>c.assigned_rep===p.id);
-      const sm=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
-      const fm=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)).length;
-      return `<div class="event"><b>${esc(p.full_name)}</b><div class="small">${cs.length} عميل — سحوبات الشهر ${money(sm)} — ${fm} متابعة</div></div>`;
-    }).join('')||'<div class="small">لا يوجد مندوبون مفعّلون.</div>';
-  } else {
-    const mySales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)).reduce((a,b)=>a+Number(b.amount||0),0);
-    const myReports=state.reports.filter(x=>String(x.business_date||'').startsWith(month)).length;
-    $('repSummary').innerHTML=`<div class="event"><b>نشاطك هذا الشهر</b><div class="small">السحوبات ${money(mySales)} — المتابعات ${myReports}</div></div>`;
-  }
+ const month=monthRiyadh();
+ const monthSales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)).reduce((z,x)=>z+Number(x.amount||0),0);
+ $('mCustomers').textContent=state.customers.length;$('mSales').textContent=money(monthSales);
+ $('mActive').textContent=state.customers.filter(c=>c.status==='active').length;
+ $('mHesitant').textContent=state.customers.filter(c=>c.status==='hesitant').length;
+ $('mRejected').textContent=state.customers.filter(c=>c.status==='rejected').length;
+ const attention=state.reports.filter(r=>r.action_code==='admin_intervention');
+ $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<div class="event"><b>${esc(r.customer?.name||'-')}</b><div>${esc(r.note)}</div><div class="small">${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')}</div></div>`).join(''):`<div class="small">${t('noData')}</div>`;
+ const reps=isAdmin()?state.profiles.filter(p=>p.role==='rep'):[state.profile];
+ $('repSummary').innerHTML=reps.map(p=>{
+   const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month));
+   return `<div class="event clickable-event" data-rep-customers="${p.id}"><b>${esc(p.full_name)}</b><div class="small">${lang==='ar'?`${cs.length} عميل — سحوبات ${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))} — ${rr.length} متابعة`:`${cs.length} customers — sales ${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))} — ${rr.length} follow-ups`}</div></div>`;
+ }).join('')||`<div class="small">${t('noData')}</div>`;
 }
-
-function renderExtraDashboard(){
+function renderRepPerformance(){
+ const box=$('repPerformance');if(!box||!isAdmin())return;
+ const month=monthRiyadh(),reps=state.profiles.filter(p=>p.role==='rep');
+ box.innerHTML='<div class="table-wrap"><table><thead><tr><th>'+t('representative')+'</th><th>'+t('customers')+'</th><th>'+t('newCustomers')+'</th><th>'+t('activeCustomers')+'</th><th>'+t('salesThisMonth')+'</th><th>'+t('followups')+'</th></tr></thead><tbody>'+
+ reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;return `<tr class="clickable-row" data-rep-customers="${p.id}"><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${cs.filter(c=>c.status==='active').length}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table></div>';
+}
+function scopeAchievements(scope,repId=null){
+ const month=monthRiyadh();
+ const sales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)&&(scope==='company'||x.rep_id===repId));
+ const customers=state.customers.filter(c=>(scope==='company'||c.assigned_rep===repId)&&String(c.created_at||'').slice(0,7)===month);
+ const byProduct={};for(const k of PRODUCT_KEYS)byProduct[k]=sales.filter(x=>x.product===k).reduce((z,x)=>z+Number(x.amount||0),0);
+ return {newCustomers:customers.length,byProduct};
+}
+function renderGoalScope(scope,repId,label){
+ const ac=scopeAchievements(scope,repId);
+ const newGoal=goalFor(scope,repId,'new_customers');
+ return `<div class="goal-scope"><h4>${esc(label)}</h4><div class="goal-grid">
+ <div class="goal-card clickable-goal" data-goal-new-customers="${scope==='company'?'company':repId}"><b>${t('newCustomers')}</b>${goalProgress(newGoal,ac.newCustomers,false)}</div>
+ ${PRODUCT_KEYS.map(k=>`<div class="goal-card clickable-goal" data-goal-product="${k}"><b>${esc(productLabel(k))}</b>${goalProgress(goalFor(scope,repId,'product_sales',k),ac.byProduct[k],true)}</div>`).join('')}
+ </div></div>`;
+}
+function renderGoalsDashboard(){
+ const box=$('goalsDashboard');if(!box)return;
+ let html=renderGoalScope('company',null,t('company'));
+ if(isAdmin()){
+   for(const p of state.profiles.filter(x=>x.role==='rep'))html+=renderGoalScope('rep',p.id,p.full_name);
+ }else html+=renderGoalScope('rep',state.profile.id,state.profile.full_name);
+ box.innerHTML=html;
+}
+function openGoalsEditor(){
  if(!isAdmin())return;
- const month=monthRiyadh(), reps=state.profiles.filter(p=>p.role==='rep');
- const perf=$('repPerformance');
- if(perf) perf.innerHTML='<div class="table-wrap"><table><thead><tr><th>المندوب</th><th>العملاء</th><th>عملاء جدد</th><th>العملاء النشطون</th><th>السحوبات</th><th>المتابعات</th></tr></thead><tbody>'+
- reps.map(p=>{
-   const cs=state.customers.filter(c=>c.assigned_rep===p.id);
-   const sales=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month));
-   const rs=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month));
-   const nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;
-   const active=cs.filter(c=>c.status==='active').length;
-   return `<tr><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${active}</td><td>${money(sales.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${rs.length}</td></tr>`;
- }).join('')+'</tbody></table></div>';
-
- const td=$('targetsDashboard');
- if(td){
-   const salesByProduct=new Map();
-   for(const x of state.sales.filter(x=>String(x.business_date).startsWith(month))) salesByProduct.set(x.product,(salesByProduct.get(x.product)||0)+Number(x.amount||0));
-   td.innerHTML='<div class="table-wrap"><table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>الهدف الشهري</th><th>المحقق هذا الشهر</th><th>النسبة</th></tr></thead><tbody>'+
-   state.targets.map(t=>{const monthly=Number(t.weekly_target)*4,got=salesByProduct.get(t.product)||0,pct=monthly?Math.round(got/monthly*100):0;return `<tr><td>${esc(t.product)}</td><td>${money(t.weekly_target)}</td><td>${money(monthly)}</td><td>${money(got)}</td><td>${pct}%</td></tr>`}).join('')+'</tbody></table></div>';
+ const scopes=[{type:'company',id:null,label:t('company')},...state.profiles.filter(p=>p.role==='rep').map(p=>({type:'rep',id:p.id,label:p.full_name}))];
+ const rows=scopes.map(sc=>{
+   const ng=goalFor(sc.type,sc.id,'new_customers');
+   return `<div class="goal-edit-scope"><h4>${esc(sc.label)}</h4><div class="form-grid"><div><label>${t('newCustomers')}</label><input type="number" min="0" step="1" data-goal-input data-scope="${sc.type}" data-rep="${sc.id||''}" data-type="new_customers" value="${Number(ng?.monthly_target||0)}"></div>
+   ${PRODUCT_KEYS.map(k=>{const g=goalFor(sc.type,sc.id,'product_sales',k);return `<div><label>${esc(productLabel(k))}</label><input type="number" min="0" step="1" data-goal-input data-scope="${sc.type}" data-rep="${sc.id||''}" data-type="product_sales" data-product="${k}" value="${Number(g?.monthly_target||0)}"></div>`}).join('')}</div></div>`;
+ }).join('');
+ openModal(t('editGoals'),rows+`<div style="margin-top:14px"><button class="btn" id="saveGoalsBtn">${t('save')}</button></div>`);
+}
+async function saveGoals(){
+ const inputs=[...document.querySelectorAll('[data-goal-input]')];
+ for(const el of inputs){
+   const val=Number(el.value);if(!(val>=0))return flash(lang==='ar'?'تحقق من قيم الأهداف':'Check goal values',true);
+   const {error}=await sb.rpc('set_performance_goal',{p_scope_type:el.dataset.scope,p_rep_id:el.dataset.rep||null,p_goal_type:el.dataset.type,p_product_code:el.dataset.product||null,p_monthly_target:val});
+   if(error)return flash((lang==='ar'?'تعذر حفظ الهدف: ':'Could not save goal: ')+error.message,true);
  }
+ closeModal();flash(lang==='ar'?'تم تحديث الأهداف':'Goals updated');await refreshAll();
 }
 
-function openTargetsEditor(){openModal('تعديل أهداف المنتجات','<div class="table-wrap"><table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>أقل هدف أسبوعي</th></tr></thead><tbody>'+state.targets.map(t=>`<tr><td>${esc(t.product)}</td><td><input type="number" min="0" step="1" data-target-input="${t.id}" value="${Number(t.weekly_target)}"></td><td>${money(t.exception_75?Number(t.weekly_target)*.75:Number(t.weekly_target))}</td></tr>`).join('')+'</tbody></table></div><div style="margin-top:12px"><button class="btn" id="saveTargetsBtn">حفظ الأهداف</button></div>');}
-async function saveTargets(){for(const t of state.targets){const el=document.querySelector('[data-target-input="'+t.id+'"]');const v=Number(el?.value);if(!(v>=0))return flash('تحقق من الأهداف',true);if(v!==Number(t.weekly_target)){const {error}=await sb.rpc('update_sales_target',{p_id:t.id,p_weekly_target:v});if(error)return flash('تعذر تعديل الهدف: '+error.message,true);}}closeModal();flash('تم تحديث الأهداف');await refreshAll();}
-function reportRange(){return {from:$('analyticsFrom').value,to:$('analyticsTo').value,rep:$('analyticsRep').value,type:$('analyticsType').value};}
-function inRange(d,a,b){const x=String(d||'').slice(0,10);return (!a||x>=a)&&(!b||x<=b);}
-function generateAnalytics(){
- const {from,to,rep,type}=reportRange();
- if(!from||!to)return flash('حدد تاريخ البداية والنهاية',true);
- if(from>to)return flash('تاريخ البداية يجب أن يكون قبل النهاية',true);
-
- const repName=rep?(state.profiles.find(p=>p.id===rep)?.full_name||''):'كل المندوبين';
- const sales=state.sales.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep));
- const rs=state.reports.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep));
- const customers=state.customers.filter(c=>!rep||c.assigned_rep===rep);
- let title='',body='',summary='';
- const salesTotal=sales.reduce((a,x)=>a+Number(x.amount||0),0);
-
- if(type==='sales'){
-   title='تقرير المبيعات والسحوبات';
-   summary=`إجمالي السحوبات: <b>${money(salesTotal)}</b> — عدد السحوبات: <b>${sales.length}</b>`;
-   body='<table><thead><tr><th>التاريخ</th><th>العميل</th><th>المنتج</th><th>الكمية</th><th>القيمة</th><th>المندوب</th></tr></thead><tbody>'+sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.product)}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';
- } else if(type==='followups'){
-   title='تقرير متابعة العملاء';
-   summary=`عدد المتابعات: <b>${rs.length}</b> — تغييرات الحالة: <b>${rs.filter(x=>x.new_status).length}</b>`;
-   body='<table><thead><tr><th>التاريخ</th><th>العميل</th><th>المندوب</th><th>النوع</th><th>من</th><th>إلى</th><th>التقرير / السبب</th><th>الإجراء القادم</th></tr></thead><tbody>'+rs.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td><td>${esc(REPORT[x.report_type]||x.report_type)}</td><td>${x.old_status?esc(STATUS[x.old_status]||x.old_status):'-'}</td><td>${x.new_status?esc(STATUS[x.new_status]||x.new_status):'-'}</td><td>${esc(x.note)}</td><td>${esc(x.next_action||'-')}</td></tr>`).join('')+'</tbody></table>';
- } else if(type==='customers'){
-   title='تقرير حركة العملاء';
-   const created=customers.filter(c=>inRange(c.created_at,from,to));
-   summary=`عملاء جدد خلال الفترة: <b>${created.length}</b> — إجمالي العملاء: <b>${customers.length}</b>`;
-   body='<table><thead><tr><th>العميل</th><th>المنطقة</th><th>الحالة الحالية</th><th>المندوب</th><th>سحوبات الفترة</th><th>قيمة السحوبات</th></tr></thead><tbody>'+customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return `<tr><td>${esc(c.name)}</td><td>${esc(c.area||'-')}</td><td>${esc(STATUS[c.status]||c.status)}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${ss.length}</td><td>${money(ss.reduce((a,x)=>a+Number(x.amount||0),0))}</td></tr>`}).join('')+'</tbody></table>';
- } else if(type==='reps'){
-   title='تقرير أداء المندوبين';
-   const reps=state.profiles.filter(p=>p.role==='rep'&&(!rep||p.id===rep));
-   summary='ملخص أداء المندوبين خلال الفترة المحددة.';
-   body='<table><thead><tr><th>المندوب</th><th>العملاء</th><th>عملاء جدد</th><th>السحوبات</th><th>المتابعات</th><th>تغييرات الحالة</th></tr></thead><tbody>'+reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=sales.filter(x=>x.rep_id===p.id),rr=rs.filter(x=>x.rep_id===p.id),nc=cs.filter(c=>inRange(c.created_at,from,to)).length;return `<tr><td>${esc(p.full_name)}</td><td>${cs.length}</td><td>${nc}</td><td>${money(ss.reduce((a,x)=>a+Number(x.amount||0),0))}</td><td>${rr.length}</td><td>${rr.filter(x=>x.new_status).length}</td></tr>`}).join('')+'</tbody></table>';
- } else if(type==='products'){
-   title='تقرير أداء المنتجات مقابل الهدف';
-   summary=`إجمالي مبيعات الفترة: <b>${money(salesTotal)}</b>`;
-   body='<table><thead><tr><th>المنتج</th><th>الهدف الأسبوعي</th><th>مبيعات الفترة</th></tr></thead><tbody>'+state.targets.map(t=>`<tr><td>${esc(t.product)}</td><td>${money(t.weekly_target)}</td><td>${money(sales.filter(x=>x.product===t.product).reduce((a,x)=>a+Number(x.amount||0),0))}</td></tr>`).join('')+'</tbody></table>';
- } else {
-   title='التقرير الإداري الشامل';
-   const created=customers.filter(c=>inRange(c.created_at,from,to)).length;
-   const changed=rs.filter(x=>x.new_status).length;
-   summary=`السحوبات: <b>${money(salesTotal)}</b> — العملاء الجدد: <b>${created}</b> — المتابعات: <b>${rs.length}</b> — تغييرات الحالة: <b>${changed}</b>`;
-   const byCustomer=customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return {c,value:ss.reduce((a,x)=>a+Number(x.amount||0),0),count:ss.length};}).filter(x=>x.count>0).sort((a,b)=>b.value-a.value).slice(0,20);
-   body='<h3>أعلى العملاء سحباً خلال الفترة</h3><table><thead><tr><th>العميل</th><th>عدد السحوبات</th><th>قيمة السحوبات</th><th>الحالة</th><th>المندوب</th></tr></thead><tbody>'+byCustomer.map(x=>`<tr><td>${esc(x.c.name)}</td><td>${x.count}</td><td>${money(x.value)}</td><td>${esc(STATUS[x.c.status]||x.c.status)}</td><td>${esc(x.c.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';
- }
-
- $('printableReport').innerHTML=`<div class="report-letterhead"><h2>شركة دانة التاج التجارية</h2><h1>${title}</h1><div>الفترة: ${dateOnly(from)} إلى ${dateOnly(to)} — المندوب: ${esc(repName)}</div></div><div class="report-summary">${summary}</div><div class="report-body">${body||'<div class="empty">لا توجد بيانات في الفترة المحددة.</div>'}</div><div class="report-footer">تاريخ إعداد التقرير: ${dateOnly(todayRiyadh())}</div>`;
-}
-
-function setupAnalytics(){const r=$('analyticsRep');if(r)r.innerHTML='<option value="">كل المندوبين</option>'+state.profiles.filter(p=>p.role==='rep').map(p=>`<option value="${p.id}">${esc(p.full_name)}</option>`).join('');const d=new Date(),to=todayRiyadh(),from=to.slice(0,8)+'01';if($('analyticsFrom')&&!$('analyticsFrom').value)$('analyticsFrom').value=from;if($('analyticsTo')&&!$('analyticsTo').value)$('analyticsTo').value=to;}
 function renderCustomers(){
-  const q=$('customerSearch').value.trim().toLowerCase(), f=$('customerStatusFilter').value;
-  const rows=state.customers.filter(c=>(!f||c.status===f)&&(!q||`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q)));
-  $('customersBody').innerHTML=rows.length?rows.map(c=>{const a=activityForCustomer(c.id);return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${a.monthSalesCount}</td><td>${money(a.monthSalesValue)}</td><td><button class="btn secondary" data-open-customer="${c.id}">عرض</button></td></tr>`}).join(''):'<tr><td colspan="7" class="empty">لا توجد نتائج.</td></tr>';
+ const q=($('customerSearch')?.value||'').trim().toLowerCase(),f=$('customerStatusFilter')?.value||'',month=monthRiyadh();
+ let rows=state.customers.filter(c=>(!f||c.status===f)&&(!q||`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q)));
+ if(state.customerMonthOnly)rows=rows.filter(c=>String(c.created_at||'').slice(0,7)===month);
+ $('customersBody').innerHTML=rows.length?rows.map(c=>{const ac=activityForCustomer(c.id);return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${ac.monthSalesCount}</td><td>${money(ac.monthSalesValue)}</td><td><button class="btn secondary" data-open-customer="${c.id}">${t('view')}</button></td></tr>`}).join(''):`<tr><td colspan="7" class="empty">${t('noData')}</td></tr>`;
 }
 function renderSales(){
-  const q=$('saleSearch').value.trim().toLowerCase();
-  const rows=state.sales.filter(x=>!q||`${x.customer?.name||''} ${x.product||''} ${x.order_ref||''}`.toLowerCase().includes(q));
-  $('salesBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.product)}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.order_ref||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">لا توجد سحوبات.</td></tr>';
+ const q=($('saleSearch')?.value||'').trim().toLowerCase(),period=$('salePeriodFilter')?.value||'',month=monthRiyadh();
+ const rows=state.sales.filter(x=>(period!=='month'||String(x.business_date||'').startsWith(month))&&(!q||`${x.customer?.name||''} ${productLabel(x.product)} ${x.product||''} ${x.order_ref||''}`.toLowerCase().includes(q)));
+ $('salesBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(productLabel(x.product))}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.order_ref||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td><td>${isAdmin()?`<button class="btn secondary mini" data-edit-sale="${x.id}">${t('edit')}</button> <button class="btn bad mini" data-delete-sale="${x.id}">${t('del')}</button>`:'-'}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">${t('noData')}</td></tr>`;
 }
 function renderReports(){
-  const f=$('reportTypeFilter').value;
-  const rows=state.reports.filter(r=>!f||r.report_type===f);
-  $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${badgeReport(r.report_type)}</td><td>${r.old_status?badgeStatus(r.old_status):'-'}</td><td>${r.new_status?badgeStatus(r.new_status):'-'}</td><td>${esc(r.note)}</td><td>${esc(r.next_action||'-')}</td><td>${dateOnly(r.next_followup_date)}</td></tr>`).join(''):'<tr><td colspan="9" class="empty">لا توجد متابعات.</td></tr>';
+ const f=$('reportActionFilter')?.value||'',rows=state.reports.filter(r=>!f||r.action_code===f);
+ $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${esc(actionLabel(r.action_code)||'-')}</td><td>${r.old_status?badgeStatus(r.old_status):'-'}</td><td>${r.new_status?badgeStatus(r.new_status):'-'}</td><td>${esc(r.note)}</td><td>${isAdmin()?`<button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button> <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:'-'}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">${t('noData')}</td></tr>`;
 }
+
+function reportRange(){return {from:$('analyticsFrom').value,to:$('analyticsTo').value,rep:$('analyticsRep').value,type:$('analyticsType').value};}
+function inRange(d,x,y){const v=String(d||'').slice(0,10);return (!x||v>=x)&&(!y||v<=y);}
+function generateAnalytics(){
+ const {from,to,rep,type}=reportRange();if(!from||!to)return flash(lang==='ar'?'حدد تاريخ البداية والنهاية':'Select start and end dates',true);if(from>to)return flash(lang==='ar'?'تاريخ البداية يجب أن يكون قبل النهاية':'Start date must be before end date',true);
+ const repName=rep?(state.profiles.find(p=>p.id===rep)?.full_name||''):t('allReps'),sales=state.sales.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)),rs=state.reports.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)),customers=state.customers.filter(c=>!rep||c.assigned_rep===rep),salesTotal=sales.reduce((z,x)=>z+Number(x.amount||0),0);
+ let title='',summary='',body='';
+ if(type==='sales'){title=lang==='ar'?'تقرير المبيعات والسحوبات':'Sales / Withdrawals Report';summary=`${lang==='ar'?'إجمالي السحوبات':'Total sales'}: <b>${money(salesTotal)}</b> — ${lang==='ar'?'العدد':'Count'}: <b>${sales.length}</b>`;body='<table><thead><tr><th>'+t('date')+'</th><th>'+t('customer')+'</th><th>'+t('product')+'</th><th>'+t('quantity')+'</th><th>'+t('value')+'</th><th>'+t('representative')+'</th></tr></thead><tbody>'+sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(productLabel(x.product))}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';}
+ else if(type==='followups'){title=lang==='ar'?'تقرير متابعة العملاء':'Customer Follow-up Report';summary=`${lang==='ar'?'عدد المتابعات':'Follow-ups'}: <b>${rs.length}</b>`;body='<table><thead><tr><th>'+t('date')+'</th><th>'+t('customer')+'</th><th>'+t('representative')+'</th><th>'+t('action')+'</th><th>'+t('previousStatus')+'</th><th>'+t('newStatus')+'</th><th>'+t('reason')+'</th></tr></thead><tbody>'+rs.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td><td>${esc(actionLabel(x.action_code))}</td><td>${x.old_status?esc(statusLabel(x.old_status)):'-'}</td><td>${x.new_status?esc(statusLabel(x.new_status)):'-'}</td><td>${esc(x.note)}</td></tr>`).join('')+'</tbody></table>';}
+ else if(type==='customers'){title=lang==='ar'?'تقرير حركة العملاء':'Customer Activity Report';const created=customers.filter(c=>inRange(c.created_at,from,to));summary=`${t('newCustomers')}: <b>${created.length}</b> — ${t('totalCustomers')}: <b>${customers.length}</b>`;body='<table><thead><tr><th>'+t('customer')+'</th><th>'+t('area')+'</th><th>'+t('status')+'</th><th>'+t('representative')+'</th><th>'+t('sales')+'</th></tr></thead><tbody>'+customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return `<tr><td>${esc(c.name)}</td><td>${esc(c.area||'-')}</td><td>${esc(statusLabel(c.status))}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td></tr>`}).join('')+'</tbody></table>';}
+ else if(type==='reps'){title=lang==='ar'?'تقرير أداء المندوبين':'Representative Performance Report';const reps=state.profiles.filter(p=>p.role==='rep'&&(!rep||p.id===rep));summary=lang==='ar'?'أداء المندوبين خلال الفترة المحددة.':'Representative performance for the selected period.';body='<table><thead><tr><th>'+t('representative')+'</th><th>'+t('customers')+'</th><th>'+t('newCustomers')+'</th><th>'+t('sales')+'</th><th>'+t('followups')+'</th></tr></thead><tbody>'+reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=sales.filter(x=>x.rep_id===p.id),rr=rs.filter(x=>x.rep_id===p.id),nc=cs.filter(c=>inRange(c.created_at,from,to)).length;return `<tr><td>${esc(p.full_name)}</td><td>${cs.length}</td><td>${nc}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table>';}
+ else if(type==='products'){title=lang==='ar'?'تقرير أداء المنتجات مقابل الهدف':'Product Goal Performance';summary=`${t('sales')}: <b>${money(salesTotal)}</b>`;body='<table><thead><tr><th>'+t('product')+'</th><th>'+t('goal')+'</th><th>'+t('achieved')+'</th></tr></thead><tbody>'+PRODUCT_KEYS.map(k=>{const goal=goalFor(rep?'rep':'company',rep||null,'product_sales',k),got=sales.filter(x=>x.product===k).reduce((z,x)=>z+Number(x.amount||0),0);return `<tr><td>${esc(productLabel(k))}</td><td>${money(goal?.monthly_target||0)}</td><td>${money(got)}</td></tr>`}).join('')+'</tbody></table>';}
+ else{title=lang==='ar'?'التقرير الإداري الشامل':'Management Summary';summary=`${t('sales')}: <b>${money(salesTotal)}</b> — ${t('newCustomers')}: <b>${customers.filter(c=>inRange(c.created_at,from,to)).length}</b> — ${t('followups')}: <b>${rs.length}</b>`;const top=customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return {c,v:ss.reduce((z,x)=>z+Number(x.amount||0),0)};}).filter(x=>x.v>0).sort((x,y)=>y.v-x.v).slice(0,20);body='<table><thead><tr><th>'+t('customer')+'</th><th>'+t('value')+'</th><th>'+t('status')+'</th><th>'+t('representative')+'</th></tr></thead><tbody>'+top.map(x=>`<tr><td>${esc(x.c.name)}</td><td>${money(x.v)}</td><td>${esc(statusLabel(x.c.status))}</td><td>${esc(x.c.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';}
+ $('printableReport').innerHTML=`<div class="report-letterhead"><h2>${lang==='ar'?'شركة دانة التاج التجارية':'Dana Al-Taj Trading Company'}</h2><h1>${title}</h1><div>${t('from')}: ${dateOnly(from)} — ${t('to')}: ${dateOnly(to)} — ${t('representative')}: ${esc(repName)}</div></div><div class="report-summary">${summary}</div><div class="report-body">${body||`<div class="empty">${t('noData')}</div>`}</div><div class="report-footer">${lang==='ar'?'تاريخ إعداد التقرير':'Report date'}: ${dateOnly(todayRiyadh())}</div>`;
+}
+function setupAnalytics(){const r=$('analyticsRep');if(r)r.innerHTML=`<option value="">${t('allReps')}</option>`+state.profiles.filter(p=>p.role==='rep').map(p=>`<option value="${p.id}">${esc(p.full_name)}</option>`).join('');const to=todayRiyadh(),from=to.slice(0,8)+'01';if($('analyticsFrom')&&!$('analyticsFrom').value)$('analyticsFrom').value=from;if($('analyticsTo')&&!$('analyticsTo').value)$('analyticsTo').value=to;}
+
 
 async function openCustomer(id){
   const c=state.customers.find(x=>Number(x.id)===Number(id)); if(!c)return;

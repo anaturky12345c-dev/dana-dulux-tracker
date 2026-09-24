@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>نظام متابعة دلوكس - دانة التاج</title>
   <meta name="theme-color" content="#111827" />
-  <meta name="referrer" content="no-referrer" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com https://*.tile.openstreetmap.org; connect-src 'self' https://bmpxtvhqpjvlyeoseuvz.supabase.co wss://bmpxtvhqpjvlyeoseuvz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; worker-src 'none'; upgrade-insecure-requests" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://bmpxtvhqpjvlyeoseuvz.supabase.co wss://bmpxtvhqpjvlyeoseuvz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; worker-src 'none'; upgrade-insecure-requests" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -14,7 +14,6 @@
 <div id="login" class="login">
   <div class="login-card">
     <h2>نظام متابعة دلوكس</h2>
-    <p>متابعة العملاء والسحوبات والسداد والأجل.</p>
     <div class="row">
       <input id="loginUser" autocomplete="username" placeholder="اسم المستخدم" />
       <input id="loginPass" type="password" autocomplete="current-password" placeholder="كلمة المرور" />
@@ -29,7 +28,7 @@
 <div class="app">
   <aside>
     <div class="brand">دانة التاج</div>
-    <div class="sub">متابعة دلوكس — النظام الأونلاين</div>
+    <div class="sub">متابعة دلوكس</div>
     <nav class="nav-grid">
       <button class="active" data-page="dashboard">لوحة المتابعة</button>
       <button data-page="customers">العملاء</button>
@@ -46,7 +45,6 @@
     <div class="topbar"><div><h1 id="pageTitle">لوحة المتابعة</h1><div class="role" id="roleText"></div></div><button class="btn secondary" id="logoutBtn">تسجيل خروج</button></div>
 
     <section id="dashboard" class="section active">
-      <div class="notice">الأجل 30 يوماً لكل فاتورة. أي دفعة تُوزع تلقائياً على أقدم فاتورة غير مسددة أولاً.</div>
       <div class="grid cards dashboard-cards">
         <div class="card"><div class="label">إجمالي العملاء</div><div class="metric" id="mCustomers">0</div></div>
         <div class="card"><div class="label">سحوبات الشهر</div><div class="metric" id="mSales">0</div></div>
@@ -89,7 +87,6 @@
     </section>
 
     <section id="mapPage" class="section admin-only">
-      <div class="map-note">البنفسجي له الأولوية: العميل لديه مبلغ تجاوز 30 يوماً. النجمة الخضراء تعني أكثر من سحب واحد خلال الشهر بدون متأخرات.</div>
       <div class="map-toolbar"><input id="mapSearch" class="search" placeholder="ابحث باسم العميل أو المنطقة..." /><select id="mapFilter"><option value="">كل العملاء</option><option value="overdue">متأخرات</option><option value="frequent">سحب متكرر هذا الشهر</option><option value="active">نشط</option><option value="hesitant">متردد</option><option value="rejected">رافض</option><option value="new">جديد</option><option value="stopped">متوقف</option></select></div>
       <div class="map-legend"><span><i class="legend-dot purple"></i>متأخرات</span><span><i class="legend-dot green star">★</i>سحب متكرر</span><span><i class="legend-dot green"></i>نشط</span><span><i class="legend-dot yellow"></i>متردد</span><span><i class="legend-dot red"></i>رافض</span><span><i class="legend-dot blue"></i>جديد</span><span><i class="legend-dot gray"></i>متوقف</span></div>
       <div id="map"></div>

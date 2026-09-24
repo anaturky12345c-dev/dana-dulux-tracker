@@ -130,7 +130,7 @@ function addBaseMap(map){
 
 
 function flash(msg,bad=false){ const f=$('flash'); f.textContent=msg; f.style.background=bad?'#991b1b':'#111827'; f.classList.remove('hidden'); setTimeout(()=>f.classList.add('hidden'),3600); }
-function showConfigMessage(){ $('loginMsg').textContent='تعذر تحميل إعدادات النظام.'; $('loginBtn').disabled=true; }
+function showConfigMessage(){ $('loginMsg').textContent=lang==='ar'?'تعذر تحميل إعدادات النظام.':'Could not load system configuration.'; $('loginBtn').disabled=true; }
 function getLoginGuard(){ try{return JSON.parse(localStorage.getItem('dana_login_guard_v1')||'{}')}catch(_){return {}} }
 function setLoginGuard(v){ localStorage.setItem('dana_login_guard_v1',JSON.stringify(v)); }
 function loginLockRemaining(){ const g=getLoginGuard(); return Math.max(0,Number(g.lockUntil||0)-Date.now()); }
@@ -188,21 +188,21 @@ async function enforceSecurityBeforeData(){
 async function login(){
   if(!sb) return showConfigMessage();
   const remaining=loginLockRemaining();
-  if(remaining>0){ $('loginMsg').textContent=`محاولات كثيرة. حاول بعد ${Math.ceil(remaining/60000)} دقيقة.`; return; }
+  if(remaining>0){ $('loginMsg').textContent=lang==='ar'?`محاولات كثيرة. حاول بعد ${Math.ceil(remaining/60000)} دقيقة.`:`Too many attempts. Try again in ${Math.ceil(remaining/60000)} minutes.`; return; }
   const username=$('loginUser').value.trim().toLowerCase(), password=$('loginPass').value;
   const email=USERS[username];
-  if(!email||!password){ recordLoginFailure(); $('loginMsg').textContent='تعذر الدخول. تأكد من البيانات.'; return; }
-  $('loginMsg').textContent='جاري الدخول...';
+  if(!email||!password){ recordLoginFailure(); $('loginMsg').textContent=lang==='ar'?'تعذر الدخول. تأكد من البيانات.':'Could not sign in. Check your details.'; return; }
+  $('loginMsg').textContent=lang==='ar'?'جاري الدخول...':'Signing in...';
   const {data,error}=await sb.auth.signInWithPassword({email,password});
-  if(error){ recordLoginFailure(); $('loginMsg').textContent='تعذر الدخول. تأكد من البيانات.'; return; }
+  if(error){ recordLoginFailure(); $('loginMsg').textContent=lang==='ar'?'تعذر الدخول. تأكد من البيانات.':'Could not sign in. Check your details.'; return; }
   clearLoginFailures(); state.session=data.session; state.lastActivity=Date.now(); await loadProfile();
 }
 async function loadProfile(){
   const {data:{session}}=await sb.auth.getSession(); state.session=session;
   if(!session){ showLogin(); return; }
-  if(sessionTooOld(session)){ await sb.auth.signOut(); return showLogin('انتهت مدة الجلسة. سجل الدخول من جديد.'); }
+  if(sessionTooOld(session)){ await sb.auth.signOut(); return showLogin(lang==='ar'?'انتهت مدة الجلسة. سجل الدخول من جديد.':'Session expired. Please sign in again.'); }
   const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active,must_change_password,password_changed_at').eq('id',session.user.id).single();
-  if(error || !data?.active){ await sb.auth.signOut(); return showLogin('الحساب غير مفعّل في النظام.'); }
+  if(error || !data?.active){ await sb.auth.signOut(); return showLogin(lang==='ar'?'الحساب غير مفعّل في النظام.':'This account is not active.'); }
   state.profile=data; await enforceSecurityBeforeData();
 }
 function showLogin(message=''){ hideSecurityGate(); $('login').classList.remove('hidden'); $('loginPass').value=''; if(message) $('loginMsg').textContent=message; }
@@ -218,7 +218,7 @@ async function loadPaged(makeQuery,label){
   let out=[],from=0;
   for(;;){
     const {data,error}=await makeQuery(from,from+PAGE_SIZE-1);
-    if(error){ console.error(label,error); flash('تعذر تحميل '+label,true); return out; }
+    if(error){ console.error(label,error); flash((lang==='ar'?'تعذر تحميل ':'Could not load ')+label,true); return out; }
     const rows=data||[]; out=out.concat(rows); if(rows.length<PAGE_SIZE) break; from+=PAGE_SIZE;
   }
   return out;
@@ -418,7 +418,7 @@ function markerIcon(category){const star=category==='frequent'?'★':'';return L
 async function renderMap(){
   if(!isAdmin())return;
   if(!state.map){state.map=L.map('map').setView([24.78,46.76],11);addBaseMap(state.map);state.markerLayer=L.layerGroup().addTo(state.map);}
-  const {data,error}=await sb.from('customer_locations').select('customer_id,lat,lng'); if(error){console.error(error);return flash('تعذر تحميل الخريطة',true);} state.mapLocations=data||[]; drawMapMarkers(); setTimeout(()=>state.map.invalidateSize(),60);
+  const {data,error}=await sb.from('customer_locations').select('customer_id,lat,lng'); if(error){console.error(error);return flash(lang==='ar'?'تعذر تحميل الخريطة':'Could not load map',true);} state.mapLocations=data||[]; drawMapMarkers(); setTimeout(()=>state.map.invalidateSize(),60);
 }
 function drawMapMarkers(){
  if(!state.map||!state.markerLayer)return;state.markerLayer.clearLayers();
@@ -440,7 +440,7 @@ async function changePassword(forced=false){
   if(!current)return fail('أدخل كلمة المرور الحالية.'); if(p===current)return fail('كلمة المرور الجديدة يجب أن تختلف عن الحالية.'); if(!strongPassword(p))return fail('استخدم 14 حرفاً على الأقل مع حرف كبير وصغير ورقم ورمز.'); if(p!==confirm)return fail('تأكيد كلمة المرور غير مطابق.'); if(msg)msg.textContent='جاري التحقق...';
   const email=state.session?.user?.email; const auth=await sb.auth.signInWithPassword({email,password:current}); if(auth.error)return fail('كلمة المرور الحالية غير صحيحة.'); const {error}=await sb.auth.updateUser({password:p}); if(error)return fail('تعذر تغيير كلمة المرور: '+error.message); if(!forced)flash('تم تغيير كلمة المرور'); await new Promise(r=>setTimeout(r,400)); await loadProfile();
 }
-async function renderSecurityStatus(){const box=$('securityStatus');if(!box||!state.profile)return;const changed=state.profile.password_changed_at?dateTime(state.profile.password_changed_at):'لم تُسجل بعد';box.innerHTML=`كلمة المرور: <b>${state.profile.must_change_password?'يجب تغييرها':'محدثة'}</b><br>آخر تغيير: ${esc(changed)}<br>الجلسة تُغلق بعد 20 دقيقة من عدم الاستخدام وبحد أقصى 8 ساعات.`;const m=$('mfaAccount');if(!m||!isAdmin())return;const [aal,factors]=await Promise.all([sb.auth.mfa.getAuthenticatorAssuranceLevel(),sb.auth.mfa.listFactors()]);const verified=(factors.data?.totp||[]).some(x=>x.status==='verified');m.innerHTML=`<h4>التحقق بخطوتين للإدارة</h4><div class="${verified?'security-good':'security-warn'}">${verified?'مفعّل. مستوى الجلسة: '+esc(aal.data?.currentLevel||'-'):'غير مفعّل.'}</div>`;}
+async function renderSecurityStatus(){const box=$('securityStatus');if(!box||!state.profile)return;const changed=state.profile.password_changed_at?dateTime(state.profile.password_changed_at):(lang==='ar'?'لم تُسجل بعد':'Not recorded yet');box.innerHTML=lang==='ar'?`كلمة المرور: <b>${state.profile.must_change_password?'يجب تغييرها':'محدثة'}</b><br>آخر تغيير: ${esc(changed)}<br>الجلسة تُغلق بعد 20 دقيقة من عدم الاستخدام وبحد أقصى 8 ساعات.`:`Password: <b>${state.profile.must_change_password?'Change required':'Updated'}</b><br>Last change: ${esc(changed)}<br>Session closes after 20 minutes of inactivity and after a maximum of 8 hours.`;const m=$('mfaAccount');if(!m||!isAdmin())return;const [aal,factors]=await Promise.all([sb.auth.mfa.getAuthenticatorAssuranceLevel(),sb.auth.mfa.listFactors()]);const verified=(factors.data?.totp||[]).some(x=>x.status==='verified');m.innerHTML=`<h4>${lang==='ar'?'التحقق بخطوتين للإدارة':'Admin two-factor authentication'}</h4><div class="${verified?'security-good':'security-warn'}">${verified?(lang==='ar'?'مفعّل. مستوى الجلسة: ':'Enabled. Session level: ')+esc(aal.data?.currentLevel||'-'):(lang==='ar'?'غير مفعّل.':'Not enabled.')}</div>`;}
 
 function gotoPage(id){
  if(state.securityGateMode)return;if(state.profile?.must_change_password)return showPasswordGate();if(!isAdmin()&&(id==='mapPage'||id==='audit'||id==='analytics'))return;

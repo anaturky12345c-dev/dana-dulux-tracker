@@ -8,6 +8,7 @@ var followupStates=[];
 var tasks=[];
 var loading=false;
 var initialized=false;
+var lastProfileId=null;
 
 function isAr(){return app.getLang()==='ar';}
 function tx(ar,en){return isAr()?ar:en;}
@@ -151,6 +152,7 @@ function setText(id,value){
 }
 function renderLabels(){
   setText('tasksNavBtn',tx('المهام','Tasks'));
+  if(byId('tasks')&&byId('tasks').classList.contains('active'))setText('pageTitle',tx('المهام','Tasks'));
   setText('workloadFollowupDashboardTitle',tx('متابعة العملاء المطلوبة','Required customer follow-ups'));
   setText('openFollowupsBtn',tx('عرض قائمة المتابعات','View follow-up list'));
   setText('followTodayLabel',tx('متابعات اليوم','Follow-ups today'));
@@ -187,6 +189,12 @@ function renderLabels(){
   setText('thTaskStatus',tx('الحالة','Status'));
   setText('thResult',tx('النتيجة','Result'));
   setText('thActions',tx('الإجراءات','Actions'));
+  var rf=byId('reportActionFilter');
+  if(rf){
+    var mr=Array.prototype.find.call(rf.options,function(o){return o.value==='management_response';});
+    if(!mr){mr=document.createElement('option');mr.value='management_response';rf.appendChild(mr);}
+    mr.textContent=tx('متابعة الإدارة','Management follow-up');
+  }
 }
 
 function followupRows(){
@@ -301,7 +309,11 @@ function renderAll(){
 }
 
 async function loadAll(){
-  if(loading||!app.state.profile)return;
+  if(loading)return;
+  if(!app.state.profile){followupStates=[];tasks=[];lastProfileId=null;renderAll();return;}
+  var currentProfileId=app.state.profile.id;
+  if(lastProfileId&&lastProfileId!==currentProfileId){followupStates=[];tasks=[];renderAll();}
+  lastProfileId=currentProfileId;
   loading=true;
   try{
     var results=await Promise.all([

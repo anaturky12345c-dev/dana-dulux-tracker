@@ -17,7 +17,7 @@ const I18N={
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
   customer:'العميل',representative:'المندوب',area:'المنطقة',phone:'الجوال',status:'الحالة',action:'الإجراء',reason:'التقرير / السبب',product:'المنتج',quantity:'الكمية',value:'القيمة',reference:'المرجع',date:'التاريخ',
   totalCustomers:'إجمالي العملاء',salesThisMonth:'سحوبات الشهر',activeCustomers:'العملاء النشطون',hesitantCustomers:'العملاء المترددون',rejectedCustomers:'العملاء الرافضون',clickView:'اضغط للعرض',
-  repSummary:'تلخيص المناديب اليوم',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
+  repSummary:'ملخص المناديب اليومي',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
   allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة...',newCustomer:'+ عميل جديد',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
   recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',thisMonth:'هذا الشهر',
   addFollowup:'+ إضافة متابعة',allActions:'كل الإجراءات',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
@@ -34,7 +34,7 @@ const I18N={
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
   customer:'Customer',representative:'Representative',area:'Area',phone:'Phone',status:'Status',action:'Action',reason:'Report / Reason',product:'Product',quantity:'Quantity',value:'Value',reference:'Reference',date:'Date',
   totalCustomers:'Total Customers',salesThisMonth:'Sales This Month',activeCustomers:'Active Customers',hesitantCustomers:'Hesitant Customers',rejectedCustomers:'Rejected Customers',clickView:'Click to view',
-  repSummary:"Today's Representative Summary",managementIntervention:'Management Intervention',goals:'Goals',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
+  repSummary:'Daily Representative Summary',managementIntervention:'Management Intervention',goals:'Goals',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
   allStatuses:'All Statuses',searchCustomer:'Search customer or area...',newCustomer:'+ New Customer',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
   recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',thisMonth:'This Month',
   addFollowup:'+ Add Follow-up',allActions:'All Actions',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
@@ -70,6 +70,7 @@ const money=n=>lang==='ar'?fmt(n)+' ر.س':'SAR '+fmt(n);
 const dateTime=iso=>iso?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Riyadh'}).format(new Date(iso)):'-';
 const dateOnly=d=>d?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z')):'-';
 const todayRiyadh=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const dateKeyRiyadh=iso=>iso?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso)):'';
 const monthRiyadh=()=>todayRiyadh().slice(0,7);
 const isAdmin=()=>state.profile?.role==='admin';
 const isManager=()=>state.profile?.role==='manager';
@@ -267,10 +268,14 @@ function renderDashboard(){
  $('mRejected').textContent=state.customers.filter(c=>c.status==='rejected').length;
  const attention=state.reports.filter(r=>r.action_code==='admin_intervention');
  $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<div class="event"><b>${esc(r.customer?.name||'-')}</b><div>${esc(r.note)}</div><div class="small">${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')}</div></div>`).join(''):`<div class="small">${t('noData')}</div>`;
- const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile];
+ const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile],today=todayRiyadh();
  $('repSummary').innerHTML=reps.map(p=>{
-   const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month));
-   return `<div class="event clickable-event" data-rep-customers="${p.id}"><b>${esc(p.full_name)}</b><div class="small">${lang==='ar'?`${cs.length} عميل — سحوبات ${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))} — ${rr.length} متابعة`:`${cs.length} customers — sales ${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))} — ${rr.length} follow-ups`}</div></div>`;
+   const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
+   const salesToday=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
+   const followupsToday=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
+   const activeNewToday=newToday.filter(c=>c.status==='active').length;
+   const salesValueToday=salesToday.reduce((z,x)=>z+Number(x.amount||0),0);
+   return `<div class="event clickable-event" data-rep-customers="${p.id}"><b>${esc(p.full_name)}</b><div class="small">${lang==='ar'?`عملاء جدد اليوم: ${newToday.length} — منهم نشطين: ${activeNewToday} — سحوبات اليوم: ${money(salesValueToday)} (${salesToday.length}) — متابعات اليوم: ${followupsToday.length}`:`New customers today: ${newToday.length} — active: ${activeNewToday} — today's sales: ${money(salesValueToday)} (${salesToday.length}) — today's follow-ups: ${followupsToday.length}`}</div></div>`;
  }).join('')||`<div class="small">${t('noData')}</div>`;
 }
 function renderRepPerformance(){

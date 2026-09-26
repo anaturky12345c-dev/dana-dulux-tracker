@@ -394,22 +394,28 @@ async function openCustomer(id){
 function openModal(title,html){$('modalTitle').textContent=title;$('modalContent').innerHTML=html;$('modal').classList.add('open');}
 function closeModal(){if(state.pickerMap){try{state.pickerMap.remove()}catch(_){}state.pickerMap=null;state.pickerMarker=null;}$('modal').classList.remove('open');}
 function customerOptions(selected=null){return state.customers.map(c=>`<option value="${c.id}" ${Number(selected)===Number(c.id)?'selected':''}>${esc(c.name)}</option>`).join('');}
-function customerSearchOptions(query='',selected=null){
- const q=String(query||'').trim().toLowerCase();
- const rows=state.customers.filter(c=>!q||`${c.name} ${c.area||''} ${c.phone||''}`.toLowerCase().includes(q));
- return rows.map(c=>`<option value="${c.id}" ${Number(selected)===Number(c.id)?'selected':''}>${esc(c.name)}${c.area?` — ${esc(c.area)}`:''}</option>`).join('');
+function customerPickerHtml(prefix,selected=null){
+ const c=state.customers.find(x=>Number(x.id)===Number(selected));
+ return `<div class="customer-combo"><input id="${prefix}Customer" autocomplete="off" value="${c?esc(c.name):''}" placeholder="${lang==='ar'?'اكتب اسم العميل...':'Type customer name...'}"><input id="${prefix}CustomerId" type="hidden" value="${c?.id||''}"><div id="${prefix}CustomerResults" class="customer-combo-results hidden"></div></div>`;
 }
-function bindCustomerSearch(inputId,selectId,onChange=null){
- const input=$(inputId),select=$(selectId);if(!input||!select)return;
- const refresh=()=>{
-   const current=Number(select.value||0);
-   const html=customerSearchOptions(input.value,current);
-   select.innerHTML=html;
-   if(!select.value&&select.options.length)select.selectedIndex=0;
-   if(onChange)onChange();
+function bindCustomerPicker(prefix,onSelect=null){
+ const input=$(prefix+'Customer'),hidden=$(prefix+'CustomerId'),results=$(prefix+'CustomerResults');if(!input||!hidden||!results)return;
+ const render=()=>{
+   const q=input.value.trim().toLowerCase();
+   const matches=state.customers.filter(c=>!q||`${c.name} ${c.area||''} ${c.phone||''}`.toLowerCase().includes(q)).slice(0,12);
+   results.innerHTML=matches.length?matches.map(c=>`<button type="button" class="customer-combo-option" data-customer-pick="${c.id}"><b>${esc(c.name)}</b>${c.area?`<span>${esc(c.area)}</span>`:''}</button>`).join(''):`<div class="customer-combo-empty">${lang==='ar'?'لا يوجد عميل مطابق':'No matching customer'}</div>`;
+   results.classList.remove('hidden');
  };
- input.addEventListener('input',refresh);
- select.addEventListener('change',()=>{if(onChange)onChange();});
+ input.addEventListener('focus',render);
+ input.addEventListener('input',()=>{hidden.value='';render();if(onSelect)onSelect();});
+ input.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=results.querySelector('[data-customer-pick]');if(first){e.preventDefault();first.click();}}});
+ results.addEventListener('mousedown',e=>e.preventDefault());
+ results.addEventListener('click',e=>{
+   const btn=e.target.closest('[data-customer-pick]');if(!btn)return;
+   const c=state.customers.find(x=>Number(x.id)===Number(btn.dataset.customerPick));if(!c)return;
+   hidden.value=String(c.id);input.value=c.name;results.classList.add('hidden');if(onSelect)onSelect();
+ });
+ input.addEventListener('blur',()=>setTimeout(()=>results.classList.add('hidden'),120));
 }
 function repOptions(selected=null){return state.profiles.filter(p=>p.role==='rep').map(p=>`<option value="${p.id}" ${selected===p.id?'selected':''}>${esc(p.full_name)}</option>`).join('');}
 function productOptions(selected=null){return PRODUCT_KEYS.map(k=>`<option value="${k}" ${selected===k?'selected':''}>${esc(productLabel(k))}</option>`).join('');}
@@ -434,26 +440,38 @@ function openLocationEditor(id){if(!canManage())return;openModal(lang==='ar'?'ت
 async function saveLocation(id){const reason=$('locReason').value.trim();if(reason.length<4)return flash(lang==='ar'?'اكتب سبب التعديل':'Enter a reason',true);const {error}=await sb.rpc('correct_customer_location',{p_customer_id:id,p_lat:Number($('fLat').value),p_lng:Number($('fLng').value),p_reason:reason});if(error)return flash(error.message,true);closeModal();flash(t('updated'));}
 
 function openSaleForm(customerId=null){
- const selected=state.customers.find(c=>Number(c.id)===Number(customerId))||state.customers[0];if(!selected)return flash(t('noData'),true);
- openModal(lang==='ar'?'تسجيل سحب / فاتورة':'Record Sale / Withdrawal',`<div class="form-grid"><div class="full"><label>${lang==='ar'?'بحث عن العميل':'Search Customer'}</label><input id="sCustomerSearch" autocomplete="off" placeholder="${lang==='ar'?'اكتب اسم العميل أو المنطقة...':'Type customer name or area...'}"></div><div class="full"><label>${t('customer')}</label><select id="sCustomer">${customerSearchOptions('',selected.id)}</select></div><div><label>${t('product')}</label><select id="sProduct">${productOptions()}</select></div><div><label>${t('quantity')}</label><input id="sQty" type="number" min="0.01" step="0.01"></div><div><label>${t('value')}</label><input id="sAmount" type="number" min="0.01" step="0.01"></div><div class="full"><label>${t('reference')}</label><input id="sRef"></div><div class="full"><button class="btn" id="saveSaleBtn">${t('save')}</button></div></div>`);
- setTimeout(()=>bindCustomerSearch('sCustomerSearch','sCustomer'),0);
+ const selected=state.customers.find(c=>Number(c.id)===Number(customerId))||null;if(!state.customers.length)return flash(t('noData'),true);
+ openModal(lang==='ar'?'تسجيل سحب / فاتورة':'Record Sale / Withdrawal',`<div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('s',selected?.id||null)}</div><div><label>${t('product')}</label><select id="sProduct">${productOptions()}</select></div><div><label>${t('quantity')}</label><input id="sQty" type="number" min="0.01" step="0.01"></div><div><label>${t('value')}</label><input id="sAmount" type="number" min="0.01" step="0.01"></div><div class="full"><label>${t('reference')}</label><input id="sRef"></div><div class="full"><button class="btn" id="saveSaleBtn">${t('save')}</button></div></div>`);
+ setTimeout(()=>bindCustomerPicker('s'),0);
 }
-async function addSale(){const qty=Number($('sQty').value),amount=Number($('sAmount').value);if(!(qty>0)||!(amount>0))return flash(lang==='ar'?'أكمل بيانات السحب':'Complete sale details',true);const {error}=await sb.rpc('add_sale',{p_customer_id:Number($('sCustomer').value),p_product:$('sProduct').value,p_quantity:qty,p_amount:amount,p_order_ref:$('sRef').value.trim()||null});if(error)return flash(error.message,true);closeModal();flash(t('saved'));await refreshAll();}
+async function addSale(){
+ const customerId=Number($('sCustomerId')?.value||0),qty=Number($('sQty').value),amount=Number($('sAmount').value);
+ if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
+ if(!(qty>0)||!(amount>0))return flash(lang==='ar'?'أكمل بيانات السحب':'Complete sale details',true);
+ const {error}=await sb.rpc('add_sale',{p_customer_id:customerId,p_product:$('sProduct').value,p_quantity:qty,p_amount:amount,p_order_ref:$('sRef').value.trim()||null});
+ if(error)return flash(error.message,true);closeModal();flash(t('saved'));await refreshAll();
+}
 function openSaleEditor(id){if(!canManage())return;const x=state.sales.find(s=>Number(s.id)===Number(id));if(!x)return;openModal(lang==='ar'?'تعديل السحب':'Edit Sale',`<div class="form-grid"><div><label>${t('date')}</label><input id="esDate" type="date" value="${x.business_date}"></div><div><label>${t('product')}</label><select id="esProduct">${productOptions(PRODUCT_KEYS.includes(x.product)?x.product:null)}</select></div><div><label>${t('quantity')}</label><input id="esQty" type="number" min="0.01" step="0.01" value="${Number(x.quantity)}"></div><div><label>${t('value')}</label><input id="esAmount" type="number" min="0.01" step="0.01" value="${Number(x.amount)}"></div><div class="full"><label>${t('reference')}</label><input id="esRef" value="${esc(x.order_ref||'')}"></div><div class="full"><button class="btn" id="saveSaleEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveSaleEdit(id){const {error}=await sb.rpc('admin_update_sale',{p_sale_id:id,p_product:$('esProduct').value,p_quantity:Number($('esQty').value),p_amount:Number($('esAmount').value),p_order_ref:$('esRef').value.trim()||null,p_business_date:$('esDate').value});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 async function deleteSale(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_sale',{p_sale_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
 
 function updateReportStatusFields(){
- const cid=Number($('rCustomer')?.value||0),c=state.customers.find(x=>Number(x.id)===cid),next=$('rNewStatus'),cur=$('rCurrentStatus');if(!c||!next)return;
+ const cid=Number($('rCustomerId')?.value||0),c=state.customers.find(x=>Number(x.id)===cid),next=$('rNewStatus'),cur=$('rCurrentStatus');if(!c||!next)return;
  if(cur)cur.value=statusLabel(c.status);
  next.innerHTML=`<option value="">${t('noChange')}</option>`+CHANGE_STATUS_KEYS.filter(k=>k!==c.status).map(k=>`<option value="${k}">${t(k)}</option>`).join('');
 }
 function openReportForm(id=null){
- const selected=state.customers.find(c=>Number(c.id)===Number(id))||state.customers[0];if(!selected)return flash(t('noData'),true);
- openModal(lang==='ar'?'إضافة متابعة عميل':'Add Customer Follow-up',`<div class="danger-note">${lang==='ar'?'التقرير/السبب إلزامي. الحالة الجديدة لا تُحفظ بدون تقرير واضح.':'Report/reason is required. A status change cannot be saved without a clear report.'}</div><div class="form-grid"><div class="full"><label>${lang==='ar'?'بحث عن العميل':'Search Customer'}</label><input id="rCustomerSearch" autocomplete="off" placeholder="${lang==='ar'?'اكتب اسم العميل أو المنطقة...':'Type customer name or area...'}"></div><div class="full"><label>${t('customer')}</label><select id="rCustomer">${customerSearchOptions('',selected.id)}</select></div><div><label>${t('action')}</label><select id="rAction">${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div><div><label>${lang==='ar'?'الحالة الحالية':'Current Status'}</label><input id="rCurrentStatus" readonly></div><div><label>${t('newStatus')}</label><select id="rNewStatus"></select></div><div class="full"><label>${t('reason')}</label><textarea id="rNote" rows="4"></textarea></div><div class="full"><button class="btn" id="saveReportBtn">${t('save')}</button></div></div>`);
- setTimeout(()=>{bindCustomerSearch('rCustomerSearch','rCustomer',updateReportStatusFields);updateReportStatusFields();},0);
+ const selected=state.customers.find(c=>Number(c.id)===Number(id))||null;if(!state.customers.length)return flash(t('noData'),true);
+ openModal(lang==='ar'?'إضافة متابعة عميل':'Add Customer Follow-up',`<div class="danger-note">${lang==='ar'?'التقرير/السبب إلزامي. الحالة الجديدة لا تُحفظ بدون تقرير واضح.':'Report/reason is required. A status change cannot be saved without a clear report.'}</div><div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('r',selected?.id||null)}</div><div><label>${t('action')}</label><select id="rAction">${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div><div><label>${lang==='ar'?'الحالة الحالية':'Current Status'}</label><input id="rCurrentStatus" readonly></div><div><label>${t('newStatus')}</label><select id="rNewStatus"></select></div><div class="full"><label>${t('reason')}</label><textarea id="rNote" rows="4"></textarea></div><div class="full"><button class="btn" id="saveReportBtn">${t('save')}</button></div></div>`);
+ setTimeout(()=>{bindCustomerPicker('r',updateReportStatusFields);updateReportStatusFields();},0);
 }
-async function addReport(){const note=$('rNote').value.trim(),newStatus=$('rNewStatus').value||null;if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً أو سبباً واضحاً':'Enter a clear report or reason',true);const {error}=await sb.rpc('add_report',{p_customer_id:Number($('rCustomer').value),p_action_code:$('rAction').value,p_note:note,p_new_status:newStatus});if(error)return flash(error.message,true);closeModal();flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));await refreshAll();}
+async function addReport(){
+ const customerId=Number($('rCustomerId')?.value||0),note=$('rNote').value.trim(),newStatus=$('rNewStatus').value||null;
+ if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
+ if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً أو سبباً واضحاً':'Enter a clear report or reason',true);
+ const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:$('rAction').value,p_note:note,p_new_status:newStatus});
+ if(error)return flash(error.message,true);closeModal();flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));await refreshAll();
+}
 function openReportEditor(id){if(!canManage())return;const r=state.reports.find(x=>Number(x.id)===Number(id));if(!r)return;openModal(lang==='ar'?'تعديل المتابعة':'Edit Follow-up',`<div class="form-grid"><div><label>${t('action')}</label><select id="erAction">${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}" ${r.action_code===k?'selected':''}>${t(k)}</option>`).join('')}</select></div><div class="full"><label>${t('reason')}</label><textarea id="erNote" rows="5">${esc(r.note)}</textarea></div><div class="full"><button class="btn" id="saveReportEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveReportEdit(id){const note=$('erNote').value.trim();if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً واضحاً':'Enter a clear report',true);const {error}=await sb.rpc('admin_update_report',{p_report_id:id,p_action_code:$('erAction').value,p_note:note});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 async function deleteReport(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_report',{p_report_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}

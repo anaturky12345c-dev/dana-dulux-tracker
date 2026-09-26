@@ -365,7 +365,7 @@ function openTaskForm(id){
   var html='<div class="form-grid">'
     +'<div class="full"><label>'+tx('عنوان المهمة','Task title')+'</label><input id="wTaskTitle" value="'+e(x&&x.title||'')+'"></div>'
     +'<div class="full"><label>'+tx('تفاصيل المهمة','Task details')+'</label><textarea id="wTaskDetails" rows="4">'+e(x&&x.details||'')+'</textarea></div>'
-    +'<div><label>'+tx('نوع المهمة','Task type')+'</label><select id="wTaskType">'+typeOptions(x&&x.task_type||'product_presentation')+'</select></div>'
+    +'<div><label>'+tx('نوع المهمة','Task type')+'</label><input id="wTaskType" maxlength="20" value="'+e(x&&x.task_type?taskTypeLabel(x.task_type):'')+'" placeholder="'+tx('مثال: عرض منتج','Example: Product demo')+'"><div class="small">'+tx('حد أقصى 20 حرف','Maximum 20 characters')+'</div></div>'
     +'<div><label>'+tx('الأولوية','Priority')+'</label><select id="wTaskPriority">'+priorityOptions(x&&x.priority||'normal')+'</select></div>'
     +'<div><label>'+tx('المندوب','Representative')+'</label><select id="wTaskRep">'+repOptions(repId)+'</select></div>'
     +'<div><label>'+tx('العميل','Customer')+'</label><select id="wTaskCustomer">'+customerOptions(repId,x&&x.customer_id)+'</select></div>'
@@ -385,13 +385,14 @@ function openTaskForm(id){
 async function saveTask(id){
   var title=(byId('wTaskTitle')&&byId('wTaskTitle').value||'').trim();
   var details=(byId('wTaskDetails')&&byId('wTaskDetails').value||'').trim();
-  var type=byId('wTaskType')&&byId('wTaskType').value;
+  var type=(byId('wTaskType')&&byId('wTaskType').value||'').trim();
   var rep=byId('wTaskRep')&&byId('wTaskRep').value;
   var customer=byId('wTaskCustomer')&&byId('wTaskCustomer').value||null;
   var product=byId('wTaskProduct')&&byId('wTaskProduct').value||null;
   var priority=byId('wTaskPriority')&&byId('wTaskPriority').value;
   var deadline=byId('wTaskDeadline')&&byId('wTaskDeadline').value;
   if(title.length<3)return app.flash(tx('اكتب عنوان المهمة.','Enter a task title.'),true);
+  if(type.length<1||type.length>20)return app.flash(tx('نوع المهمة يجب أن يكون من 1 إلى 20 حرف.','Task type must be 1 to 20 characters.'),true);
   if(!rep)return app.flash(tx('اختر المندوب.','Select a representative.'),true);
   if(!deadline)return app.flash(tx('حدد الموعد النهائي.','Set the deadline.'),true);
   var args={p_title:title,p_details:details||null,p_task_type:type,p_assigned_rep:rep,p_customer_id:customer?Number(customer):null,p_product_code:product,p_priority:priority,p_deadline:deadlineIso(deadline)};

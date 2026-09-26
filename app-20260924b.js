@@ -72,6 +72,7 @@ const dateOnly=d=>d?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateSty
 const todayRiyadh=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const dateKeyRiyadh=iso=>iso?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso)):'';
 const monthRiyadh=()=>todayRiyadh().slice(0,7);
+const googleMapsDirectionsUrl=(lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${Number(lat)},${Number(lng)}`)}`;
 const isAdmin=()=>state.profile?.role==='admin';
 const isManager=()=>state.profile?.role==='manager';
 const canManage=()=>isAdmin()||isManager();
@@ -421,13 +422,15 @@ function setupAnalytics(){const r=$('analyticsRep');if(r)r.innerHTML=`<option va
 async function openCustomer(id){
  const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c)return;
  const ac=activityForCustomer(id);
+ const locRes=await sb.from('customer_locations').select('lat,lng').eq('customer_id',id).maybeSingle();
+ const loc=locRes.data||null;
  const hs=await sb.from('customer_status_history').select('id,old_status,new_status,reason,method,created_at,actor:profiles!customer_status_history_changed_by_fkey(full_name)').eq('customer_id',id).order('created_at',{ascending:false});
  const sales=state.sales.filter(x=>Number(x.customer_id)===Number(id)).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
  const reps=state.reports.filter(r=>Number(r.customer_id)===Number(id));
  const managementButtons=canManage()?`<button class="btn secondary" data-edit-customer="${c.id}">${t('edit')}</button><button class="btn secondary" data-edit-location="${c.id}">${lang==='ar'?'تعديل الموقع':'Edit Location'}</button>`:'';
  const fullAdminButtons=isAdmin()?`<button class="btn secondary" data-change-status="${c.id}">${lang==='ar'?'تغيير الحالة':'Change Status'}</button><button class="btn bad" data-delete-customer="${c.id}">${t('del')}</button>`:'';
  openModal(c.name,`
- <div class="detail-grid"><div><b>${t('area')}</b>${esc(c.area||'-')}</div><div><b>${t('representative')}</b>${esc(c.rep?.full_name||'-')}</div><div><b>${t('status')}</b>${badgeStatus(c.status)}</div><div><b>${t('phone')}</b>${esc(c.phone||'-')}</div></div>
+ <div class="detail-grid"><div><b>${t('area')}</b>${esc(c.area||'-')}</div><div><b>${t('representative')}</b>${esc(c.rep?.full_name||'-')}</div><div><b>${t('status')}</b>${badgeStatus(c.status)}</div><div><b>${t('phone')}</b>${esc(c.phone||'-')}</div><div><b>${lang==='ar'?'موقع العميل':'Customer Location'}</b>${loc?`<a class="btn secondary mini" href="${googleMapsDirectionsUrl(loc.lat,loc.lng)}" target="_blank" rel="noopener noreferrer">${lang==='ar'?'فتح في Google Maps':'Open in Google Maps'}</a>`:`<span class="small">${lang==='ar'?'غير متوفر':'Not available'}</span>`}</div></div>
  <div class="account-summary"><div><b>${t('salesCountMonth')}</b><strong>${ac.monthSalesCount}</strong></div><div><b>${t('salesValueMonth')}</b><strong>${money(ac.monthSalesValue)}</strong></div><div><b>${lang==='ar'?'آخر سحب':'Last Sale'}</b><strong>${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</strong></div></div>
  <div class="toolbar">${c.status==='active'?`<button class="btn" data-add-sale="${c.id}">${t('recordSale')}</button>`:`<button class="btn" type="button" disabled title="${lang==='ar'?'غيّر حالة العميل إلى نشط عن طريق المتابعة أولاً':'Change the customer to Active through follow-up first'}">${t('recordSale')}</button>`}<button class="btn secondary" data-add-report="${c.id}">${t('addFollowup')}</button>${managementButtons}${fullAdminButtons}</div>${c.status!=='active'?`<div class="security-warn" style="margin-top:10px">${lang==='ar'?'لا يمكن تسجيل طلبية أو سحب لهذا العميل حتى يتم تغيير حالته إلى نشط عن طريق متابعة العملاء.':'A sale cannot be recorded until the customer is changed to Active through customer follow-up.'}</div>`:''}
  <h4>${t('sales')}</h4><div class="table-wrap"><table><thead><tr><th>${t('date')}</th><th>${t('product')}</th><th>${t('quantity')}</th><th>${t('value')}</th><th>${t('reference')}</th><th></th></tr></thead><tbody>${sales.length?sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(productLabel(x.product))}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.order_ref||'-')}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-sale="${x.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-sale="${x.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="6" class="empty">${t('noData')}</td></tr>`}</tbody></table></div>
@@ -554,7 +557,10 @@ function drawMapMarkers(){
   const ac=activityForCustomer(c.id),category=customerCategory(c);if(filter&&category!==filter)continue;if(q&&!`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q))continue;
   const m=L.marker([x.lat,x.lng],{icon:markerIcon(category)}).addTo(state.markerLayer),div=document.createElement('div');div.dir=lang==='ar'?'rtl':'ltr';div.style.minWidth='230px';
   div.innerHTML=`<b>${esc(c.name)}</b><br>${esc(c.area||'')}<br>${esc(c.rep?.full_name||'')}<br>${t('status')}: ${esc(statusLabel(c.status))}${category==='frequent'?'<br><b class="finance-ok">★ '+(lang==='ar'?'سحب أكثر من مرة هذا الشهر':'Repeated sale this month')+'</b>':''}<div class="popup-finance">${t('salesCountMonth')}: ${ac.monthSalesCount}<br>${t('salesValueMonth')}: ${money(ac.monthSalesValue)}</div>`;
-  const btn=document.createElement('button');btn.className='btn secondary';btn.style.marginTop='7px';btn.textContent=t('view');btn.addEventListener('click',()=>openCustomer(c.id));div.appendChild(btn);m.bindPopup(div);bounds.push([x.lat,x.lng]);
+  const actions=document.createElement('div');actions.style.display='flex';actions.style.gap='6px';actions.style.flexWrap='wrap';actions.style.marginTop='7px';
+  const btn=document.createElement('button');btn.className='btn secondary';btn.textContent=t('view');btn.addEventListener('click',()=>openCustomer(c.id));actions.appendChild(btn);
+  const g=document.createElement('a');g.className='btn secondary';g.textContent=lang==='ar'?'Google Maps':'Google Maps';g.href=googleMapsDirectionsUrl(x.lat,x.lng);g.target='_blank';g.rel='noopener noreferrer';actions.appendChild(g);
+  div.appendChild(actions);m.bindPopup(div);bounds.push([x.lat,x.lng]);
  }
  if(bounds.length)state.map.fitBounds(bounds,{padding:[30,30],maxZoom:14});
 }

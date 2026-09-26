@@ -162,13 +162,57 @@ async function showMFAChallengeGate(){
  showSecurityGate(ar?'رمز التحقق للإدارة':'Admin verification code',`<div class="security-warn">${ar?'أدخل الرمز الحالي من تطبيق المصادقة.':'Enter the current code from your authenticator app.'}</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>${ar?'رمز التحقق (6 أرقام)':'Verification code (6 digits)'}</label><input id="mfaChallengeCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><div class="full"><button class="btn" id="verifyMfaChallengeBtn">${ar?'تحقق وادخل':'Verify and continue'}</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'mfa-challenge');
 }
 async function showMFAEnrollGate(){
- const ar=lang==='ar';showSecurityGate(ar?'تفعيل التحقق بخطوتين للإدارة':'Enable admin two-factor authentication',`<div class="small">${ar?'جاري تجهيز رمز الحماية...':'Preparing security code...'}</div>`,'mfa-enroll-loading');
- const listed=await sb.auth.mfa.listFactors();if(listed.data?.totp?.some(x=>x.status==='verified'))return showMFAChallengeGate();
- for(const f of (listed.data?.totp||[])){if(f.status!=='verified')await sb.auth.mfa.unenroll({factorId:f.id}).catch(()=>{});}
- const {data,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Dana Al-Taj Admin'});
- if(error){showSecurityGate(ar?'تعذر تفعيل التحقق بخطوتين':'Could not enable two-factor authentication',`<div class="security-error">${esc(error.message)}</div>`,'mfa-error');return;}
+ const ar=lang==='ar';
+ showSecurityGate(ar?'تفعيل التحقق بخطوتين للإدارة':'Enable admin two-factor authentication',`<div class="small">${ar?'جاري تجهيز رمز الحماية...':'Preparing security code...'}</div>`,'mfa-enroll-loading');
+
+ const listed=await sb.auth.mfa.listFactors();
+ if(listed.error){
+   showSecurityGate(ar?'تعذر فحص التحقق بخطوتين':'Could not check two-factor authentication',`<div class="security-error">${esc(listed.error.message||'')}</div><div style="margin-top:12px"><button class="btn" id="retryMfaSetupBtn">${ar?'إعادة المحاولة':'Retry'}</button></div>`,'mfa-error');
+   setTimeout(()=>{const b=$('retryMfaSetupBtn');if(b)b.onclick=showMFAEnrollGate;},0);
+   return;
+ }
+ if(listed.data?.totp?.some(x=>x.status==='verified'))return showMFAChallengeGate();
+
+ // A page refresh can leave an unfinished TOTP factor behind. Remove it explicitly
+ // before creating a fresh QR code; Supabase returns errors in the result object,
+ // not as rejected promises.
+ const stale=(listed.data?.totp||[]).filter(x=>x.status!=='verified');
+ for(const f of stale){
+   const removed=await sb.auth.mfa.unenroll({factorId:f.id});
+   if(removed.error){
+     showSecurityGate(
+       ar?'إعادة تجهيز التحقق بخطوتين':'Reset two-factor setup',
+       `<div class="security-error">${ar?'يوجد إعداد تحقق غير مكتمل من محاولة سابقة. اضغط إعادة المحاولة لتنظيفه وإنشاء رمز جديد.':'An unfinished verification setup exists from a previous attempt. Retry to clean it up and create a new code.'}</div><div style="margin-top:12px"><button class="btn" id="retryMfaSetupBtn">${ar?'إعادة المحاولة':'Retry'}</button></div>`,
+       'mfa-error'
+     );
+     setTimeout(()=>{const b=$('retryMfaSetupBtn');if(b)b.onclick=showMFAEnrollGate;},0);
+     return;
+   }
+ }
+
+ // Re-check after cleanup so a stale factor cannot block a new enrollment.
+ const afterCleanup=await sb.auth.mfa.listFactors();
+ if(afterCleanup.data?.totp?.some(x=>x.status==='verified'))return showMFAChallengeGate();
+ const stillStale=(afterCleanup.data?.totp||[]).filter(x=>x.status!=='verified');
+ if(stillStale.length){
+   showSecurityGate(
+     ar?'إعادة تجهيز التحقق بخطوتين':'Reset two-factor setup',
+     `<div class="security-error">${ar?'تعذر تنظيف إعداد التحقق السابق. سجل خروج ثم ادخل مرة أخرى واضغط إعادة المحاولة.':'Could not clear the previous verification setup. Sign out, sign in again, then retry.'}</div><div style="margin-top:12px"><button class="btn" id="retryMfaSetupBtn">${ar?'إعادة المحاولة':'Retry'}</button></div>`,
+     'mfa-error'
+   );
+   setTimeout(()=>{const b=$('retryMfaSetupBtn');if(b)b.onclick=showMFAEnrollGate;},0);
+   return;
+ }
+
+ const friendlyName='Dana Al-Taj Admin '+Date.now().toString().slice(-6);
+ const {data,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName});
+ if(error){
+   showSecurityGate(ar?'تعذر تفعيل التحقق بخطوتين':'Could not enable two-factor authentication',`<div class="security-error">${ar?'تعذر إنشاء رمز تحقق جديد. اضغط إعادة المحاولة.':'Could not create a new verification code. Retry.'}</div><div style="margin-top:12px"><button class="btn" id="retryMfaSetupBtn">${ar?'إعادة المحاولة':'Retry'}</button></div>`,'mfa-error');
+   setTimeout(()=>{const b=$('retryMfaSetupBtn');if(b)b.onclick=showMFAEnrollGate;},0);
+   return;
+ }
  state.mfaFactorId=data.id;
- showSecurityGate(ar?'تفعيل التحقق بخطوتين للإدارة':'Enable admin two-factor authentication',`<div class="security-warn">${ar?'امسح QR بتطبيق Google Authenticator أو Microsoft Authenticator ثم أدخل الرمز.':'Scan the QR code with Google Authenticator or Microsoft Authenticator, then enter the code.'}</div><img class="mfa-qr" alt="MFA QR" src="${esc(data.totp?.qr_code||'')}"><div class="small">${ar?'المفتاح اليدوي:':'Manual key:'}</div><div class="security-secret">${esc(data.totp?.secret||'')}</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>${ar?'رمز التحقق':'Verification code'}</label><input id="mfaEnrollCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><div class="full"><button class="btn" id="verifyMfaEnrollBtn">${ar?'تفعيل الحماية':'Enable protection'}</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'mfa-enroll');
+ showSecurityGate(ar?'تفعيل التحقق بخطوتين للإدارة':'Enable admin two-factor authentication',`<div class="security-warn">${ar?'امسح رمز QR الجديد بتطبيق Google Authenticator أو Microsoft Authenticator ثم أدخل الرمز. إذا حدث تحديث للصفحة، استخدم رمز QR الذي يظهر بعد التحديث فقط.':'Scan the new QR code with Google Authenticator or Microsoft Authenticator, then enter the code. If the page refreshes, use only the QR code shown after the refresh.'}</div><img class="mfa-qr" alt="MFA QR" src="${esc(data.totp?.qr_code||'')}"><div class="small">${ar?'المفتاح اليدوي:':'Manual key:'}</div><div class="security-secret">${esc(data.totp?.secret||'')}</div><div class="form-grid" style="margin-top:12px"><div class="full"><label>${ar?'رمز التحقق':'Verification code'}</label><input id="mfaEnrollCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div><div class="full"><button class="btn" id="verifyMfaEnrollBtn">${ar?'تفعيل الحماية':'Enable protection'}</button></div><div id="gateSecurityMsg" class="full small"></div></div>`,'mfa-enroll');
 }
 async function verifyMFA(code){
  const msg=$('gateSecurityMsg'),ar=lang==='ar';

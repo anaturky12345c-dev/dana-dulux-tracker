@@ -4,14 +4,14 @@
 const cfg = window.DANA_CONFIG || {};
 const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_URL.includes('PASTE_') && !cfg.SUPABASE_ANON_KEY.includes('PASTE_');
 const sb = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}) : null;
-const USERS = {admin:'admin@dana.local',management:'management@dana.local',mohsen:'mohsen@dana.local',majdi:'majdi@dana.local',saeed:'saeed@dana.local',yaqoub:'yaqoub@dana.local',omar:'omar@dana.local'};
+const USERS = {admin:'admin@dana.local',management:'management@dana.local',mohsen:'mohsen@dana.local',majdi:'majdi@dana.local',saeed:'saeed@dana.local',yaqoub:'yaqoub@dana.local',omar:'omar@dana.local',mowazaa:'mowazaa@dana.local','موزع':'mowazaa@dana.local',mutasim:'mutasim@dana.local','معتصم':'mutasim@dana.local'};
 
 let lang=localStorage.getItem('dana_lang')||'ar';
 const I18N={
  ar:{
   signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعة العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
   new:'جديد',active:'نشط',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
-  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',
+  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
   company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
@@ -28,7 +28,7 @@ const I18N={
  en:{
   signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
   new:'New',active:'Active',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
-  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',
+  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
   company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
@@ -49,7 +49,7 @@ const actionLabel=k=>I18N[lang][k]||k||'-';
 const productLabel=k=>I18N[lang][k]||k||'-';
 const STATUS_KEYS=['new','active','hesitant','rejected'];
 const CHANGE_STATUS_KEYS=['active','hesitant','rejected'];
-const FOLLOW_ACTION_KEYS=['admin_intervention','review_next_week','sample_request'];
+const FOLLOW_ACTION_KEYS=['admin_intervention','review_next_week','sample_request','customer_agreed'];
 const PRODUCT_KEYS=['dulux_emulsion','dulux_oil','leafs_tinting','dulux_polyurethane'];
 const ACTION = {
  customer_created:'Customer created',customer_updated:'Customer updated',customer_deleted:'Customer deleted',
@@ -304,10 +304,13 @@ function renderGoalScope(scope,repId,label){
 }
 function renderGoalsDashboard(){
  const box=$('goalsDashboard');if(!box)return;
- let html=renderGoalScope('company',null,t('company'));
- if(canManage()){for(const p of state.profiles.filter(x=>x.role==='rep'))html+=renderGoalScope('rep',p.id,p.full_name);}
- else html+=renderGoalScope('rep',state.profile.id,state.profile.full_name);
- box.innerHTML=html;
+ if(isAdmin()){
+   let html=renderGoalScope('company',null,t('company'));
+   for(const p of state.profiles.filter(x=>x.role==='rep'))html+=renderGoalScope('rep',p.id,p.full_name);
+   box.innerHTML=html;
+ }else{
+   box.innerHTML=renderGoalScope('rep',state.profile.id,state.profile.full_name);
+ }
 }
 function openGoalsEditor(){
  if(!isAdmin())return;

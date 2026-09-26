@@ -11,7 +11,7 @@ const I18N={
  ar:{
   signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعة العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
   new:'جديد',active:'نشط',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
-  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',
+  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',management_response:'متابعة الإدارة',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
   company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
@@ -28,7 +28,7 @@ const I18N={
  en:{
   signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
   new:'New',active:'Active',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
-  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',
+  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',management_response:'Management follow-up',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
   company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
@@ -50,6 +50,7 @@ const productLabel=k=>I18N[lang][k]||k||'-';
 const STATUS_KEYS=['new','active','hesitant','rejected'];
 const CHANGE_STATUS_KEYS=['active','hesitant','rejected'];
 const FOLLOW_ACTION_KEYS=['admin_intervention','review_next_week','sample_request','customer_agreed'];
+const EDIT_ACTION_KEYS=[...FOLLOW_ACTION_KEYS,'management_response'];
 const PRODUCT_KEYS=['dulux_emulsion','dulux_oil','leafs_tinting','dulux_polyurethane'];
 const ACTION = {
  customer_created:'Customer created',customer_updated:'Customer updated',customer_deleted:'Customer deleted',
@@ -538,7 +539,7 @@ async function addReport(){
  const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:$('rAction').value,p_note:note,p_new_status:newStatus});
  if(error)return flash(error.message,true);closeModal();flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));await refreshAll();
 }
-function openReportEditor(id){if(!canManage())return;const r=state.reports.find(x=>Number(x.id)===Number(id));if(!r)return;openModal(lang==='ar'?'تعديل المتابعة':'Edit Follow-up',`<div class="form-grid"><div><label>${t('action')}</label><select id="erAction">${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}" ${r.action_code===k?'selected':''}>${t(k)}</option>`).join('')}</select></div><div class="full"><label>${t('reason')}</label><textarea id="erNote" rows="5">${esc(r.note)}</textarea></div><div class="full"><button class="btn" id="saveReportEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
+function openReportEditor(id){if(!canManage())return;const r=state.reports.find(x=>Number(x.id)===Number(id));if(!r)return;openModal(lang==='ar'?'تعديل المتابعة':'Edit Follow-up',`<div class="form-grid"><div><label>${t('action')}</label><select id="erAction">${EDIT_ACTION_KEYS.map(k=>`<option value="${k}" ${r.action_code===k?'selected':''}>${t(k)}</option>`).join('')}</select></div><div class="full"><label>${t('reason')}</label><textarea id="erNote" rows="5">${esc(r.note)}</textarea></div><div class="full"><button class="btn" id="saveReportEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveReportEdit(id){const note=$('erNote').value.trim();if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً واضحاً':'Enter a clear report',true);const {error}=await sb.rpc('admin_update_report',{p_report_id:id,p_action_code:$('erAction').value,p_note:note});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 async function deleteReport(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_report',{p_report_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
 

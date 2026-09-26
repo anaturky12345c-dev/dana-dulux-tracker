@@ -55,12 +55,12 @@ function taskDerivedStatus(x){
   return x.status;
 }
 function taskStatusLabel(k){
-  var ar={new:'جديدة',in_progress:'قيد التنفيذ',completed:'مكتملة',overdue:'متأخرة'};
-  var en={new:'New',in_progress:'In progress',completed:'Completed',overdue:'Overdue'};
+  var ar={open:'مفتوحة',completed:'مكتملة',overdue:'متأخرة'};
+  var en={open:'Open',completed:'Completed',overdue:'Overdue'};
   return (isAr()?ar:en)[k]||k||'-';
 }
 function taskBadge(k){
-  var cls={new:'b-info',in_progress:'b-warn',completed:'b-good',overdue:'b-bad'}[k]||'b-gray';
+  var cls={open:'b-info',completed:'b-good',overdue:'b-bad'}[k]||'b-gray';
   return '<span class="badge '+cls+'">'+e(taskStatusLabel(k))+'</span>';
 }
 function deadlineInputValue(iso){
@@ -140,7 +140,7 @@ function injectUi(){
     var sec=document.createElement('section');
     sec.id='tasks';
     sec.className='section';
-    sec.innerHTML='<div class="toolbar"><button class="btn" id="newTaskBtn"></button><input id="taskSearch" class="search"><select id="taskStatusFilter"><option value=""></option><option value="new"></option><option value="in_progress"></option><option value="overdue"></option><option value="completed"></option></select></div><div class="table-wrap"><table id="tasksTable"><thead><tr><th id="thDeadline"></th><th id="thTask"></th><th id="thType"></th><th id="thCustomer"></th><th id="thRep"></th><th id="thPriority"></th><th id="thTaskStatus"></th><th id="thResult"></th><th id="thActions"></th></tr></thead><tbody id="tasksBody"></tbody></table></div>';
+    sec.innerHTML='<div class="toolbar"><button class="btn" id="newTaskBtn"></button><input id="taskSearch" class="search"><select id="taskStatusFilter"><option value=""></option><option value="open"></option><option value="overdue"></option><option value="completed"></option></select></div><div class="table-wrap"><table id="tasksTable"><thead><tr><th id="thDeadline"></th><th id="thTask"></th><th id="thType"></th><th id="thCustomer"></th><th id="thRep"></th><th id="thPriority"></th><th id="thTaskStatus"></th><th id="thResult"></th><th id="thActions"></th></tr></thead><tbody id="tasksBody"></tbody></table></div>';
     main.appendChild(sec);
   }
 
@@ -177,7 +177,7 @@ function renderLabels(){
   var s=byId('taskSearch');if(s)s.placeholder=tx('ابحث بالمهمة أو العميل أو المندوب...','Search task, customer or representative...');
   var f=byId('taskStatusFilter');
   if(f){
-    var labs={'':tx('كل حالات المهام','All task statuses'),new:tx('جديدة','New'),in_progress:tx('قيد التنفيذ','In progress'),overdue:tx('متأخرة','Overdue'),completed:tx('مكتملة','Completed')};
+    var labs={'':tx('كل حالات المهام','All task statuses'),open:tx('مفتوحة','Open'),overdue:tx('متأخرة','Overdue'),completed:tx('مكتملة','Completed')};
     Array.prototype.forEach.call(f.options,function(o){o.textContent=labs[o.value]||o.value;});
   }
   setText('thDeadline',tx('الموعد النهائي','Deadline'));
@@ -272,7 +272,6 @@ function renderTasks(){
     body.innerHTML=rows.length?rows.map(function(x){
       var ds=taskDerivedStatus(x),actions=[];
       if(!isManagement()&&x.status!=='completed'){
-        if(x.status==='new')actions.push('<button class="btn secondary mini" data-w-start-task="'+x.id+'">'+tx('بدء المهمة','Start task')+'</button>');
         actions.push('<button class="btn good mini" data-w-complete-task="'+x.id+'">'+tx('إكمال المهمة','Complete task')+'</button>');
       }
       if(isManagement()){
@@ -412,12 +411,6 @@ async function saveTask(id){
   await app.refreshAll();
 }
 
-async function startTask(id){
-  var res=await sb.rpc('update_task_status',{p_task_id:Number(id),p_status:'in_progress',p_result:null});
-  if(res.error)return app.flash(res.error.message,true);
-  app.flash(tx('تم بدء المهمة.','Task started.'));
-  await app.refreshAll();
-}
 function openCompleteTask(id){
   var x=tasks.find(function(z){return Number(z.id)===Number(id);});if(!x)return;
   app.openModal(tx('إكمال المهمة','Complete task'),'<div><b>'+e(x.title)+'</b></div><div style="margin-top:12px"><label>'+tx('نتيجة المهمة','Task result')+'</label><textarea id="wTaskResult" rows="5"></textarea></div><button class="btn good" style="margin-top:12px" id="wConfirmCompleteTask" data-id="'+x.id+'">'+tx('إكمال المهمة','Complete task')+'</button>');
@@ -476,7 +469,6 @@ function bindEvents(){
     if((b=ev.target.closest('#newTaskBtn'))){openTaskForm(null);return;}
     if((b=ev.target.closest('[data-w-follow]'))){app.openReportForm(Number(b.getAttribute('data-w-follow')));return;}
     if((b=ev.target.closest('[data-w-resolve]'))){openManagementResolution(Number(b.getAttribute('data-w-resolve')));return;}
-    if((b=ev.target.closest('[data-w-start-task]'))){startTask(Number(b.getAttribute('data-w-start-task')));return;}
     if((b=ev.target.closest('[data-w-complete-task]'))){openCompleteTask(Number(b.getAttribute('data-w-complete-task')));return;}
     if((b=ev.target.closest('[data-w-edit-task]'))){openTaskForm(Number(b.getAttribute('data-w-edit-task')));return;}
     if((b=ev.target.closest('[data-w-delete-task]'))){deleteTask(Number(b.getAttribute('data-w-delete-task')));return;}

@@ -203,7 +203,7 @@ function boot(){
     const s=String(total%60).padStart(2,'0');
     timer.textContent=h+':'+m+':'+s;
     if(label)label.textContent=ar()?'البحث التلقائي القادم بعد':'Next automatic search in';
-    if(note)note.textContent=ar()?'يومياً الساعة 8:00 صباحاً · 3 دفعات · حتى 30 فرصة':'Daily at 8:00 AM · 3 batches · up to 30 opportunities';
+    if(note)note.textContent=ar()?'يومياً الساعة 8:00 صباحاً · الهدف 30 مشروع ومصنع':'Daily at 8:00 AM · target: 30 projects & factories';
   }
 
   function startAgentTimer(){

@@ -81,6 +81,12 @@ function injectStyle(){
   st.id='workloadStyles';
   st.textContent=[
     '.workload-card{margin-top:14px}',
+    '.workload-collapsed-head{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}',
+    '.workload-collapsed-head h3{margin:0}',
+    '.workload-collapse-count{min-width:30px;text-align:center}',
+    '.workload-collapse-arrow{font-size:18px;transition:transform .15s ease}',
+    '.workload-collapsed-head.open .workload-collapse-arrow{transform:rotate(180deg)}',
+    '.workload-collapse-body{margin-top:12px}',
     '.workload-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}',
     '.workload-head h3{margin:0}',
     '.workload-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-bottom:10px}',
@@ -118,7 +124,7 @@ function injectUi(){
     var f=document.createElement('div');
     f.className='card workload-card';
     f.id='workloadFollowupDashboard';
-    f.innerHTML='<div class="workload-head"><h3 id="workloadFollowupDashboardTitle"></h3><button class="btn secondary mini" id="openFollowupsBtn"></button></div><div class="workload-metrics"><div class="workload-metric"><span id="followTodayLabel"></span><b id="followTodayCount">0</b></div><div class="workload-metric"><span id="followOverdueLabel"></span><b id="followOverdueCount">0</b></div><div class="workload-metric"><span id="followManagementLabel"></span><b id="followManagementCount">0</b></div></div><div id="workloadFollowupPreview" class="workload-list"></div>';
+    f.innerHTML='<div class="workload-collapsed-head" id="workloadFollowupToggle" role="button" tabindex="0" aria-expanded="false"><div><h3 id="workloadFollowupDashboardTitle"></h3><div class="small" id="workloadFollowupHint"></div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn workload-collapse-count" id="followRequiredCount">0</span><span class="workload-collapse-arrow">⌄</span></div></div><div id="workloadFollowupBody" class="workload-collapse-body hidden"><div class="workload-head"><span></span><button class="btn secondary mini" id="openFollowupsBtn"></button></div><div class="workload-metrics"><div class="workload-metric"><span id="followTodayLabel"></span><b id="followTodayCount">0</b></div><div class="workload-metric"><span id="followOverdueLabel"></span><b id="followOverdueCount">0</b></div><div class="workload-metric"><span id="followManagementLabel"></span><b id="followManagementCount">0</b></div></div><div id="workloadFollowupPreview" class="workload-list"></div></div>';
     if(repSummary&&repSummary.nextSibling)dashboard.insertBefore(f,repSummary.nextSibling);else dashboard.appendChild(f);
   }
   if(TASKS_ENABLED&&dashboard&&!byId('workloadTaskDashboard')){
@@ -157,8 +163,9 @@ function setText(id,value){
 function renderLabels(){
   if(TASKS_ENABLED)setText('tasksNavBtn',tx('المهام','Tasks'));
   if(byId('tasks')&&byId('tasks').classList.contains('active'))setText('pageTitle',tx('المهام','Tasks'));
-  setText('workloadFollowupDashboardTitle',tx('متابعة العملاء المطلوبة','Required customer follow-ups'));
-  setText('openFollowupsBtn',tx('عرض قائمة المتابعات','View follow-up list'));
+  setText('workloadFollowupDashboardTitle',tx('المتابعات المطلوبة','Required follow-ups'));
+  setText('workloadFollowupHint',tx('اضغط لعرض العملاء','Tap to view customers'));
+  setText('openFollowupsBtn',tx('عرض القائمة كاملة','View full list'));
   setText('followTodayLabel',tx('متابعات اليوم','Follow-ups today'));
   setText('followOverdueLabel',tx('متابعات متأخرة','Overdue follow-ups'));
   setText('followManagementLabel',tx('بانتظار تدخل الإدارة','Waiting for management'));
@@ -245,6 +252,7 @@ function renderFollowups(){
   setText('followTodayCount',String(dueToday.length));
   setText('followOverdueCount',String(overdue.length));
   setText('followManagementCount',String(waiting.length));
+  setText('followRequiredCount',String(rows.length));
 
   var upcoming=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)>=n&&dateKey(x.fs.next_due_at)!==td;});
   var preview=overdue.concat(waiting).concat(dueToday).concat(upcoming);
@@ -473,7 +481,17 @@ async function saveManagementResolution(id){
   await app.refreshAll();
 }
 
+function toggleFollowupDashboard(){
+  var body=byId('workloadFollowupBody'),head=byId('workloadFollowupToggle');if(!body||!head)return;
+  var opening=body.classList.contains('hidden');
+  body.classList.toggle('hidden',!opening);
+  head.classList.toggle('open',opening);
+  head.setAttribute('aria-expanded',opening?'true':'false');
+}
+
 function bindEvents(){
+  var ft=byId('workloadFollowupToggle');
+  if(ft&&!ft.dataset.bound){ft.dataset.bound='1';ft.addEventListener('click',toggleFollowupDashboard);ft.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggleFollowupDashboard();}});}
   if(initialized)return;
   initialized=true;
   document.addEventListener('click',function(ev){

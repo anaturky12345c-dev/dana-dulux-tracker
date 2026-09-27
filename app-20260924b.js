@@ -56,7 +56,7 @@ const ACTION = {
  customer_created:'Customer created',customer_updated:'Customer updated',customer_deleted:'Customer deleted',
  status_changed:'Status changed',sale_added:'Sale / withdrawal added',sale_updated:'Sale updated',sale_deleted:'Sale deleted',
  report_added:'Follow-up added',report_updated:'Follow-up updated',report_deleted:'Follow-up deleted',
- location_corrected:'Location corrected',password_changed:'Password changed',performance_goal_updated:'Performance goal updated'
+ location_corrected:'Location corrected',password_changed:'Password changed',password_reset_by_admin:'Representative password reset by admin',performance_goal_updated:'Performance goal updated'
 };
 const MAX_IDLE_MS = 60*60*1000;
 const MAX_SESSION_MS = 8*60*60*1000;

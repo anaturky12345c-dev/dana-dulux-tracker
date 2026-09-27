@@ -4,8 +4,13 @@ window.DANA_CONFIG = {
 };
 
 (() => {
-  const s=document.createElement('script');
-  s.src='./ai-admin-20260927.js?v=20260927-aiaccess1';
-  s.defer=true;
-  document.head.appendChild(s);
+  for (const src of [
+    './ai-admin-20260927.js?v=20260927-aiaccess1',
+    './ai-sources-20260927.js?v=20260927-aisources1'
+  ]) {
+    const s=document.createElement('script');
+    s.src=src;
+    s.defer=true;
+    document.head.appendChild(s);
+  }
 })();

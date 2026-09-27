@@ -168,3 +168,18 @@ html[dir="ltr"] .flash{left:18px;right:auto}html[dir="rtl"] .flash{right:18px;le
 .rep-day-summary b,.rep-ai-metrics b{font-size:18px}
 .rep-ai-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 @media(max-width:600px){.rep-day-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.rep-ai-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.ai-opportunity-section{overflow:hidden}
+.ai-opportunity-card{margin:10px 0;background:#fff}
+.ai-opportunity-card:first-child{margin-top:0}
+.ai-opportunity-card:last-child{margin-bottom:0}
+.ai-intelligence-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.ai-intelligence-grid .notice{margin:0}
+.ai-latest-report{border:1px solid #a7f3d0;background:#ecfdf5;border-radius:11px;padding:11px;margin:8px 0}
+#aiAvailableToggle{padding:2px 0}
+#aiAvailableToggle h3{margin:0 0 3px}
+@media(max-width:700px){
+  .ai-intelligence-grid{grid-template-columns:1fr}
+  .ai-opportunity-card .dashboard-head{display:grid;grid-template-columns:1fr}
+  .ai-opportunity-card .dashboard-head>div:last-child{display:flex;gap:4px;flex-wrap:wrap}
+}

@@ -148,6 +148,19 @@ function boot(){
           return loadAll();
         }
 
+        b=ev.target.closest('[data-ai-cancel-claim]');
+        if(b){
+          const ok=window.confirm(ar()?'هل تريد إلغاء استلام هذا المشروع؟ سيعود للفرص المتاحة.':'Cancel this claimed opportunity? It will return to the available list.');
+          if(!ok)return;
+          b.disabled=true;
+          const {data,error}=await sb.rpc('cancel_ai_opportunity_claim',{p_opportunity_id:b.dataset.id});
+          b.disabled=false;
+          if(error)return flash((ar()?'تعذر إلغاء الاستلام: ':'Could not cancel claim: ')+error.message,true);
+          if(data!==true)return flash(ar()?'تعذر إلغاء الاستلام.':'Could not cancel claim.',true);
+          flash(ar()?'تم إلغاء الاستلام وعادت الفرصة للفرص المتاحة.':'Claim cancelled and the opportunity is available again.');
+          return loadAll();
+        }
+
         b=ev.target.closest('[data-ai-opp-status]');
         if(b&&isManagement()){
           const id=b.dataset.id,status=b.dataset.aiOppStatus;
@@ -345,6 +358,12 @@ function boot(){
     '</div>';
   }
 
+  function claimCancelState(x){
+    if(!x?.claimed_at)return {allowed:false,remainingMinutes:0};
+    const ms=(new Date(x.claimed_at).getTime()+60*60*1000)-Date.now();
+    return {allowed:ms>0,remainingMinutes:Math.max(0,Math.ceil(ms/60000))};
+  }
+
   function renderOpportunityCard(x,rmap,priorityIndex,repBlocked){
     const src=safeUrl(x.source_url),web=safeUrl(x.website),contractorSrc=safeUrl(x.linked_contractor_source_url),maps=googleMapsSearchUrl(x);
     const assignedName=rmap.get(x.assigned_rep)||'-';
@@ -358,20 +377,30 @@ function boot(){
 
     if(isRep()){
       if(x.assigned_rep===state.profile.id&&x.status==='assigned'){
-        actions='<button class="btn '+(due?.overdue?'bad':'good')+'" data-ai-report="1" data-id="'+esc(x.id)+'">'+(ar()?(due?.done?'إضافة تقرير جديد':'رفع التقرير'):(due?.done?'Add another report':'Submit report'))+'</button>';
+        const cancelState=claimCancelState(x);
+        actions='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">'+
+          '<button class="btn '+(due?.overdue?'bad':'good')+'" data-ai-report="1" data-id="'+esc(x.id)+'">'+(ar()?(due?.done?'إضافة تقرير جديد':'رفع التقرير'):(due?.done?'Add another report':'Submit report'))+'</button>'+
+          (cancelState.allowed
+            ?'<button class="btn secondary" data-ai-cancel-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'إلغاء الاستلام · متبقي '+cancelState.remainingMinutes+' د':'Cancel claim · '+cancelState.remainingMinutes+' min left')+'</button>'
+            :'<button class="btn secondary" type="button" disabled>'+(ar()?'انتهت مهلة إلغاء الاستلام':'Claim cancellation window ended')+'</button>')+
+        '</div>';
       }else if(!x.assigned_rep&&['new','reviewed'].includes(x.status)){
         actions=repBlocked
           ?'<button class="btn secondary" type="button" disabled>'+(ar()?'ارفع التقرير المتأخر أولاً':'Submit overdue report first')+'</button>'
           :'<button class="btn good" data-ai-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'استلام الفرصة':'Claim opportunity')+'</button>';
       }
-    }else if(isManagement()&&!x.assigned_rep&&x.status!=='rejected'&&x.status!=='won'&&x.status!=='lost'){
-      const options=['<option value="">'+(ar()?'اختر مندوباً':'Choose representative')+'</option>'].concat((state.profiles||[]).filter(r=>r.role==='rep').map(r=>'<option value="'+esc(r.id)+'">'+esc(r.full_name||r.username)+'</option>')).join('');
-      actions='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">'+
-        (x.status==='new'?'<button class="btn good mini" data-id="'+esc(x.id)+'" data-ai-opp-status="reviewed">'+(ar()?'اعتماد':'Approve')+'</button>':'')+
-        '<button class="btn secondary mini" data-id="'+esc(x.id)+'" data-ai-opp-status="rejected">'+(ar()?'رفض':'Reject')+'</button>'+
-        '<select data-ai-opp-rep="'+esc(x.id)+'" style="max-width:220px">'+options+'</select>'+
-        '<button class="btn mini" data-id="'+esc(x.id)+'" data-ai-opp-assign="1">'+(ar()?'إسناد للمندوب':'Assign')+'</button>'+
-      '</div>';
+    }else if(isManagement()){
+      if(x.assigned_rep&&x.status==='assigned'){
+        actions='<button class="btn secondary" data-ai-cancel-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'إلغاء الاستلام':'Cancel claim')+'</button>';
+      }else if(!x.assigned_rep&&x.status!=='rejected'&&x.status!=='won'&&x.status!=='lost'){
+        const options=['<option value="">'+(ar()?'اختر مندوباً':'Choose representative')+'</option>'].concat((state.profiles||[]).filter(r=>r.role==='rep').map(r=>'<option value="'+esc(r.id)+'">'+esc(r.full_name||r.username)+'</option>')).join('');
+        actions='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">'+
+          (x.status==='new'?'<button class="btn good mini" data-id="'+esc(x.id)+'" data-ai-opp-status="reviewed">'+(ar()?'اعتماد':'Approve')+'</button>':'')+
+          '<button class="btn secondary mini" data-id="'+esc(x.id)+'" data-ai-opp-status="rejected">'+(ar()?'رفض':'Reject')+'</button>'+
+          '<select data-ai-opp-rep="'+esc(x.id)+'" style="max-width:220px">'+options+'</select>'+
+          '<button class="btn mini" data-id="'+esc(x.id)+'" data-ai-opp-assign="1">'+(ar()?'إسناد للمندوب':'Assign')+'</button>'+
+        '</div>';
+      }
     }
 
     const priorityBadge=priorityIndex?'<span class="badge b-info">'+(ar()?'أولوية التواصل #'+priorityIndex:'Contact priority #'+priorityIndex)+'</span>':'';

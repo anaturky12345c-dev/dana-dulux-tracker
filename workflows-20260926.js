@@ -141,7 +141,7 @@ function injectUi(){
     var q=document.createElement('div');
     q.className='card workload-card';
     q.id='followupQueueCard';
-    q.innerHTML='<div class="workload-head"><h3 id="followupQueueTitle"></h3></div><div class="table-wrap followup-desktop-table"><table id="followupQueue"><thead><tr><th id="fqCustomer"></th><th id="fqRep"></th><th id="fqStatus"></th><th id="fqOwner"></th><th id="fqDeadline"></th><th id="fqTiming"></th><th id="fqAction"></th></tr></thead><tbody id="followupQueueBody"></tbody></table></div><div id="followupQueueMobile" class="followup-mobile-list"></div>';
+    q.innerHTML='<div class="workload-collapsed-head" id="followupQueueToggle" role="button" tabindex="0" aria-expanded="false"><div><h3 id="followupQueueTitle"></h3><div class="small" id="followupQueueHint"></div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn workload-collapse-count" id="followupQueueCount">0</span><span class="workload-collapse-arrow">⌄</span></div></div><div id="followupQueueContent" class="workload-collapse-body hidden"><div class="table-wrap followup-desktop-table"><table id="followupQueue"><thead><tr><th id="fqCustomer"></th><th id="fqRep"></th><th id="fqStatus"></th><th id="fqOwner"></th><th id="fqDeadline"></th><th id="fqTiming"></th><th id="fqAction"></th></tr></thead><tbody id="followupQueueBody"></tbody></table></div><div id="followupQueueMobile" class="followup-mobile-list"></div></div>';
     reports.insertBefore(q,reports.firstChild);
   }
 
@@ -176,6 +176,7 @@ function renderLabels(){
   setText('taskUpcomingLabel',tx('مهام قادمة','Upcoming tasks'));
   setText('taskCompletedLabel',tx('مكتملة هذا الشهر','Completed this month'));
   setText('followupQueueTitle',tx('المتابعات المطلوبة','Required follow-ups'));
+  setText('followupQueueHint',tx('اضغط لفتح قائمة العملاء','Tap to open customer list'));
   setText('fqCustomer',tx('العميل','Customer'));
   setText('fqRep',tx('المندوب','Representative'));
   setText('fqStatus',tx('الحالة','Status'));
@@ -229,6 +230,7 @@ function followupAction(row,mini){
 
 function renderFollowups(){
   var rows=followupRows(),body=byId('followupQueueBody');
+  setText('followupQueueCount',String(rows.length));
   if(body){
     body.innerHTML=rows.length?rows.map(function(x){
       var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
@@ -488,10 +490,19 @@ function toggleFollowupDashboard(){
   head.classList.toggle('open',opening);
   head.setAttribute('aria-expanded',opening?'true':'false');
 }
+function toggleFollowupQueue(){
+  var body=byId('followupQueueContent'),head=byId('followupQueueToggle');if(!body||!head)return;
+  var opening=body.classList.contains('hidden');
+  body.classList.toggle('hidden',!opening);
+  head.classList.toggle('open',opening);
+  head.setAttribute('aria-expanded',opening?'true':'false');
+}
 
 function bindEvents(){
   var ft=byId('workloadFollowupToggle');
   if(ft&&!ft.dataset.bound){ft.dataset.bound='1';ft.addEventListener('click',toggleFollowupDashboard);ft.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggleFollowupDashboard();}});}
+  var fq=byId('followupQueueToggle');
+  if(fq&&!fq.dataset.bound){fq.dataset.bound='1';fq.addEventListener('click',toggleFollowupQueue);fq.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggleFollowupQueue();}});}
   if(initialized)return;
   initialized=true;
   document.addEventListener('click',function(ev){

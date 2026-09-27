@@ -185,15 +185,8 @@ function boot(){
 
   function nextAgentCycleAt(now=new Date()){
     const next=new Date(now.getTime());
-    next.setUTCMinutes(0,0,0);
-    const hour=next.getUTCHours();
-    const remainder=hour%4;
-    if(remainder===0&&now.getUTCMinutes()===0&&now.getUTCSeconds()===0&&now.getUTCMilliseconds()===0){
-      next.setUTCHours(hour+4);
-    }else{
-      const add=remainder===0?4:4-remainder;
-      next.setUTCHours(hour+add);
-    }
+    next.setUTCHours(5,0,0,0);
+    if(next.getTime()<=now.getTime())next.setUTCDate(next.getUTCDate()+1);
     return next;
   }
 
@@ -210,7 +203,7 @@ function boot(){
     const s=String(total%60).padStart(2,'0');
     timer.textContent=h+':'+m+':'+s;
     if(label)label.textContent=ar()?'البحث التلقائي القادم بعد':'Next automatic search in';
-    if(note)note.textContent=ar()?'كل 4 ساعات · 3 دفعات':'Every 4 hours · 3 batches';
+    if(note)note.textContent=ar()?'يومياً الساعة 8:00 صباحاً · 3 دفعات · حتى 30 فرصة':'Daily at 8:00 AM · 3 batches · up to 30 opportunities';
   }
 
   function startAgentTimer(){

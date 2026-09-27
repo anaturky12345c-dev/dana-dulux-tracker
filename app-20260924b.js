@@ -101,12 +101,13 @@ function applyLanguage(){
  if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');
  ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
 
- set('#dashboard .dashboard-panels h3',t('repSummary'));set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#goalsTitle',t('goals'));
+ set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#goalsTitle',t('goals'));
  const goalSmall=document.querySelector('#goalsTitle + .small');if(goalSmall)goalSmall.textContent=t('currentMonth');
  const rp=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head h3');if(rp)rp.textContent=t('repPerformance');
  const rpSmall=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head .small');if(rpSmall)rpSmall.textContent=t('currentMonth');
- const cards=[['customers','totalCustomers'],['sales-month','salesThisMonth'],['active','activeCustomers'],['hesitant','hesitantCustomers'],['rejected','rejectedCustomers']];
- for(const [k,l] of cards){const c=document.querySelector('[data-dashboard-link="'+k+'"]');if(c){const x=c.querySelector('.label'),h=c.querySelector('.card-hint');if(x)x.textContent=t(l);if(h)h.textContent=t('clickView');}}
+ const cards=canManage()?[['customers','totalCustomers'],['sales-month','salesThisMonth'],['active','activeCustomers'],['hesitant','hesitantCustomers'],['rejected','rejectedCustomers']]:[['sales-day',lang==='ar'?'سحوبات اليوم':'Sales Today'],['sales-month','salesThisMonth'],['active','activeCustomers'],['hesitant','hesitantCustomers'],['rejected','rejectedCustomers']];
+ const dashboardCards=[...document.querySelectorAll('#dashboard .dashboard-cards [data-dashboard-link]')];
+ dashboardCards.forEach((el,i)=>{const cfg=cards[i];if(!cfg)return;el.dataset.dashboardLink=cfg[0];const x=el.querySelector('.label'),h=el.querySelector('.card-hint');if(x)x.textContent=I18N[lang][cfg[1]]||cfg[1];if(h)h.textContent=t('clickView');});
 
  const st=$('customerStatusFilter');if(st){st.options[0].text=t('allStatuses');for(let i=1;i<st.options.length;i++)st.options[i].text=t(st.options[i].value);} const crf=$('customerRepFilter');if(crf&&crf.options.length)crf.options[0].text=t('allReps');
  const sp=$('salePeriodFilter');if(sp){const labels={'':t('allDates'),day:t('today'),week:t('thisWeek'),month:t('thisMonth')};for(const o of sp.options)o.text=labels[o.value]||o.value;}
@@ -154,6 +155,7 @@ function prepareAppShell(){
   $('roleText').textContent=state.profile.full_name;
   document.querySelectorAll('.management-only').forEach(el=>el.classList.toggle('hidden',!canManage()));
   document.querySelectorAll('.full-admin-only').forEach(el=>el.classList.toggle('hidden',!isAdmin()));
+  document.querySelectorAll('.rep-only').forEach(el=>el.classList.toggle('hidden',canManage()));
 }
 function showSecurityGate(title,html,mode){ state.securityGateMode=mode; $('securityGateTitle').textContent=title; $('securityGateBody').innerHTML=html; $('securityGate').classList.remove('hidden'); }
 function hideSecurityGate(){ state.securityGateMode=null; state.mfaFactorId=null; $('securityGate').classList.add('hidden'); $('securityGateBody').innerHTML=''; }
@@ -311,21 +313,27 @@ function goalProgress(goal,achieved,isMoney=true){
 }
 
 function renderDashboard(){
- const month=monthRiyadh();
- const monthSales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)).reduce((z,x)=>z+Number(x.amount||0),0);
- $('mCustomers').textContent=state.customers.length;$('mSales').textContent=money(monthSales);
- $('mActive').textContent=state.customers.filter(c=>c.status==='active').length;
- $('mHesitant').textContent=state.customers.filter(c=>c.status==='hesitant').length;
- $('mRejected').textContent=state.customers.filter(c=>c.status==='rejected').length;
+ const month=monthRiyadh(),today=todayRiyadh(),repId=state.profile?.id;
+ const visibleCustomers=canManage()?state.customers:state.customers.filter(c=>c.assigned_rep===repId);
+ const visibleSales=canManage()?state.sales:state.sales.filter(x=>x.rep_id===repId);
+ const monthSales=visibleSales.filter(x=>String(x.business_date||'').startsWith(month)).reduce((z,x)=>z+Number(x.amount||0),0);
+ const todaySales=visibleSales.filter(x=>String(x.business_date||'')===today);
+ const todaySalesValue=todaySales.reduce((z,x)=>z+Number(x.amount||0),0);
+ $('mCustomers').textContent=canManage()?visibleCustomers.length:money(todaySalesValue);
+ $('mSales').textContent=money(monthSales);
+ $('mActive').textContent=visibleCustomers.filter(c=>c.status==='active').length;
+ $('mHesitant').textContent=visibleCustomers.filter(c=>c.status==='hesitant').length;
+ $('mRejected').textContent=visibleCustomers.filter(c=>c.status==='rejected').length;
  const attention=state.reports.filter(r=>r.action_code==='admin_intervention');
  $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<div class="event"><b>${esc(r.customer?.name||'-')}</b><div>${esc(r.note)}</div><div class="small">${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')}</div></div>`).join(''):`<div class="small">${t('noData')}</div>`;
- const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile],today=todayRiyadh();
+ const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile];
  $('repSummary').innerHTML=reps.map(p=>{
    const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
    const salesToday=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
    const followupsToday=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
    const activeNewToday=newToday.filter(c=>c.status==='active').length;
    const salesValueToday=salesToday.reduce((z,x)=>z+Number(x.amount||0),0);
+   if(!canManage())return `<div class="rep-day-summary"><div><span>${lang==='ar'?'عملاء جدد اليوم':'New customers today'}</span><b>${newToday.length}</b></div><div><span>${lang==='ar'?'طلبيات اليوم':'Orders today'}</span><b>${salesToday.length}</b></div><div><span>${lang==='ar'?'قيمة سحوبات اليوم':'Today sales value'}</span><b>${money(salesValueToday)}</b></div><div><span>${lang==='ar'?'متابعات سجلتها اليوم':'Follow-ups recorded today'}</span><b>${followupsToday.length}</b></div></div>`;
    return `<div class="event clickable-event" data-rep-customers="${p.id}"><b>${esc(p.full_name)}</b><div class="small">${lang==='ar'?`عملاء جدد اليوم: ${newToday.length} — منهم نشطين: ${activeNewToday} — سحوبات اليوم: ${money(salesValueToday)} (${salesToday.length}) — متابعات اليوم: ${followupsToday.length}`:`New customers today: ${newToday.length} — active: ${activeNewToday} — today's sales: ${money(salesValueToday)} (${salesToday.length}) — today's follow-ups: ${followupsToday.length}`}</div></div>`;
  }).join('')||`<div class="small">${t('noData')}</div>`;
 }
@@ -671,7 +679,7 @@ $('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});
-$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
+$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
    if(kind==='total_sales'){
      $('salePeriodFilter').value='month';$('saleSearch').value=rep?.full_name||'';gotoPage('sales');renderSales();

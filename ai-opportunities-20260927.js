@@ -15,6 +15,12 @@ function boot(){
   const isRep=()=>state.profile?.role==='rep';
   const canSee=()=>!!state.profile;
   const safeUrl=v=>{if(!v)return '';try{const u=new URL(v);return(u.protocol==='https:'||u.protocol==='http:')?u.href:'';}catch(_){return '';}};
+  const googleMapsSearchUrl=x=>{
+    const exact=safeUrl(x.google_maps_url);
+    if(exact)return exact;
+    const q=[x.name,x.address,x.district,x.city,x.administrative_region].filter(Boolean).join(' ');
+    return q?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q):'';
+  };
   const typeLabel=v=>({factory:ar()?'مصنع':'Factory',project:ar()?'مشروع':'Project',contractor:ar()?'شركة مقاولات':'Contractor'}[v]||v||'-');
   const statusLabel=v=>({new:ar()?'جديدة':'New',reviewed:ar()?'معتمدة':'Reviewed',assigned:ar()?'مستلمة':'Claimed',rejected:ar()?'مرفوضة':'Rejected',won:ar()?'تم كسبها':'Won',lost:ar()?'مفقودة':'Lost'}[v]||v||'-');
   const verifyLabel=v=>({verified:ar()?'مؤكدة':'Verified',partial:ar()?'جزئية':'Partial',unverified:ar()?'غير مؤكدة':'Unverified'}[v]||v||'-');
@@ -331,7 +337,7 @@ function boot(){
   }
 
   function renderOpportunityCard(x,rmap,priorityIndex,repBlocked){
-    const src=safeUrl(x.source_url),web=safeUrl(x.website),contractorSrc=safeUrl(x.linked_contractor_source_url);
+    const src=safeUrl(x.source_url),web=safeUrl(x.website),contractorSrc=safeUrl(x.linked_contractor_source_url),maps=googleMapsSearchUrl(x);
     const assignedName=rmap.get(x.assigned_rep)||'-';
     const products=(x.suggested_products||[]).map(p=>'<span class="badge b-gray" style="margin:2px">'+esc(p)+'</span>').join('')||'-';
     const contactName=x.contact_name||(ar()?'لم يتم العثور على اسم المسؤول':'Responsible contact name not found');
@@ -374,6 +380,7 @@ function boot(){
         '<div><b>'+(ar()?'المنطقة':'Region')+'</b>'+esc(x.administrative_region||'-')+'</div>'+
         '<div><b>'+(ar()?'المدينة':'City')+'</b>'+esc(x.city||'-')+'</div>'+
         '<div><b>'+(ar()?'الحي / الموقع':'District / location')+'</b>'+esc(x.district||x.address||'-')+'</div>'+
+        '<div><b>'+(ar()?'الموقع في Google Maps':'Google Maps location')+'</b>'+(maps?'<a class="btn secondary mini" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">'+(x.google_maps_url?(ar()?'فتح الموقع':'Open location'):(ar()?'البحث في الخريطة':'Search on map'))+'</a>':esc(ar()?'لم يتم العثور على موقع':'Location not found'))+'</div>'+
         '<div><b>'+(ar()?'مرحلة المشروع':'Project stage')+'</b>'+esc(x.project_stage||'-')+'</div>'+
         '<div><b>'+(ar()?'الشخص الأنسب للتواصل':'Best role to contact')+'</b>'+esc(fallbackRole(x))+'</div>'+
         '<div><b>'+(ar()?'اسم المسؤول المنشور':'Published contact name')+'</b>'+esc(contactName)+'</div>'+
@@ -409,7 +416,7 @@ function boot(){
     if(claimedList)claimedList.innerHTML='<div class="small">'+(ar()?'جاري التحميل...':'Loading...')+'</div>';
     if(availableList)availableList.innerHTML='<div class="small">'+(ar()?'جاري التحميل...':'Loading...')+'</div>';
 
-    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,market_area,district,address,phone,website,contact_name,contact_role,recommended_contact_role,linked_contractor_name,linked_contractor_phone,linked_contractor_source_url,priority_reason,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep,claimed_at,report_due_at,last_report_at').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
+    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,market_area,district,address,phone,website,contact_name,contact_role,recommended_contact_role,linked_contractor_name,linked_contractor_phone,linked_contractor_source_url,priority_reason,google_maps_url,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep,claimed_at,report_due_at,last_report_at').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
     const st=document.getElementById('aiOppStatusFilter')?.value||'';if(st)q=q.eq('status',st);
     const ty=document.getElementById('aiOppTypeFilter')?.value||'';if(ty)q=q.eq('opportunity_type',ty);
     const gr=document.getElementById('aiOppGradeFilter')?.value||'';if(gr)q=q.eq('grade',gr);

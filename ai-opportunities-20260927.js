@@ -37,7 +37,7 @@ function boot(){
     if(navGrid&&!document.getElementById('aiOppNav')){
       const btn=document.createElement('button');btn.id='aiOppNav';btn.type='button';btn.dataset.page='aiOppPage';btn.addEventListener('click',openPage);
       const sources=document.getElementById('aiSourcesNav'),accountBtn=navGrid.querySelector('[data-page="account"]');
-      navGrid.insertBefore(btn,(isAdmin()&&sources)?sources:(accountBtn||null));
+      navGrid.insertBefore(btn,sources||(accountBtn||null));
     }
     const main=document.querySelector('main');
     if(main&&!document.getElementById('aiOppPage')){

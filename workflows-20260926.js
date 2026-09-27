@@ -125,7 +125,7 @@ function injectUi(){
     f.className='card workload-card';
     f.id='workloadFollowupDashboard';
     f.innerHTML='<div class="workload-collapsed-head" id="workloadFollowupToggle" role="button" tabindex="0" aria-expanded="false"><div><h3 id="workloadFollowupDashboardTitle"></h3><div class="small" id="workloadFollowupHint"></div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn workload-collapse-count" id="followRequiredCount">0</span><span class="workload-collapse-arrow">⌄</span></div></div><div id="workloadFollowupBody" class="workload-collapse-body hidden"><div class="workload-head"><span></span><button class="btn secondary mini" id="openFollowupsBtn"></button></div><div class="workload-metrics"><div class="workload-metric"><span id="followTodayLabel"></span><b id="followTodayCount">0</b></div><div class="workload-metric"><span id="followOverdueLabel"></span><b id="followOverdueCount">0</b></div><div class="workload-metric"><span id="followManagementLabel"></span><b id="followManagementCount">0</b></div></div><div id="workloadFollowupPreview" class="workload-list"></div></div>';
-    if(repSummary&&repSummary.nextSibling)dashboard.insertBefore(f,repSummary.nextSibling);else dashboard.appendChild(f);
+    dashboard.insertBefore(f,dashboard.firstChild);
   }
   if(TASKS_ENABLED&&dashboard&&!byId('workloadTaskDashboard')){
     var f2=document.createElement('div');

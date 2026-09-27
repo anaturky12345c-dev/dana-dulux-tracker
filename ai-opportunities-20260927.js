@@ -31,8 +31,40 @@ function boot(){
     loadAll();
   }
 
+  function ensureRepDashboardCard(){
+    const dash=document.getElementById('dashboard');
+    if(!dash)return;
+    let card=document.getElementById('repAiOpportunityDashboard');
+    if(!isRep()){card?.remove();return;}
+    if(card)return;
+    card=document.createElement('div');
+    card.id='repAiOpportunityDashboard';
+    card.className='card rep-only';
+    card.style.marginTop='14px';
+    card.innerHTML=`<div class="dashboard-head"><div><h3 id="repAiOppTitle"></h3><div class="small" id="repAiOppHint"></div></div><button class="btn secondary mini" id="repAiOppOpen" type="button"></button></div><div class="rep-ai-metrics"><div><span id="repAiAvailableLabel"></span><b id="repAiAvailable">0</b></div><div><span id="repAiMineLabel"></span><b id="repAiMine">0</b></div></div>`;
+    const goals=document.getElementById('goalsDashboard')?.closest('.card');
+    if(goals)dash.insertBefore(card,goals);else dash.appendChild(card);
+    card.querySelector('#repAiOppOpen')?.addEventListener('click',openPage);
+  }
+
+  function renderRepDashboard(rows){
+    ensureRepDashboardCard();
+    if(!isRep())return;
+    const available=rows.filter(x=>!x.assigned_rep&&['new','reviewed'].includes(x.status)).length;
+    const mine=rows.filter(x=>x.assigned_rep===state.profile.id).length;
+    const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+    set('repAiOppTitle',ar()?'مصانع ومشاريع':'Factories & Projects');
+    set('repAiOppHint',ar()?'فرص متاحة لك في المنطقة الوسطى':'Central Region opportunities available to you');
+    set('repAiOppOpen',ar()?'فتح الصفحة':'Open');
+    set('repAiAvailableLabel',ar()?'متاحة للاستلام':'Available');
+    set('repAiMineLabel',ar()?'فرصي المستلمة':'My claimed');
+    set('repAiAvailable',String(available));
+    set('repAiMine',String(mine));
+  }
+
   function ensureUi(){
     if(!canSee()){removeUi();return;}
+    ensureRepDashboardCard();
     const navGrid=document.querySelector('.nav-grid');
     if(navGrid&&!document.getElementById('aiOppNav')){
       const btn=document.createElement('button');btn.id='aiOppNav';btn.type='button';btn.dataset.page='aiOppPage';btn.addEventListener('click',openPage);
@@ -132,7 +164,7 @@ function boot(){
     const area=document.getElementById('aiOppAreaFilter')?.value||'';if(area&&isManagement())q=q.eq('market_area',area);
     const {data,error}=await q;
     if(error){if(list)list.innerHTML=`<div class="card"><div class="danger-note">${esc(error.message)}</div></div>`;return;}
-    const rows=data||[],rmap=repMap();renderSummary(rows);
+    const rows=data||[],rmap=repMap();renderSummary(rows);renderRepDashboard(rows);
     if(!list)return;
     if(!rows.length){list.innerHTML=`<div class="card"><div class="empty">${ar()?'لا توجد مصانع أو مشاريع بهذه الفلاتر حالياً.':'No factories or projects match these filters yet.'}</div></div>`;return;}
     list.innerHTML=rows.map(x=>{

@@ -4,9 +4,11 @@
 function boot(){
   const app=window.DANA_APP;
   if(!app){ setTimeout(boot,150); return; }
-  const {sb,state,esc,dateTime,flash}=app;
+  const {sb,state,esc,dateTime,flash,openModal,closeModal}=app;
   let refreshTimer=null;
   let searching=false;
+  let latestReports=new Map();
+  let availableOpen=false;
   const ar=()=>app.getLang()==='ar';
   const isManagement=()=>app.canManage();
   const isPrimaryAdmin=()=>state.profile?.role==='admin' && state.profile?.username==='admin';
@@ -84,13 +86,30 @@ function boot(){
             </div>
           </div>
         </div>
+        <div id="aiOverdueWarning"></div>
         <div class="grid cards" id="aiOppSummary" style="margin-bottom:14px"></div>
         <div class="toolbar" style="margin-bottom:10px"><select id="aiOppStatusFilter"></select><select id="aiOppTypeFilter"></select><select id="aiOppGradeFilter"></select><select id="aiOppAreaFilter"></select></div>
-        <div id="aiOppList"></div>`;
+        <div id="aiOppList">
+          <div class="card ai-opportunity-section" style="margin-bottom:12px">
+            <div class="dashboard-head"><div><h3 id="aiClaimedTitle"></h3><div class="small" id="aiClaimedHelp"></div></div><span class="badge b-good" id="aiClaimedCount">0</span></div>
+            <div id="aiClaimedList"></div>
+          </div>
+          <div class="card ai-opportunity-section" style="margin-bottom:12px">
+            <div class="workload-collapsed-head" id="aiAvailableToggle" role="button" tabindex="0" aria-expanded="false">
+              <div><h3 id="aiAvailableTitle"></h3><div class="small" id="aiAvailableHelp"></div></div>
+              <div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn" id="aiAvailableCount">0</span><span class="workload-collapse-arrow">⌄</span></div>
+            </div>
+            <div id="aiAvailableBody" class="hidden" style="margin-top:12px"><div id="aiAvailableList"></div></div>
+          </div>
+        </div>`;
       main.appendChild(section);
       section.querySelector('#aiOppRefresh')?.addEventListener('click',loadAll);
       section.querySelector('#aiSearchNowBtn')?.addEventListener('click',searchNow);
       ['#aiOppStatusFilter','#aiOppTypeFilter','#aiOppGradeFilter','#aiOppAreaFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
+      const availableToggle=section.querySelector('#aiAvailableToggle');
+      const toggleAvailable=()=>{availableOpen=!availableOpen;const body=section.querySelector('#aiAvailableBody');if(body)body.classList.toggle('hidden',!availableOpen);availableToggle?.classList.toggle('open',availableOpen);availableToggle?.setAttribute('aria-expanded',availableOpen?'true':'false');};
+      availableToggle?.addEventListener('click',toggleAvailable);
+      availableToggle?.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggleAvailable();}});
       section.addEventListener('click',async e=>{
         let b=e.target.closest('[data-ai-claim]');
         if(b){
@@ -99,7 +118,7 @@ function boot(){
           b.disabled=false;
           if(error)return flash((ar()?'تعذر استلام الفرصة: ':'Could not claim opportunity: ')+error.message,true);
           if(data!==true)return flash(ar()?'الفرصة أخذها مندوب آخر قبلك.':'Another representative claimed this opportunity first.',true);
-          flash(ar()?'تم استلام الفرصة باسمك':'Opportunity claimed');
+          flash(ar()?'تم استلام الفرصة. أمامك يومان لرفع التقرير':'Opportunity claimed. You have two days to submit the report');
           return loadOpportunities();
         }
         b=e.target.closest('[data-ai-opp-status]');
@@ -112,8 +131,8 @@ function boot(){
         if(b&&isManagement()){
           const id=b.dataset.id,select=section.querySelector(`[data-ai-opp-rep="${CSS.escape(id)}"]`),repId=select?.value||'';
           if(!repId)return flash(ar()?'اختر المندوب أولاً':'Choose a representative first',true);
-          b.disabled=true;const {error}=await sb.from('ai_opportunities').update({assigned_rep:repId,status:'assigned',updated_at:new Date().toISOString()}).eq('id',id);b.disabled=false;
-          if(error)return flash(error.message,true);flash(ar()?'تم إسناد الفرصة للمندوب':'Opportunity assigned');return loadOpportunities();
+          b.disabled=true;const {data,error}=await sb.rpc('assign_ai_opportunity',{p_opportunity_id:id,p_rep_id:repId});b.disabled=false;
+          if(error)return flash(error.message,true);if(data!==true)return flash(ar()?'تعذر إسناد الفرصة.':'Could not assign opportunity.',true);flash(ar()?'تم إسناد الفرصة للمندوب وبدأت مهلة اليومين':'Opportunity assigned; the two-day report window has started');return loadOpportunities();
         }
       });
     }

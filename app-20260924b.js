@@ -313,6 +313,9 @@ function goalProgress(goal,achieved,isMoney=true){
 }
 
 function renderDashboard(){
+ const dashboardConfig=canManage()?[['customers',t('totalCustomers')],['sales-month',t('salesThisMonth')],['active',t('activeCustomers')],['hesitant',t('hesitantCustomers')],['rejected',t('rejectedCustomers')]]:[['sales-day',lang==='ar'?'سحوبات اليوم':'Sales Today'],['sales-month',t('salesThisMonth')],['active',t('activeCustomers')],['hesitant',t('hesitantCustomers')],['rejected',t('rejectedCustomers')]];
+ [...document.querySelectorAll('#dashboard .dashboard-cards [data-dashboard-link]')].forEach((el,i)=>{const cfg=dashboardConfig[i];if(!cfg)return;el.dataset.dashboardLink=cfg[0];const label=el.querySelector('.label'),hint=el.querySelector('.card-hint');if(label)label.textContent=cfg[1];if(hint)hint.textContent=t('clickView');});
+ const repSummaryTitle=document.querySelector('#dashboard .dashboard-panels h3');if(repSummaryTitle)repSummaryTitle.textContent=canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary');
  const month=monthRiyadh(),today=todayRiyadh(),repId=state.profile?.id;
  const visibleCustomers=canManage()?state.customers:state.customers.filter(c=>c.assigned_rep===repId);
  const visibleSales=canManage()?state.sales:state.sales.filter(x=>x.rep_id===repId);

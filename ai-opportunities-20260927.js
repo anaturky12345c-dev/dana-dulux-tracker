@@ -6,7 +6,7 @@ function boot(){
   if(!app){setTimeout(boot,150);return;}
 
   const sb=app.sb,state=app.state,esc=app.esc,dateTime=app.dateTime,flash=app.flash,openModal=app.openModal,closeModal=app.closeModal;
-  let refreshTimer=null,searching=false,availableOpen=false;
+  let refreshTimer=null,agentTimerInterval=null,searching=false,availableOpen=false;
   let latestReports=new Map(),opportunityById=new Map();
 
   const ar=()=>app.getLang()==='ar';
@@ -86,7 +86,7 @@ function boot(){
       section.innerHTML=
         '<div class="card" style="margin-bottom:14px">'+
           '<div class="dashboard-head">'+
-            '<div><h3 id="aiOppHeading"></h3><div class="small" id="aiOppHelp"></div></div>'+
+            '<div><h3 id="aiOppHeading"></h3><div class="small" id="aiOppHelp"></div><div class="ai-agent-timer"><span id="aiAgentTimerLabel"></span><b id="aiAgentTimer">--:--:--</b><span class="small" id="aiAgentTimerNote"></span></div></div>'+
             '<div style="display:flex;gap:7px;flex-wrap:wrap">'+
               '<button class="btn" id="aiSearchNowBtn" type="button"></button>'+
               '<button class="btn secondary" id="aiOppRefresh" type="button"></button>'+
@@ -178,6 +178,42 @@ function boot(){
     updateLabels();
   }
 
+  function nextAgentCycleAt(now=new Date()){
+    const next=new Date(now.getTime());
+    next.setUTCMinutes(0,0,0);
+    const hour=next.getUTCHours();
+    const remainder=hour%4;
+    if(remainder===0&&now.getUTCMinutes()===0&&now.getUTCSeconds()===0&&now.getUTCMilliseconds()===0){
+      next.setUTCHours(hour+4);
+    }else{
+      const add=remainder===0?4:4-remainder;
+      next.setUTCHours(hour+add);
+    }
+    return next;
+  }
+
+  function updateAgentTimer(){
+    const timer=document.getElementById('aiAgentTimer');
+    const label=document.getElementById('aiAgentTimerLabel');
+    const note=document.getElementById('aiAgentTimerNote');
+    if(!timer)return;
+    const now=new Date(),next=nextAgentCycleAt(now);
+    const ms=Math.max(0,next.getTime()-now.getTime());
+    const total=Math.floor(ms/1000);
+    const h=String(Math.floor(total/3600)).padStart(2,'0');
+    const m=String(Math.floor((total%3600)/60)).padStart(2,'0');
+    const s=String(total%60).padStart(2,'0');
+    timer.textContent=h+':'+m+':'+s;
+    if(label)label.textContent=ar()?'البحث التلقائي القادم بعد':'Next automatic search in';
+    if(note)note.textContent=ar()?'كل 4 ساعات · 3 دفعات':'Every 4 hours · 3 batches';
+  }
+
+  function startAgentTimer(){
+    updateAgentTimer();
+    if(agentTimerInterval)return;
+    agentTimerInterval=setInterval(updateAgentTimer,1000);
+  }
+
   function updateLabels(){
     const nav=document.getElementById('aiOppNav');if(nav)nav.textContent=ar()?'مصانع ومشاريع':'Factories & Projects';
     const h=document.getElementById('aiOppHeading');if(h)h.textContent=ar()?'مصانع ومشاريع':'Factories & Projects';
@@ -185,6 +221,7 @@ function boot(){
     if(help)help.textContent=ar()?(isManagement()?'الإدارة ترى كل المملكة، والمناديب يرون فرص المنطقة الوسطى فقط.':'استلم الفرصة المناسبة لك، وبعد الاستلام أمامك يومان لرفع التقرير.'):(isManagement()?'Management sees all Saudi opportunities; representatives see Central Region only.':'Claim an opportunity; a report is required within two days.');
     const r=document.getElementById('aiOppRefresh');if(r)r.textContent=ar()?'تحديث':'Refresh';
     const s=document.getElementById('aiSearchNowBtn');if(s)s.textContent=searching?(ar()?'جاري بدء البحث...':'Starting search...'):(ar()?'بحث عن فرص جديدة':'Find new opportunities');
+    updateAgentTimer();
 
     const sf=document.getElementById('aiOppStatusFilter');
     if(sf){const v=sf.value;sf.innerHTML='<option value="">'+(ar()?'كل الحالات':'All statuses')+'</option><option value="new">'+statusLabel('new')+'</option><option value="reviewed">'+statusLabel('reviewed')+'</option><option value="assigned">'+statusLabel('assigned')+'</option><option value="rejected">'+statusLabel('rejected')+'</option>';sf.value=v;}
@@ -423,7 +460,7 @@ function boot(){
   sb.auth.onAuthStateChange((_event,session)=>{if(!session)removeUi();else setTimeout(sync,0);});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canSee())loadAll();});
   refreshTimer=setInterval(()=>{if(canSee())loadAll();},90000);
-  window.addEventListener('beforeunload',()=>{if(refreshTimer)clearInterval(refreshTimer);});
+  window.addEventListener('beforeunload',()=>{if(refreshTimer)clearInterval(refreshTimer);if(agentTimerInterval)clearInterval(agentTimerInterval);});
   sync();
 }
 

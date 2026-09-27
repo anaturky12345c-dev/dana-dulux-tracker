@@ -19,7 +19,7 @@ const I18N={
   totalCustomers:'إجمالي العملاء',salesThisMonth:'سحوبات الشهر',activeCustomers:'العملاء النشطون',hesitantCustomers:'العملاء المترددون',rejectedCustomers:'العملاء الرافضون',clickView:'اضغط للعرض',
   repSummary:'ملخص المناديب اليومي',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
   allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة...',newCustomer:'+ عميل جديد',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
-  recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',thisMonth:'هذا الشهر',
+  recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',today:'هذا اليوم',thisWeek:'هذا الأسبوع',thisMonth:'هذا الشهر',
   addFollowup:'+ إضافة متابعة',allActions:'كل الإجراءات',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
   reportType:'نوع التقرير',allReps:'كل المندوبين',from:'من تاريخ',to:'إلى تاريخ',generateReport:'عرض التقرير',printPdf:'تصدير PDF / طباعة',
   username:'اسم المستخدم',password:'كلمة المرور',language:'English',accountSecurity:'أمان الحساب',
@@ -36,7 +36,7 @@ const I18N={
   totalCustomers:'Total Customers',salesThisMonth:'Sales This Month',activeCustomers:'Active Customers',hesitantCustomers:'Hesitant Customers',rejectedCustomers:'Rejected Customers',clickView:'Click to view',
   repSummary:'Daily Representative Summary',managementIntervention:'Management Intervention',goals:'Goals',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
   allStatuses:'All Statuses',searchCustomer:'Search customer or area...',newCustomer:'+ New Customer',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
-  recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',thisMonth:'This Month',
+  recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',today:'Today',thisWeek:'This Week',thisMonth:'This Month',
   addFollowup:'+ Add Follow-up',allActions:'All Actions',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
   reportType:'Report Type',allReps:'All Representatives',from:'From',to:'To',generateReport:'Generate Report',printPdf:'Export PDF / Print',
   username:'Username',password:'Password',language:'العربية',accountSecurity:'Account Security',
@@ -73,6 +73,11 @@ const dateOnly=d=>d?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateSty
 const todayRiyadh=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const dateKeyRiyadh=iso=>iso?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso)):'';
 const monthRiyadh=()=>todayRiyadh().slice(0,7);
+const weekStartRiyadh=()=>{
+ const today=todayRiyadh(),d=new Date(today+'T00:00:00Z'),daysSinceSaturday=(d.getUTCDay()+1)%7;
+ d.setUTCDate(d.getUTCDate()-daysSinceSaturday);
+ return d.toISOString().slice(0,10);
+};
 const googleMapsDirectionsUrl=(lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${Number(lat)},${Number(lng)}`)}`;
 const isAdmin=()=>state.profile?.role==='admin';
 const isManager=()=>state.profile?.role==='manager';
@@ -104,7 +109,7 @@ function applyLanguage(){
  for(const [k,l] of cards){const c=document.querySelector('[data-dashboard-link="'+k+'"]');if(c){const x=c.querySelector('.label'),h=c.querySelector('.card-hint');if(x)x.textContent=t(l);if(h)h.textContent=t('clickView');}}
 
  const st=$('customerStatusFilter');if(st){st.options[0].text=t('allStatuses');for(let i=1;i<st.options.length;i++)st.options[i].text=t(st.options[i].value);} const crf=$('customerRepFilter');if(crf&&crf.options.length)crf.options[0].text=t('allReps');
- const sp=$('salePeriodFilter');if(sp){sp.options[0].text=t('allDates');sp.options[1].text=t('thisMonth');}
+ const sp=$('salePeriodFilter');if(sp){const labels={'':t('allDates'),day:t('today'),week:t('thisWeek'),month:t('thisMonth')};for(const o of sp.options)o.text=labels[o.value]||o.value;}
  const rf=$('reportActionFilter');if(rf){rf.options[0].text=t('allActions');for(let i=1;i<rf.options.length;i++)rf.options[i].text=t(rf.options[i].value);}
  const mf=$('mapFilter');if(mf){mf.options[0].text=lang==='ar'?'كل العملاء':'All Customers';for(let i=1;i<mf.options.length;i++){const v=mf.options[i].value;mf.options[i].text=v==='frequent'?(lang==='ar'?'سحب متكرر هذا الشهر':'Repeated sale this month'):t(v);}}
  const ar=$('analyticsRep');if(ar&&ar.options.length)ar.options[0].text=t('allReps');
@@ -389,8 +394,12 @@ function renderCustomers(){
  $('customersBody').innerHTML=rows.length?rows.map(c=>{const ac=activityForCustomer(c.id);return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${ac.monthSalesCount}</td><td>${money(ac.monthSalesValue)}</td><td><button class="btn secondary" data-open-customer="${c.id}">${t('view')}</button></td></tr>`}).join(''):`<tr><td colspan="7" class="empty">${t('noData')}</td></tr>`;
 }
 function renderSales(){
- const q=($('saleSearch')?.value||'').trim().toLowerCase(),period=$('salePeriodFilter')?.value||'',month=monthRiyadh();
- const rows=state.sales.filter(x=>(period!=='month'||String(x.business_date||'').startsWith(month))&&(!q||`${x.customer?.name||''} ${productLabel(x.product)} ${x.product||''} ${x.order_ref||''} ${x.rep?.full_name||''}`.toLowerCase().includes(q)));
+ const q=($('saleSearch')?.value||'').trim().toLowerCase(),period=$('salePeriodFilter')?.value||'',today=todayRiyadh(),weekStart=weekStartRiyadh(),month=monthRiyadh();
+ const rows=state.sales.filter(x=>{
+   const d=String(x.business_date||'');
+   const periodOk=!period||(period==='day'&&d===today)||(period==='week'&&d>=weekStart&&d<=today)||(period==='month'&&d.startsWith(month));
+   return periodOk&&(!q||`${x.customer?.name||''} ${productLabel(x.product)} ${x.product||''} ${x.order_ref||''} ${x.rep?.full_name||''}`.toLowerCase().includes(q));
+ });
  $('salesBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(productLabel(x.product))}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.order_ref||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-sale="${x.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-sale="${x.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">${t('noData')}</td></tr>`;
 }
 function renderReports(){

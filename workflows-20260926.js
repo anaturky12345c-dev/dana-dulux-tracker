@@ -8,6 +8,7 @@ var followupStates=[];
 var tasks=[];
 var loading=false;
 var initialized=false;
+var TASKS_ENABLED=false;
 var lastProfileId=null;
 
 function isAr(){return app.getLang()==='ar';}
@@ -100,7 +101,7 @@ function injectUi(){
   injectStyle();
 
   var nav=document.querySelector('.nav-grid');
-  if(nav&&!nav.querySelector('[data-page="tasks"]')){
+  if(TASKS_ENABLED&&nav&&!nav.querySelector('[data-page="tasks"]')){
     var btn=document.createElement('button');
     btn.setAttribute('data-page','tasks');
     btn.id='tasksNavBtn';
@@ -117,7 +118,7 @@ function injectUi(){
     f.innerHTML='<div class="workload-head"><h3 id="workloadFollowupDashboardTitle"></h3><button class="btn secondary mini" id="openFollowupsBtn"></button></div><div class="workload-metrics"><div class="workload-metric"><span id="followTodayLabel"></span><b id="followTodayCount">0</b></div><div class="workload-metric"><span id="followOverdueLabel"></span><b id="followOverdueCount">0</b></div><div class="workload-metric"><span id="followManagementLabel"></span><b id="followManagementCount">0</b></div></div><div id="workloadFollowupPreview" class="workload-list"></div>';
     if(repSummary&&repSummary.nextSibling)dashboard.insertBefore(f,repSummary.nextSibling);else dashboard.appendChild(f);
   }
-  if(dashboard&&!byId('workloadTaskDashboard')){
+  if(TASKS_ENABLED&&dashboard&&!byId('workloadTaskDashboard')){
     var f2=document.createElement('div');
     f2.className='card workload-card';
     f2.id='workloadTaskDashboard';
@@ -136,7 +137,7 @@ function injectUi(){
   }
 
   var main=document.querySelector('main');
-  if(main&&!byId('tasks')){
+  if(TASKS_ENABLED&&main&&!byId('tasks')){
     var sec=document.createElement('section');
     sec.id='tasks';
     sec.className='section';
@@ -151,7 +152,7 @@ function setText(id,value){
   var x=byId(id);if(x)x.textContent=value;
 }
 function renderLabels(){
-  setText('tasksNavBtn',tx('المهام','Tasks'));
+  if(TASKS_ENABLED)setText('tasksNavBtn',tx('المهام','Tasks'));
   if(byId('tasks')&&byId('tasks').classList.contains('active'))setText('pageTitle',tx('المهام','Tasks'));
   setText('workloadFollowupDashboardTitle',tx('متابعة العملاء المطلوبة','Required customer follow-ups'));
   setText('openFollowupsBtn',tx('عرض قائمة المتابعات','View follow-up list'));
@@ -252,6 +253,7 @@ function renderFollowups(){
 }
 
 function renderTasks(){
+  if(!TASKS_ENABLED)return;
   var q=(byId('taskSearch')&&byId('taskSearch').value||'').trim().toLowerCase();
   var filter=byId('taskStatusFilter')?byId('taskStatusFilter').value:'';
   var rows=tasks.filter(function(x){

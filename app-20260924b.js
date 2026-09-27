@@ -120,7 +120,7 @@ function applyLanguage(){
  const labels=document.querySelectorAll('#analytics label');const al=[t('reportType'),t('representative'),t('from'),t('to')];al.forEach((x,i)=>{if(labels[i])labels[i].textContent=x;});if($('generateReportBtn'))$('generateReportBtn').textContent=t('generateReport');if($('printReportBtn'))$('printReportBtn').textContent=t('printPdf');
  const empty=$('printableReport')?.querySelector('.empty');if(empty&&!state.profile)empty.textContent=lang==='ar'?'حدد نوع التقرير والفترة ثم اضغط عرض التقرير.':'Select a report type and date range, then generate the report.';
 
- set('#account h3',t('accountSecurity'));const accLabels=document.querySelectorAll('#account label');const acc=[lang==='ar'?'كلمة المرور الحالية':'Current Password',lang==='ar'?'كلمة المرور الجديدة':'New Password',lang==='ar'?'تأكيد كلمة المرور الجديدة':'Confirm New Password'];acc.forEach((x,i)=>{if(accLabels[i])accLabels[i].textContent=x;});const pol=document.querySelector('#account .password-policy');if(pol)pol.textContent=lang==='ar'?'14 حرفاً على الأقل مع حرف كبير وصغير ورقم ورمز.':'At least 14 characters with uppercase, lowercase, number and symbol.';if($('changePasswordBtn'))$('changePasswordBtn').textContent=lang==='ar'?'تغيير كلمة المرور':'Change Password';
+ set('#account h3',t('accountSecurity'));if($('repPasswordAdminTitle'))$('repPasswordAdminTitle').textContent=lang==='ar'?'إعادة تعيين كلمة مرور مندوب':'Reset Representative Password';if($('repPasswordAdminHelp'))$('repPasswordAdminHelp').textContent=lang==='ar'?'ينشئ كلمة مرور مؤقتة ويطلب من المندوب تغييرها بعد تسجيل الدخول.':'Creates a temporary password and requires the representative to change it after signing in.';if($('repPasswordAdminLabel'))$('repPasswordAdminLabel').textContent=t('representative');if($('repPasswordAdminBtn'))$('repPasswordAdminBtn').textContent=lang==='ar'?'إعادة تعيين كلمة المرور':'Reset Password';const accLabels=document.querySelectorAll('#account .security-account:first-child label');const acc=[lang==='ar'?'كلمة المرور الحالية':'Current Password',lang==='ar'?'كلمة المرور الجديدة':'New Password',lang==='ar'?'تأكيد كلمة المرور الجديدة':'Confirm New Password'];acc.forEach((x,i)=>{if(accLabels[i])accLabels[i].textContent=x;});const pol=document.querySelector('#account .password-policy');if(pol)pol.textContent=lang==='ar'?'14 حرفاً على الأقل مع حرف كبير وصغير ورقم ورمز.':'At least 14 characters with uppercase, lowercase, number and symbol.';if($('changePasswordBtn'))$('changePasswordBtn').textContent=lang==='ar'?'تغيير كلمة المرور':'Change Password';
 
  const pt=$('pageTitle');if(pt){const active=document.querySelector('.nav-grid button.active');if(active)pt.textContent=active.textContent;}
  if(state.profile){renderAll();if(document.querySelector('#mapPage.section.active'))drawMapMarkers();if(document.querySelector('#audit.section.active'))renderAudit();if(document.querySelector('#account.section.active'))renderSecurityStatus();}
@@ -295,7 +295,7 @@ function activityForCustomer(cid){
  const out={monthSalesCount,monthSalesValue,lastSale};state.activityCache.set(cid,out);return out;
 }
 function customerCategory(c){const x=activityForCustomer(c.id);if(x.monthSalesCount>1)return 'frequent';return c.status||'new';}
-function renderAll(){if(!$('mCustomers'))return;renderDashboard();renderCustomers();renderSales();renderReports();renderGoalsDashboard();renderRepPerformance();window.dispatchEvent(new CustomEvent('dana:render'));}
+function renderAll(){if(!$('mCustomers'))return;renderDashboard();renderCustomers();renderSales();renderReports();renderGoalsDashboard();renderRepPerformance();renderRepPasswordAdmin();window.dispatchEvent(new CustomEvent('dana:render'));}
 
 function badgeStatus(k){const cls={new:'b-info',active:'b-good',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
 
@@ -470,6 +470,43 @@ function bindCustomerPicker(prefix,onSelect=null,activeOnly=false){
  input.addEventListener('blur',()=>setTimeout(()=>results.classList.add('hidden'),120));
 }
 function repOptions(selected=null){return state.profiles.filter(p=>p.role==='rep').map(p=>`<option value="${p.id}" ${selected===p.id?'selected':''}>${esc(p.full_name)}</option>`).join('');}
+function renderRepPasswordAdmin(){
+ const card=$('repPasswordAdminCard'),sel=$('repPasswordAdminSelect');if(!card||!sel)return;
+ card.classList.toggle('hidden',!isAdmin());
+ if(!isAdmin())return;
+ const selected=sel.value;
+ const reps=state.profiles.filter(p=>p.role==='rep');
+ sel.innerHTML=reps.map(p=>`<option value="${p.id}">${esc(p.full_name)} (${esc(p.username)})</option>`).join('');
+ if(reps.some(p=>p.id===selected))sel.value=selected;
+}
+async function resetRepresentativePassword(){
+ if(!isAdmin())return;
+ const target=$('repPasswordAdminSelect')?.value;
+ const rep=state.profiles.find(p=>p.id===target&&p.role==='rep');
+ if(!rep)return flash(lang==='ar'?'اختر المندوب.':'Select a representative.',true);
+ if(!confirm(lang==='ar'?`إعادة تعيين كلمة مرور ${rep.full_name}؟`:`Reset password for ${rep.full_name}?`))return;
+ const btn=$('repPasswordAdminBtn');if(btn){btn.disabled=true;btn.textContent=lang==='ar'?'جاري إنشاء كلمة مرور...':'Creating password...';}
+ try{
+   const {data,error}=await sb.functions.invoke('admin-reset-rep-password',{body:{target_user_id:target}});
+   if(error)throw error;
+   if(!data?.ok||!data?.temporary_password)throw new Error(data?.error||'reset failed');
+   openModal(lang==='ar'?'كلمة المرور المؤقتة':'Temporary Password',`
+     <div class="security-warn">${lang==='ar'?'انسخ كلمة المرور وأرسلها للمندوب. سيطلب منه النظام تغييرها بعد أول دخول.':'Copy this password and send it to the representative. The system will require a change after sign-in.'}</div>
+     <div class="form-grid" style="margin-top:12px">
+       <div><label>${lang==='ar'?'المندوب':'Representative'}</label><input value="${esc(data.full_name||rep.full_name)}" readonly></div>
+       <div><label>${lang==='ar'?'اسم المستخدم':'Username'}</label><input value="${esc(data.username||rep.username)}" readonly></div>
+       <div class="full"><label>${lang==='ar'?'كلمة المرور المؤقتة':'Temporary password'}</label><input id="temporaryRepPassword" value="${esc(data.temporary_password)}" readonly></div>
+       <div class="full"><button class="btn" id="copyTemporaryRepPasswordBtn" type="button">${lang==='ar'?'نسخ كلمة المرور':'Copy password'}</button></div>
+     </div>`);
+   flash(lang==='ar'?'تم إنشاء كلمة مرور مؤقتة.':'Temporary password created.');
+ }catch(err){
+   const msg=String(err?.message||err||'');
+   flash(msg.includes('mfa')?(lang==='ar'?'يجب إكمال تحقق الإدارة بخطوتين أولاً.':'Complete admin two-factor authentication first.'):(lang==='ar'?'تعذر إعادة تعيين كلمة المرور.':'Could not reset password.'),true);
+ }finally{
+   if(btn){btn.disabled=false;btn.textContent=lang==='ar'?'إعادة تعيين كلمة المرور':'Reset Password';}
+ }
+}
+
 function productOptions(selected=null){return PRODUCT_KEYS.map(k=>`<option value="${k}" ${selected===k?'selected':''}>${esc(productLabel(k))}</option>`).join('');}
 
 function openCustomerForm(){
@@ -598,7 +635,7 @@ $('langBtn')?.addEventListener('click',toggleLanguage);$('langBtnLogin')?.addEve
 document.querySelectorAll('.nav-grid button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='customers'){state.customerMonthOnly=false;$('customerSearch').value='';$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';}if(b.dataset.page==='sales'){$('saleSearch').value='';$('salePeriodFilter').value='';}gotoPage(b.dataset.page);}));
 $('customerSearch')?.addEventListener('input',renderCustomers);$('customerStatusFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerRepFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('saleSearch')?.addEventListener('input',renderSales);$('salePeriodFilter')?.addEventListener('change',renderSales);$('reportActionFilter')?.addEventListener('change',renderReports);$('mapSearch')?.addEventListener('input',drawMapMarkers);$('mapFilter')?.addEventListener('change',drawMapMarkers);
 $('editGoalsBtn')?.addEventListener('click',openGoalsEditor);$('generateReportBtn')?.addEventListener('click',generateAnalytics);$('printReportBtn')?.addEventListener('click',()=>{generateAnalytics();setTimeout(()=>window.print(),50);});
-$('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?.addEventListener('click',()=>openSaleForm());$('newReportBtn')?.addEventListener('click',()=>openReportForm());$('changePasswordBtn')?.addEventListener('click',()=>changePassword(false));
+$('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?.addEventListener('click',()=>openSaleForm());$('newReportBtn')?.addEventListener('click',()=>openReportForm());$('changePasswordBtn')?.addEventListener('click',()=>changePassword(false));$('repPasswordAdminBtn')?.addEventListener('click',resetRepresentativePassword);
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});
@@ -611,7 +648,7 @@ $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[da
    }
  }});
 
-$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();});
+$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});
 $('securityGateBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gateChangePasswordBtn')))changePassword(true);else if((b=e.target.closest('#verifyMfaEnrollBtn')))verifyMFA($('mfaEnrollCode')?.value||'');else if((b=e.target.closest('#verifyMfaChallengeBtn')))verifyMFA($('mfaChallengeCode')?.value||'');});
 ['pointerdown','keydown','touchstart','scroll'].forEach(evt=>window.addEventListener(evt,()=>{state.lastActivity=Date.now();},{passive:true}));setInterval(()=>{if(state.session&&Date.now()-state.lastActivity>MAX_IDLE_MS)logout(lang==='ar'?'تم تسجيل خروجك تلقائياً بعد ساعة بدون استخدام.':'You were signed out after 1 hour of inactivity.');},30000);
 window.DANA_APP={sb,state,t,esc,fmt,money,dateTime,dateOnly,todayRiyadh,dateKeyRiyadh,monthRiyadh,statusLabel,badgeStatus,actionLabel,productLabel,isAdmin,isManager,canManage,openModal,closeModal,flash,openReportForm,openCustomer,refreshAll,repOptions,gotoPage,getLang:()=>lang};

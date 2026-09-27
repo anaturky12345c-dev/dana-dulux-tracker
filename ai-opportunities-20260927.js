@@ -176,6 +176,7 @@ function boot(){
     const areaFilter=document.getElementById('aiOppAreaFilter');
     if(areaFilter)areaFilter.classList.toggle('hidden',!isManagement());
     updateLabels();
+    startAgentTimer();
   }
 
   function nextAgentCycleAt(now=new Date()){
@@ -458,7 +459,7 @@ function boot(){
 
   window.addEventListener('dana:render',sync);
   sb.auth.onAuthStateChange((_event,session)=>{if(!session)removeUi();else setTimeout(sync,0);});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canSee())loadAll();});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canSee()){updateAgentTimer();loadAll();}});
   refreshTimer=setInterval(()=>{if(canSee())loadAll();},90000);
   window.addEventListener('beforeunload',()=>{if(refreshTimer)clearInterval(refreshTimer);if(agentTimerInterval)clearInterval(agentTimerInterval);});
   sync();

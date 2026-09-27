@@ -7,7 +7,7 @@ function boot(){
 
   const sb=app.sb,state=app.state,esc=app.esc,dateTime=app.dateTime,flash=app.flash,openModal=app.openModal,closeModal=app.closeModal;
   let refreshTimer=null,agentTimerInterval=null,searching=false,availableOpen=false;
-  let latestReports=new Map(),opportunityById=new Map();
+  let latestReports=new Map(),guidanceByOpportunity=new Map(),opportunityById=new Map();
 
   const ar=()=>app.getLang()==='ar';
   const isManagement=()=>app.canManage();
@@ -334,6 +334,24 @@ function boot(){
     });
   }
 
+  function claimedGuidanceHtml(x){
+    if(!x.assigned_rep)return '';
+    const g=guidanceByOpportunity.get(x.id);
+    if(!g)return '<div class="notice ai-claim-guidance" style="margin:10px 0"><b>'+(ar()?'دليل استلام المشروع':'Project capture guide')+'</b><br>'+esc(ar()?'الإيجنت يجهز طريقة الوصول وخطة الزيارة لهذا المشروع.':'The agent is preparing the access and visit plan for this opportunity.')+'</div>';
+    const accessSrc=safeUrl(g.access_source_url);
+    const block=(title,value)=>'<div class="notice"><b>'+esc(title)+'</b><br><span style="white-space:pre-line">'+esc(value||'-')+'</span></div>';
+    return '<div class="ai-claim-guidance" style="margin:10px 0">'+
+      '<div class="dashboard-head" style="margin-bottom:8px"><div><h4 style="margin:0">'+(ar()?'دليل المندوب لاستلام المشروع':'Representative project capture guide')+'</h4><div class="small">'+(ar()?'هذه المعلومات تظهر بعد استلام المشروع فقط.':'This guidance is visible only after the opportunity is claimed.')+'</div></div></div>'+
+      '<div class="ai-intelligence-grid">'+
+        block(ar()?'كيف توصل للمشروع':'How to reach the opportunity',g.access_plan)+
+        block(ar()?'ماذا تفعل عند الوصول':'What to do on arrival',g.visit_playbook)+
+        block(ar()?'ما الذي قد يطلبونه منك':'What they may ask from you',g.likely_requests)+
+        block(ar()?'خطة استلام المشروع':'How to capture the project',g.capture_plan)+
+      '</div>'+
+      (accessSrc?'<div class="small" style="margin-top:7px"><a href="'+esc(accessSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح مصدر طريقة الوصول':'Open access-route source')+'</a></div>':'')+
+    '</div>';
+  }
+
   function renderOpportunityCard(x,rmap,priorityIndex,repBlocked){
     const src=safeUrl(x.source_url),web=safeUrl(x.website),contractorSrc=safeUrl(x.linked_contractor_source_url),maps=googleMapsSearchUrl(x);
     const assignedName=rmap.get(x.assigned_rep)||'-';
@@ -394,6 +412,7 @@ function boot(){
       '<div class="notice" style="margin:8px 0"><b>'+(ar()?'سبب الترشيح':'Why recommended')+'</b><br>'+esc(x.recommendation_reason||'-')+'</div>'+
       '<div style="margin-bottom:8px"><b>'+(ar()?'المنتجات المحتملة':'Suggested products')+'</b><div style="margin-top:4px">'+products+'</div></div>'+
       dueHtml+
+      claimedGuidanceHtml(x)+
       latestReportHtml(x)+
       '<div class="small" style="margin-top:8px">'+(src?'<a href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح المصدر':'Open source')+'</a>':'')+(web?' · <a href="'+esc(web)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'موقع الجهة':'Company website')+'</a>':'')+'</div>'+
       (actions?'<div style="margin-top:10px">'+actions+'</div>':'')+
@@ -405,6 +424,15 @@ function boot(){
     const {data,error}=await sb.from('ai_opportunity_reports').select('id,opportunity_id,rep_id,responsible_phone,location_text,report_text,created_at').order('created_at',{ascending:false}).limit(1000);
     if(error){console.error('ai opportunity reports',error);return;}
     for(const r of(data||[]))if(!latestReports.has(r.opportunity_id))latestReports.set(r.opportunity_id,r);
+  }
+
+  async function loadOpportunityGuidance(){
+    guidanceByOpportunity=new Map();
+    const {data,error}=await sb.from('ai_opportunity_guidance')
+      .select('opportunity_id,access_plan,access_source_url,visit_playbook,likely_requests,capture_plan,updated_at')
+      .limit(1000);
+    if(error){console.error('ai opportunity guidance',error);return;}
+    for(const g of(data||[]))guidanceByOpportunity.set(g.opportunity_id,g);
   }
 
   async function loadOpportunities(){
@@ -420,7 +448,7 @@ function boot(){
     const gr=document.getElementById('aiOppGradeFilter')?.value||'';if(gr)q=q.eq('grade',gr);
     const area=document.getElementById('aiOppAreaFilter')?.value||'';if(area&&isManagement())q=q.eq('market_area',area);
 
-    const results=await Promise.all([q,loadOpportunityReports()]);
+    const results=await Promise.all([q,loadOpportunityReports(),loadOpportunityGuidance()]);
     const data=results[0].data,error=results[0].error;
     if(error){
       const html='<div class="danger-note">'+esc(error.message)+'</div>';

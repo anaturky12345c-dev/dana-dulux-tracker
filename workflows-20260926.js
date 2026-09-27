@@ -92,7 +92,10 @@ function injectStyle(){
     '.due-ok{color:var(--good)}',
     '.task-actions{display:flex;gap:5px;flex-wrap:wrap}',
     '.workload-note{line-height:1.65}',
-    '@media(max-width:600px){.workload-metrics{grid-template-columns:1fr 1fr}}'
+    '.followup-mobile-list{display:none;gap:8px}',
+    '.followup-mobile-card{border:1px solid var(--line);border-radius:11px;padding:11px;background:#fff}',
+    '.followup-mobile-card .small{margin-top:5px;line-height:1.6}',
+    '@media(max-width:600px){.workload-metrics{grid-template-columns:1fr 1fr}.followup-desktop-table{display:none}.followup-mobile-list{display:grid}}'
   ].join('');
   document.head.appendChild(st);
 }
@@ -132,7 +135,7 @@ function injectUi(){
     var q=document.createElement('div');
     q.className='card workload-card';
     q.id='followupQueueCard';
-    q.innerHTML='<div class="workload-head"><h3 id="followupQueueTitle"></h3></div><div class="table-wrap"><table id="followupQueue"><thead><tr><th id="fqCustomer"></th><th id="fqRep"></th><th id="fqStatus"></th><th id="fqOwner"></th><th id="fqDeadline"></th><th id="fqTiming"></th><th id="fqAction"></th></tr></thead><tbody id="followupQueueBody"></tbody></table></div>';
+    q.innerHTML='<div class="workload-head"><h3 id="followupQueueTitle"></h3></div><div class="table-wrap followup-desktop-table"><table id="followupQueue"><thead><tr><th id="fqCustomer"></th><th id="fqRep"></th><th id="fqStatus"></th><th id="fqOwner"></th><th id="fqDeadline"></th><th id="fqTiming"></th><th id="fqAction"></th></tr></thead><tbody id="followupQueueBody"></tbody></table></div><div id="followupQueueMobile" class="followup-mobile-list"></div>';
     reports.insertBefore(q,reports.firstChild);
   }
 
@@ -202,7 +205,7 @@ function followupRows(){
   return followupStates.map(function(fs){
     return {fs:fs,customer:customerFor(fs.customer_id)};
   }).filter(function(x){
-    return x.customer&&x.customer.status!=='active'&&x.fs.next_due_at;
+    return x.customer&&(x.customer.status==='hesitant'||x.customer.status==='rejected')&&x.fs.next_due_at;
   }).sort(function(a,b){
     return deadlineMs(a.fs.next_due_at)-deadlineMs(b.fs.next_due_at);
   });
@@ -226,6 +229,14 @@ function renderFollowups(){
     }).join(''):'<tr><td colspan="7" class="empty">'+tx('لا توجد متابعات مطلوبة.','No required follow-ups.')+'</td></tr>';
   }
 
+  var mobile=byId('followupQueueMobile');
+  if(mobile){
+    mobile.innerHTML=rows.length?rows.map(function(x){
+      var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
+      return '<div class="followup-mobile-card"><div class="dashboard-head" style="margin-bottom:5px"><b>'+e(c.name)+'</b>'+statusBadge(c.status)+'</div><div class="small">'+tx('المندوب: ','Representative: ')+e(repName(c))+'</div><div class="small">'+tx('الموعد: ','Deadline: ')+app.dateTime(fs.next_due_at)+'</div><div class="small '+(late?'due-bad':'due-ok')+'"><b>'+e(dueLabel(fs.next_due_at))+'</b></div><div style="margin-top:8px">'+followupAction(x,true)+'</div></div>';
+    }).join(''):'<div class="small">'+tx('لا توجد متابعات مطلوبة.','No required follow-ups.')+'</div>';
+  }
+
   var n=nowMs(),td=today();
   var repRows=rows.filter(function(x){return x.fs.owner_mode==='rep';});
   var overdue=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)<n;});
@@ -235,13 +246,14 @@ function renderFollowups(){
   setText('followOverdueCount',String(overdue.length));
   setText('followManagementCount',String(waiting.length));
 
-  var preview=overdue.concat(waiting).concat(dueToday);
+  var upcoming=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)>=n&&dateKey(x.fs.next_due_at)!==td;});
+  var preview=overdue.concat(waiting).concat(dueToday).concat(upcoming);
   var seen={};
   preview=preview.filter(function(x){if(seen[x.customer.id])return false;seen[x.customer.id]=1;return true;}).slice(0,6);
   var p=byId('workloadFollowupPreview');
   if(p)p.innerHTML=preview.length?preview.map(function(x){
-    return '<div class="event"><b>'+e(x.customer.name)+'</b><div class="small">'+e(repName(x.customer))+' — '+(x.fs.owner_mode==='management'?tx('بانتظار تدخل الإدارة','Waiting for management'):e(dueLabel(x.fs.next_due_at)))+'</div><div style="margin-top:6px">'+followupAction(x,true)+'</div></div>';
-  }).join(''):'<div class="small">'+tx('لا توجد متابعات عاجلة الآن.','No urgent follow-ups right now.')+'</div>';
+    return '<div class="event"><b>'+e(x.customer.name)+'</b><div class="small">'+e(repName(x.customer))+' — '+statusBadge(x.customer.status)+' — '+(x.fs.owner_mode==='management'?tx('بانتظار تدخل الإدارة','Waiting for management'):e(dueLabel(x.fs.next_due_at)))+'</div><div style="margin-top:6px">'+followupAction(x,true)+'</div></div>';
+  }).join(''):'<div class="small">'+tx('لا توجد عملاء مترددين أو رافضين يحتاجون متابعة.','No hesitant or rejected customers need follow-up.')+'</div>';
 
   var attention=byId('attentionList');
   if(attention){

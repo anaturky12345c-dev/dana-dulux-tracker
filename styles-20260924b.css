@@ -183,3 +183,7 @@ html[dir="ltr"] .flash{left:18px;right:auto}html[dir="rtl"] .flash{right:18px;le
   .ai-opportunity-card .dashboard-head{display:grid;grid-template-columns:1fr}
   .ai-opportunity-card .dashboard-head>div:last-child{display:flex;gap:4px;flex-wrap:wrap}
 }
+
+.ai-agent-timer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.ai-agent-timer>b{font-size:18px;letter-spacing:.04em;background:#f8fafc;border:1px solid var(--line);border-radius:9px;padding:6px 9px;direction:ltr}
+@media(max-width:600px){.ai-agent-timer{gap:6px}.ai-agent-timer>b{font-size:16px}}

@@ -8,7 +8,8 @@ function boot(){
   let refreshTimer=null;
   let searching=false;
   const ar=()=>app.getLang()==='ar';
-  const isAdmin=()=>state.profile?.role==='admin';
+  const isManagement=()=>app.canManage();
+  const isPrimaryAdmin=()=>state.profile?.role==='admin' && state.profile?.username==='admin';
   const isRep=()=>state.profile?.role==='rep';
   const canSee=()=>!!state.profile;
   const safeUrl=v=>{if(!v)return '';try{const u=new URL(v);return (u.protocol==='https:'||u.protocol==='http:')?u.href:'';}catch(_){return '';}};
@@ -46,18 +47,18 @@ function boot(){
           <div class="dashboard-head">
             <div><h3 id="aiOppHeading"></h3><div class="small" id="aiOppHelp"></div></div>
             <div style="display:flex;gap:7px;flex-wrap:wrap">
-              <button class="btn full-admin-only" id="aiSearchNowBtn" type="button"></button>
+              <button class="btn" id="aiSearchNowBtn" type="button"></button>
               <button class="btn secondary" id="aiOppRefresh" type="button"></button>
             </div>
           </div>
         </div>
         <div class="grid cards" id="aiOppSummary" style="margin-bottom:14px"></div>
-        <div class="toolbar" style="margin-bottom:10px"><select id="aiOppStatusFilter"></select><select id="aiOppTypeFilter"></select><select id="aiOppGradeFilter"></select></div>
+        <div class="toolbar" style="margin-bottom:10px"><select id="aiOppStatusFilter"></select><select id="aiOppTypeFilter"></select><select id="aiOppGradeFilter"></select><select id="aiOppAreaFilter"></select></div>
         <div id="aiOppList"></div>`;
       main.appendChild(section);
       section.querySelector('#aiOppRefresh')?.addEventListener('click',loadAll);
       section.querySelector('#aiSearchNowBtn')?.addEventListener('click',searchNow);
-      ['#aiOppStatusFilter','#aiOppTypeFilter','#aiOppGradeFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
+      ['#aiOppStatusFilter','#aiOppTypeFilter','#aiOppGradeFilter','#aiOppAreaFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
       section.addEventListener('click',async e=>{
         let b=e.target.closest('[data-ai-claim]');
         if(b){
@@ -70,13 +71,13 @@ function boot(){
           return loadOpportunities();
         }
         b=e.target.closest('[data-ai-opp-status]');
-        if(b&&isAdmin()){
+        if(b&&isManagement()){
           const id=b.dataset.id,status=b.dataset.aiOppStatus;b.disabled=true;
           const {error}=await sb.from('ai_opportunities').update({status,updated_at:new Date().toISOString()}).eq('id',id);
           b.disabled=false;if(error)return flash(error.message,true);return loadOpportunities();
         }
         b=e.target.closest('[data-ai-opp-assign]');
-        if(b&&isAdmin()){
+        if(b&&isManagement()){
           const id=b.dataset.id,select=section.querySelector(`[data-ai-opp-rep="${CSS.escape(id)}"]`),repId=select?.value||'';
           if(!repId)return flash(ar()?'اختر المندوب أولاً':'Choose a representative first',true);
           b.disabled=true;const {error}=await sb.from('ai_opportunities').update({assigned_rep:repId,status:'assigned',updated_at:new Date().toISOString()}).eq('id',id);b.disabled=false;
@@ -84,23 +85,25 @@ function boot(){
         }
       });
     }
-    const search=document.getElementById('aiSearchNowBtn');if(search)search.classList.toggle('hidden',!isAdmin());
+    const search=document.getElementById('aiSearchNowBtn');if(search)search.classList.toggle('hidden',!isPrimaryAdmin());
+    const areaFilter=document.getElementById('aiOppAreaFilter');if(areaFilter)areaFilter.classList.toggle('hidden',!isManagement());
     updateLabels();
   }
 
   function updateLabels(){
     const nav=document.getElementById('aiOppNav');if(nav)nav.textContent=ar()?'مصانع ومشاريع':'Factories & Projects';
     const h=document.getElementById('aiOppHeading');if(h)h.textContent=ar()?'مصانع ومشاريع':'Factories & Projects';
-    const help=document.getElementById('aiOppHelp');if(help)help.textContent=ar()?(isAdmin()?'فرص يكتشفها النظام تلقائياً. يمكنك تشغيل بحث فوري من الزر.':'اختر فرصة غير مستلمة للعمل عليها.'):(isAdmin()?'Opportunities found automatically. You can also start a search now.':'Claim an available opportunity to work on it.');
+    const help=document.getElementById('aiOppHelp');if(help)help.textContent=ar()?(isManagement()?'الإدارة ترى فرص جميع مناطق المملكة، والمناديب يرون فرص المنطقة الوسطى فقط.':'اختر فرصة متاحة من المنطقة الوسطى للعمل عليها.'):(isManagement()?'Management sees opportunities across Saudi Arabia; representatives only see Central Region opportunities.':'Claim an available Central Region opportunity to work on.');
     const r=document.getElementById('aiOppRefresh');if(r)r.textContent=ar()?'تحديث':'Refresh';
     const s=document.getElementById('aiSearchNowBtn');if(s)s.textContent=searching?(ar()?'جاري بدء البحث...':'Starting search...'):(ar()?'بحث عن فرص جديدة':'Find new opportunities');
     const sf=document.getElementById('aiOppStatusFilter');if(sf){const v=sf.value;sf.innerHTML=`<option value="">${ar()?'كل الحالات':'All statuses'}</option><option value="new">${statusLabel('new')}</option><option value="reviewed">${statusLabel('reviewed')}</option><option value="assigned">${statusLabel('assigned')}</option><option value="rejected">${statusLabel('rejected')}</option>`;sf.value=v;}
     const tf=document.getElementById('aiOppTypeFilter');if(tf){const v=tf.value;tf.innerHTML=`<option value="">${ar()?'كل الأنواع':'All types'}</option><option value="factory">${typeLabel('factory')}</option><option value="project">${typeLabel('project')}</option><option value="contractor">${typeLabel('contractor')}</option>`;tf.value=v;}
     const gf=document.getElementById('aiOppGradeFilter');if(gf){const v=gf.value;gf.innerHTML=`<option value="">${ar()?'كل الدرجات':'All grades'}</option><option value="A">A</option><option value="B">B</option><option value="C">C</option>`;gf.value=v;}
+    const af=document.getElementById('aiOppAreaFilter');if(af){const v=af.value;af.innerHTML=`<option value="">${ar()?'كل المملكة':'All Saudi Arabia'}</option><option value="central">${ar()?'المنطقة الوسطى':'Central Region'}</option><option value="outside">${ar()?'خارج المنطقة الوسطى':'Outside Central Region'}</option>`;af.value=v;}
   }
 
   async function searchNow(){
-    if(!isAdmin()||searching)return;
+    if(!isPrimaryAdmin()||searching)return;
     searching=true;updateLabels();
     const {error}=await sb.rpc('admin_trigger_ai_market_scout');
     searching=false;updateLabels();
@@ -122,10 +125,11 @@ function boot(){
     if(!canSee())return;
     ensureUi();
     const list=document.getElementById('aiOppList');if(list)list.innerHTML=`<div class="card"><div class="small">${ar()?'جاري التحميل...':'Loading...'}</div></div>`;
-    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,district,address,phone,website,contact_name,contact_role,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
+    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,market_area,district,address,phone,website,contact_name,contact_role,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
     const st=document.getElementById('aiOppStatusFilter')?.value||'';if(st)q=q.eq('status',st);
     const ty=document.getElementById('aiOppTypeFilter')?.value||'';if(ty)q=q.eq('opportunity_type',ty);
     const gr=document.getElementById('aiOppGradeFilter')?.value||'';if(gr)q=q.eq('grade',gr);
+    const area=document.getElementById('aiOppAreaFilter')?.value||'';if(area&&isManagement())q=q.eq('market_area',area);
     const {data,error}=await q;
     if(error){if(list)list.innerHTML=`<div class="card"><div class="danger-note">${esc(error.message)}</div></div>`;return;}
     const rows=data||[],rmap=repMap();renderSummary(rows);
@@ -139,13 +143,13 @@ function boot(){
         if(x.assigned_rep===state.profile.id)actions=`<span class="badge b-good">${ar()?'هذه الفرصة باسمك':'This is your opportunity'}</span>`;
         else if(!x.assigned_rep&&['new','reviewed'].includes(x.status))actions=`<button class="btn good" data-ai-claim="1" data-id="${esc(x.id)}">${ar()?'استلام الفرصة':'Claim opportunity'}</button>`;
         else if(x.assigned_rep)actions=`<span class="small">${ar()?'مستلمة بواسطة: ':'Claimed by: '}${esc(assignedName)}</span>`;
-      }else if(isAdmin()&&x.status!=='rejected'&&x.status!=='won'&&x.status!=='lost'){
+      }else if(isManagement()&&x.status!=='rejected'&&x.status!=='won'&&x.status!=='lost'){
         const options=['<option value="">'+(ar()?'اختر مندوباً':'Choose representative')+'</option>',...(state.profiles||[]).filter(r=>r.role==='rep').map(r=>`<option value="${esc(r.id)}" ${x.assigned_rep===r.id?'selected':''}>${esc(r.full_name||r.username)}</option>`)].join('');
         actions=`<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">${x.status==='new'?`<button class="btn good mini" data-id="${esc(x.id)}" data-ai-opp-status="reviewed">${ar()?'اعتماد':'Approve'}</button>`:''}<button class="btn secondary mini" data-id="${esc(x.id)}" data-ai-opp-status="rejected">${ar()?'رفض':'Reject'}</button><select data-ai-opp-rep="${esc(x.id)}" style="max-width:220px">${options}</select><button class="btn mini" data-id="${esc(x.id)}" data-ai-opp-assign="1">${ar()?'إسناد للمندوب':'Assign'}</button></div>`;
       }
       return `<div class="card" style="margin-bottom:10px">
-        <div class="dashboard-head" style="margin-bottom:8px"><div><b>${esc(x.name)}</b> <span class="badge b-gray">${esc(typeLabel(x.opportunity_type))}</span></div><div><span class="badge ${gradeClass(x.grade)}">${esc(x.grade||'C')} · ${Number(x.score||0)}</span> <span class="badge ${verifyClass(x.verification_status)}">${esc(verifyLabel(x.verification_status))}</span></div></div>
-        <div class="detail-grid"><div><b>${ar()?'النشاط':'Activity'}</b>${esc(x.activity||'-')}</div><div><b>${ar()?'المدينة':'City'}</b>${esc(x.city||'-')}</div><div><b>${ar()?'الحي / الموقع':'District / location'}</b>${esc(x.district||x.address||'-')}</div><div><b>${ar()?'مرحلة المشروع':'Project stage'}</b>${esc(x.project_stage||'-')}</div><div><b>${ar()?'الجوال':'Phone'}</b>${esc(x.phone||'-')}</div><div><b>${ar()?'الحالة':'Status'}</b>${esc(statusLabel(x.status))}</div><div><b>${ar()?'اكتُشفت':'Discovered'}</b>${esc(dateTime(x.discovered_at))}</div><div><b>${ar()?'المندوب':'Representative'}</b>${esc(assignedName)}</div></div>
+        <div class="dashboard-head" style="margin-bottom:8px"><div><b>${esc(x.name)}</b> <span class="badge b-gray">${esc(typeLabel(x.opportunity_type))}</span> ${isManagement()?`<span class="badge ${x.market_area==='central'?'b-good':'b-info'}">${x.market_area==='central'?(ar()?'الوسطى':'Central'):(ar()?'خارج الوسطى':'Outside Central')}</span>`:''}</div><div><span class="badge ${gradeClass(x.grade)}">${esc(x.grade||'C')} · ${Number(x.score||0)}</span> <span class="badge ${verifyClass(x.verification_status)}">${esc(verifyLabel(x.verification_status))}</span></div></div>
+        <div class="detail-grid"><div><b>${ar()?'النشاط':'Activity'}</b>${esc(x.activity||'-')}</div><div><b>${ar()?'المنطقة':'Region'}</b>${esc(x.administrative_region||'-')}</div><div><b>${ar()?'المدينة':'City'}</b>${esc(x.city||'-')}</div><div><b>${ar()?'الحي / الموقع':'District / location'}</b>${esc(x.district||x.address||'-')}</div><div><b>${ar()?'مرحلة المشروع':'Project stage'}</b>${esc(x.project_stage||'-')}</div><div><b>${ar()?'الجوال':'Phone'}</b>${esc(x.phone||'-')}</div><div><b>${ar()?'الحالة':'Status'}</b>${esc(statusLabel(x.status))}</div><div><b>${ar()?'اكتُشفت':'Discovered'}</b>${esc(dateTime(x.discovered_at))}</div><div><b>${ar()?'المندوب':'Representative'}</b>${esc(assignedName)}</div></div>
         <div class="notice" style="margin:8px 0"><b>${ar()?'سبب الترشيح':'Why recommended'}</b><br>${esc(x.recommendation_reason||'-')}</div>
         <div style="margin-bottom:8px"><b>${ar()?'المنتجات المحتملة':'Suggested products'}</b><div style="margin-top:4px">${products}</div></div>
         <div class="small">${src?`<a href="${esc(src)}" target="_blank" rel="noopener noreferrer">${ar()?'فتح المصدر':'Open source'}</a>`:''}${web?` · <a href="${esc(web)}" target="_blank" rel="noopener noreferrer">${ar()?'موقع الجهة':'Company website'}</a>`:''}</div>

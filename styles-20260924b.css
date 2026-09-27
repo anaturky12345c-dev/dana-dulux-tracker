@@ -170,7 +170,7 @@ html[dir="ltr"] .flash{left:18px;right:auto}html[dir="rtl"] .flash{right:18px;le
 @media(max-width:600px){.rep-day-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.rep-ai-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .ai-opportunity-section{overflow:hidden}
-.ai-opportunity-card{margin:10px 0;background:#fff}
+.ai-opportunity-card{margin:14px 0;background:#fff;border:2px solid #d9e1ea;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(15,23,42,.08)}
 .ai-opportunity-card:first-child{margin-top:0}
 .ai-opportunity-card:last-child{margin-bottom:0}
 .ai-intelligence-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}

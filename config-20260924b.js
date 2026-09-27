@@ -6,7 +6,7 @@ window.DANA_CONFIG = {
 (() => {
   for (const src of [
     './ai-sources-20260927.js?v=20260927-merged2',
-    './ai-opportunities-20260927.js?v=20260927-projects2'
+    './ai-opportunities-20260927.js?v=20260927-region3'
   ]) {
     const s=document.createElement('script');
     s.src=src;

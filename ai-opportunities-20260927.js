@@ -514,8 +514,7 @@ function boot(){
 
   window.addEventListener('dana:render',sync);
   sb.auth.onAuthStateChange((_event,session)=>{if(!session)removeUi();else setTimeout(sync,0);});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canSee()){updateAgentTimer();loadAll();}});
-  refreshTimer=setInterval(()=>{if(canSee())loadAll();},90000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canSee())updateAgentTimer();});
   window.addEventListener('beforeunload',()=>{if(refreshTimer)clearInterval(refreshTimer);if(agentTimerInterval)clearInterval(agentTimerInterval);});
   sync();
 }

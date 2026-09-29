@@ -94,7 +94,7 @@
           <option value="">All Representatives</option>
         </select>
         <select id="customerPeriodFilter">
-          <option value="">All Dates</option>
+          <option value="all">All Dates</option>
           <option value="day">Today</option>
           <option value="week">This Week</option>
           <option value="month">This Month</option>
@@ -107,7 +107,7 @@
       <div class="toolbar">
         <button class="btn" id="newSaleBtn">+ Record Sale / Withdrawal</button>
         <input id="saleSearch" class="search" placeholder="Search customer, product or reference..." />
-        <select id="salePeriodFilter"><option value="">All Dates</option><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option></select>
+        <select id="salePeriodFilter"><option value="all">All Dates</option><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option></select>
         <select id="saleProductFilter"><option value="">All Products</option><option value="dulux_emulsion">Dulux Emulsion</option><option value="dulux_oil">Dulux Oil-Based</option><option value="leafs_tinting">Leafs Tinting</option><option value="dulux_polyurethane">Dulux Polyurethane</option></select>
         <select id="saleRepFilter" class="management-only"><option value="">All Representatives</option></select>
       </div>
@@ -118,6 +118,7 @@
     <section id="reports" class="section">
       <div class="toolbar">
         <button class="btn" id="newReportBtn">+ Add Follow-up</button>
+        <select id="reportPeriodFilter"><option value="all">All Dates</option><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option></select>
         <select id="reportActionFilter">
           <option value="">All Actions</option>
           <option value="admin_intervention">Management intervention</option>
@@ -206,6 +207,7 @@
     </section>
 
     <section id="audit" class="section full-admin-only">
+      <div class="toolbar"><select id="auditPeriodFilter"><option value="all">All Dates</option><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option></select></div>
       <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead><tbody id="auditBody"></tbody></table></div>
     </section>
 
@@ -245,7 +247,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js?v=20260927-direct4"></script>
-<script src="./app-20260924b.js?v=20260929-3"></script>
+<script src="./app-20260924b.js?v=20260929-4"></script>
 <script src="./workflows-20260926.js?v=20260929-agreed1"></script>
 <script src="./ai-sources-20260927.js?v=20260927-direct4"></script>
 <script src="./ai-opportunities-20260927.js?v=20260929-deepresearch1"></script>

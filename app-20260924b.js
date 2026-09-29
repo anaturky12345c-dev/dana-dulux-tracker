@@ -114,7 +114,7 @@ function applyLanguage(){
  const nav={dashboard:'dashboard',customers:'customers',sales:'sales',reports:'followups',mapPage:'map',analytics:'reports',audit:'audit',account:'account'};
  for(const [p,k] of Object.entries(nav)){const e=document.querySelector('[data-page="'+p+'"]');if(e)e.textContent=t(k);}
 
- if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newSalesFollowupBtn'))$('newSalesFollowupBtn').textContent=lang==='ar'?'+ تسجيل متابعة':'+ Record Follow-up';if($('newComplaintBtn'))$('newComplaintBtn').textContent=lang==='ar'?'+ شكوى / طلب':'+ Complaint / Request';if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');set('#servicePageTitle',lang==='ar'?'متابعات وشكاوى العملاء':'Customer Follow-ups & Complaints');set('#servicePageHint',lang==='ar'?'المتابعات البيعية منفصلة عن الشكاوى والطلبات. لا يتم تغيير حالة العميل من هذه الصفحة.':'Sales follow-ups are separate from complaints and requests. Customer status is not changed from this page.');set('#requiredFollowupTitle',lang==='ar'?'المتابعات المطلوبة':'Required Sales Follow-ups');set('#requiredFollowupHint',lang==='ar'?'للعملاء المترددين والرافضين — كل 3 أيام عمل، من السبت إلى الخميس.':'For hesitant and rejected customers — every 3 workdays, Saturday through Thursday.');set('#salesFollowupHistoryTitle',lang==='ar'?'سجل المتابعات':'Sales Follow-up History');set('#salesFollowupHistoryHint',lang==='ar'?'تسجيل المتابعة لا يغيّر حالة العميل.':'Recording a follow-up does not change customer status.');set('#complaintsHistoryTitle',lang==='ar'?'الشكاوى والطلبات':'Complaints & Requests');set('#complaintsHistoryHint',lang==='ar'?'الشكاوى وطلبات العينات وطلبات الخدمة وتدخل الإدارة.':'Complaints, sample requests, service requests, and management intervention.');
+ if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newSalesFollowupBtn'))$('newSalesFollowupBtn').textContent=lang==='ar'?'+ تسجيل متابعة':'+ Record Follow-up';if($('newComplaintBtn'))$('newComplaintBtn').textContent=lang==='ar'?'+ شكوى / طلب':'+ Complaint / Request';if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');set('#servicePageTitle',lang==='ar'?'متابعات وشكاوى العملاء':'Customer Follow-ups & Complaints');set('#servicePageHint',lang==='ar'?'المتابعات البيعية منفصلة عن الشكاوى والطلبات. لا يتم تغيير حالة العميل من هذه الصفحة.':'Sales follow-ups are separate from complaints and requests. Customer status is not changed from this page.');set('#requiredFollowupTitle',lang==='ar'?'المتابعات المطلوبة':'Required Sales Follow-ups');set('#requiredFollowupHint',lang==='ar'?'المتردد: كل 3 أيام عمل. الرافض: كل 7 أيام عمل. الجمعة لا تُحسب.':'Hesitant: every 3 workdays. Rejected: every 7 workdays. Friday is not counted.');set('#salesFollowupHistoryTitle',lang==='ar'?'سجل المتابعات':'Sales Follow-up History');set('#salesFollowupHistoryHint',lang==='ar'?'تسجيل المتابعة لا يغيّر حالة العميل.':'Recording a follow-up does not change customer status.');set('#complaintsHistoryTitle',lang==='ar'?'الشكاوى والطلبات':'Complaints & Requests');set('#complaintsHistoryHint',lang==='ar'?'الشكاوى وطلبات العينات وطلبات الخدمة وتدخل الإدارة.':'Complaints, sample requests, service requests, and management intervention.');
  ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
 
  set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#dormantTitle',lang==='ar'?'عملاء خاملون – مطلوب زيارة':'Inactive Customers – Visit Required');set('#goalsTitle',t('goals'));
@@ -847,7 +847,7 @@ function updateInitialStatusReason(){
      note.id='fAgreedPendingNote';
      note.className='small';
      note.style.marginTop='6px';
-     note.textContent=lang==='ar'?'إذا لم تُسجل طلبية خلال 3 أيام عمل، يرجع العميل تلقائياً إلى حالته السابقة (متردد أو رافض). أيام العمل من السبت إلى الخميس.':'If no order is recorded within 3 workdays, the customer automatically returns to the prior status (Hesitant or Rejected). Workdays are Saturday through Thursday.';
+     note.textContent=lang==='ar'?'إذا لم تُسجل طلبية خلال 24 ساعة ضمن أيام العمل، يرجع العميل تلقائياً إلى حالته السابقة (متردد أو رافض). الجمعة لا تُحسب.':'If no order is recorded within 24 working hours, the customer automatically returns to the prior status (Hesitant or Rejected). Friday is not counted.';
      target.appendChild(note);
    }
  }
@@ -1042,7 +1042,7 @@ function openSalesFollowupForm(id=null){
  const eligible=state.customers.filter(c=>['hesitant','rejected'].includes(c.status));
  if(!eligible.length)return flash(lang==='ar'?'لا يوجد عميل متردد أو رافض يحتاج متابعة حالياً.':'No hesitant or rejected customer currently needs a follow-up.',true);
  openModal(lang==='ar'?'تسجيل متابعة بيعية':'Record Sales Follow-up',`
-   <div class="notice">${lang==='ar'?'المتابعة لا تغيّر حالة العميل. بعد الحفظ يبدأ موعد المتابعة التالية بعد 3 أيام عمل، وأيام العمل من السبت إلى الخميس.':'A follow-up does not change customer status. After saving, the next follow-up is due in 3 workdays; workdays are Saturday through Thursday.'}</div>
+   <div class="notice">${lang==='ar'?'المتابعة لا تغيّر حالة العميل. المتردد تكون متابعته التالية بعد 3 أيام عمل، والرافض بعد 7 أيام عمل. الجمعة لا تُحسب.':'A follow-up does not change customer status. Hesitant customers are due again in 3 workdays; Rejected customers in 7 workdays. Friday is not counted.'}</div>
    <div class="form-grid" style="margin-top:12px">
      <div class="full"><label>${t('customer')}</label>${salesFollowupPickerHtml(selected?.id||null)}</div>
      <div><label>${lang==='ar'?'الحالة الحالية':'Current status'}</label><input id="sfCurrentStatus" readonly></div>
@@ -1064,7 +1064,8 @@ async function saveSalesFollowup(){
     :error.message;
    return flash(msg,true);
  }
- closeModal();flash(lang==='ar'?'تم حفظ المتابعة. المتابعة التالية بعد 3 أيام عمل.':'Follow-up saved. The next follow-up is due in 3 workdays.');await refreshAll();
+ const days=c.status==='rejected'?7:3;
+ closeModal();flash(lang==='ar'?('تم حفظ المتابعة. المتابعة التالية بعد '+days+' أيام عمل.'):('Follow-up saved. The next follow-up is due in '+days+' workdays.'));await refreshAll();
 }
 
 function openReportForm(id=null){

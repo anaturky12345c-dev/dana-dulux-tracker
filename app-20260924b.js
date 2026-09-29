@@ -18,7 +18,7 @@ const I18N={
   customer:'العميل',customerType:'نوع العميل',shop:'محل',factory:'مصنع',project:'مشروع',notSet:'غير محدد',representative:'المندوب',area:'المنطقة',phone:'الجوال',status:'الحالة',action:'الإجراء',reason:'التقرير / السبب',product:'المنتج',quantity:'الكمية',value:'القيمة',reference:'المرجع',date:'التاريخ',
   totalCustomers:'إجمالي العملاء',salesThisMonth:'سحوبات الشهر',activeCustomers:'العملاء النشطون',hesitantCustomers:'العملاء المترددون',rejectedCustomers:'العملاء الرافضون',clickView:'اضغط للعرض',
   repSummary:'ملخص المناديب اليومي',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
-  allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة...',newCustomer:'+ عميل جديد',customerAddedAt:'تاريخ الإضافة',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
+  allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة أو رقم الجوال...',newCustomer:'+ عميل جديد',customerAddedAt:'تاريخ الإضافة',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
   recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',today:'هذا اليوم',thisWeek:'هذا الأسبوع',thisMonth:'هذا الشهر',
   addFollowup:'+ إضافة متابعة',allActions:'كل الإجراءات',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
   reportType:'نوع التقرير',allReps:'كل المندوبين',from:'من تاريخ',to:'إلى تاريخ',generateReport:'عرض التقرير',printPdf:'تصدير PDF / طباعة',
@@ -35,7 +35,7 @@ const I18N={
   customer:'Customer',customerType:'Customer Type',shop:'Shop',factory:'Factory',project:'Project',notSet:'Not set',representative:'Representative',area:'Area',phone:'Phone',status:'Status',action:'Action',reason:'Report / Reason',product:'Product',quantity:'Quantity',value:'Value',reference:'Reference',date:'Date',
   totalCustomers:'Total Customers',salesThisMonth:'Sales This Month',activeCustomers:'Active Customers',hesitantCustomers:'Hesitant Customers',rejectedCustomers:'Rejected Customers',clickView:'Click to view',
   repSummary:'Daily Representative Summary',managementIntervention:'Management Intervention',goals:'Goals',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
-  allStatuses:'All Statuses',searchCustomer:'Search customer or area...',newCustomer:'+ New Customer',customerAddedAt:'Date Added',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
+  allStatuses:'All Statuses',searchCustomer:'Search customer, area or phone...',newCustomer:'+ New Customer',customerAddedAt:'Date Added',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
   recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',today:'Today',thisWeek:'This Week',thisMonth:'This Month',
   addFollowup:'+ Add Follow-up',allActions:'All Actions',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
   reportType:'Report Type',allReps:'All Representatives',from:'From',to:'To',generateReport:'Generate Report',printPdf:'Export PDF / Print',
@@ -82,6 +82,13 @@ const googleMapsDirectionsUrl=(lat,lng)=>`https://www.google.com/maps/dir/?api=1
 const isAdmin=()=>state.profile?.role==='admin';
 const isManager=()=>state.profile?.role==='manager';
 const canManage=()=>isAdmin()||isManager();
+const normalizePhone=v=>{
+ let d=String(v??'').replace(/[٠-٩]/g,ch=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(ch))).replace(/[۰-۹]/g,ch=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch))).replace(/\D/g,'');
+ if(d.startsWith('00966'))d=d.slice(2);
+ if(d.startsWith('966'))d='0'+d.slice(3);
+ else if(d.startsWith('5')&&d.length===9)d='0'+d;
+ return d;
+};
 
 function applyLanguage(){
  document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
@@ -406,7 +413,14 @@ function refreshSaleRepFilter(){
 function renderCustomers(){
  refreshCustomerRepFilter();
  const q=($('customerSearch')?.value||'').trim().toLowerCase(),f=$('customerStatusFilter')?.value||'',repFilter=$('customerRepFilter')?.value||'',period=$('customerPeriodFilter')?.value||'',today=todayRiyadh(),weekStart=weekStartRiyadh(),month=monthRiyadh();
- let rows=state.customers.filter(c=>{const d=dateKeyRiyadh(c.created_at);const periodOk=!period||(period==='day'&&d===today)||(period==='week'&&d>=weekStart&&d<=today)||(period==='month'&&d.startsWith(month));return (!f||c.status===f)&&(!repFilter||c.assigned_rep===repFilter)&&periodOk&&(!q||`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q));});
+ const qPhone=normalizePhone(q);
+ let rows=state.customers.filter(c=>{
+  const d=dateKeyRiyadh(c.created_at);
+  const periodOk=!period||(period==='day'&&d===today)||(period==='week'&&d>=weekStart&&d<=today)||(period==='month'&&d.startsWith(month));
+  const text=`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase();
+  const searchOk=!q||text.includes(q)||(qPhone&&normalizePhone(c.phone).includes(qPhone));
+  return (!f||c.status===f)&&(!repFilter||c.assigned_rep===repFilter)&&periodOk&&searchOk;
+ });
  if(state.customerMonthOnly&&!period)rows=rows.filter(c=>dateKeyRiyadh(c.created_at).startsWith(month));
  rows=rows.slice().sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
  $('customersBody').innerHTML=rows.length?rows.map(c=>{const ac=activityForCustomer(c.id);const added=c.created_at?dateOnly(dateKeyRiyadh(c.created_at)):'-';return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.customer_type?t(c.customer_type):t('notSet'))}</td><td>${added}</td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${ac.monthSalesCount}</td><td>${money(ac.monthSalesValue)}</td><td><button class="btn secondary" data-open-customer="${c.id}">${t('view')}</button></td></tr>`}).join(''):`<tr><td colspan="9" class="empty">${t('noData')}</td></tr>`;

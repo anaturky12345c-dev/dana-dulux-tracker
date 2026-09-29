@@ -116,7 +116,7 @@ function applyLanguage(){
  if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');
  ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
 
- set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#goalsTitle',t('goals'));
+ set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#goalsTitle',t('goals'));
  const goalSmall=document.querySelector('#goalsTitle + .small');if(goalSmall)goalSmall.textContent=t('currentMonth');
  const rp=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head h3');if(rp)rp.textContent=t('repPerformance');
  const rpSmall=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head .small');if(rpSmall)rpSmall.textContent=t('currentMonth');
@@ -355,15 +355,46 @@ function renderDashboard(){
  if($('attentionSub'))$('attentionSub').textContent=lang==='ar'?(attention.length?'راجع الحالات الأحدث أولاً وافتح العميل مباشرة من هنا.':'لا توجد حالات مسجلة تحتاج تدخل الإدارة.'):(attention.length?'Review the newest cases first and open the customer directly from here.':'No management-intervention cases are recorded.');
  $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<button type="button" class="attention-item" data-attention-customer="${r.customer_id}"><span class="attention-main"><b>${esc(r.customer?.name||'-')}</b><span>${esc(r.note)}</span></span><span class="attention-meta">${esc(r.rep?.full_name||'-')}<small>${dateTime(r.created_at)}</small></span><span class="attention-open">${lang==='ar'?'فتح العميل':'Open'}</span></button>`).join(''):`<div class="attention-empty">${lang==='ar'?'لا توجد حالات تحتاج تدخل الإدارة حالياً.':'No cases need management intervention right now.'}</div>`;
  const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile];
- $('repSummary').innerHTML=reps.map(p=>{
+ const repDailyRows=reps.map(p=>{
    const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
    const salesToday=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
    const followupsToday=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
    const activeNewToday=newToday.filter(c=>c.status==='active').length;
    const salesValueToday=salesToday.reduce((z,x)=>z+Number(x.amount||0),0);
-   if(!canManage())return `<div class="rep-day-summary"><div><span>${lang==='ar'?'عملاء جدد اليوم':'New customers today'}</span><b>${newToday.length}</b></div><div><span>${lang==='ar'?'طلبيات اليوم':'Orders today'}</span><b>${salesToday.length}</b></div><div><span>${lang==='ar'?'قيمة سحوبات اليوم':'Today sales value'}</span><b>${money(salesValueToday)}</b></div><div><span>${lang==='ar'?'متابعات سجلتها اليوم':'Follow-ups recorded today'}</span><b>${followupsToday.length}</b></div></div>`;
-   return `<div class="event clickable-event" data-rep-customers="${p.id}"><b>${esc(p.full_name)}</b><div class="small">${lang==='ar'?`عملاء جدد اليوم: ${newToday.length} — منهم نشطين: ${activeNewToday} — سحوبات اليوم: ${money(salesValueToday)} (${salesToday.length}) — متابعات اليوم: ${followupsToday.length}`:`New customers today: ${newToday.length} — active: ${activeNewToday} — today's sales: ${money(salesValueToday)} (${salesToday.length}) — today's follow-ups: ${followupsToday.length}`}</div></div>`;
- }).join('')||`<div class="small">${t('noData')}</div>`;
+   return {p,newToday,salesToday,followupsToday,activeNewToday,salesValueToday};
+ });
+ if(canManage()){
+   $('repSummary').innerHTML=repDailyRows.length?`<div class="rep-summary-grid">${repDailyRows.map(x=>`
+     <button type="button" class="rep-summary-card" data-rep-customers="${x.p.id}">
+       <div class="rep-summary-head">
+         <div><span class="rep-summary-label">${lang==='ar'?'المندوب':'Representative'}</span><b>${esc(x.p.full_name)}</b></div>
+         <span class="rep-summary-open">${lang==='ar'?'عرض العملاء':'View customers'}</span>
+       </div>
+       <div class="rep-summary-sales">
+         <span>${lang==='ar'?'قيمة سحوبات اليوم':'Today sales value'}</span>
+         <strong>${money(x.salesValueToday)}</strong>
+       </div>
+       <div class="rep-summary-stats">
+         <div><span>${lang==='ar'?'الطلبيات':'Orders'}</span><b>${x.salesToday.length}</b></div>
+         <div><span>${lang==='ar'?'عملاء جدد':'New customers'}</span><b>${x.newToday.length}</b></div>
+         <div><span>${lang==='ar'?'جدد نشطون':'New active'}</span><b>${x.activeNewToday}</b></div>
+         <div><span>${lang==='ar'?'المتابعات':'Follow-ups'}</span><b>${x.followupsToday.length}</b></div>
+       </div>
+     </button>`).join('')}</div>`:`<div class="small">${t('noData')}</div>`;
+ }else{
+   const x=repDailyRows[0];
+   $('repSummary').innerHTML=x?`<div class="rep-summary-grid rep-summary-grid-single">
+     <div class="rep-summary-card rep-summary-card-static">
+       <div class="rep-summary-sales"><span>${lang==='ar'?'قيمة سحوبات اليوم':'Today sales value'}</span><strong>${money(x.salesValueToday)}</strong></div>
+       <div class="rep-summary-stats">
+         <div><span>${lang==='ar'?'الطلبيات':'Orders'}</span><b>${x.salesToday.length}</b></div>
+         <div><span>${lang==='ar'?'عملاء جدد':'New customers'}</span><b>${x.newToday.length}</b></div>
+         <div><span>${lang==='ar'?'جدد نشطون':'New active'}</span><b>${x.activeNewToday}</b></div>
+         <div><span>${lang==='ar'?'المتابعات':'Follow-ups'}</span><b>${x.followupsToday.length}</b></div>
+       </div>
+     </div>
+   </div>`:`<div class="small">${t('noData')}</div>`;
+ }
 }
 function renderRepPerformance(){
  const box=$('repPerformance');if(!box||!canManage())return;

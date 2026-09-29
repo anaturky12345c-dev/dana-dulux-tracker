@@ -312,7 +312,7 @@ async function refreshAll(){
 }
 async function loadProfiles(){const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name');state.profiles=error?[]:(data||[]);}
 async function loadCustomers(){
-  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,customer_type,created_at,assigned_rep,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,customer_type,created_at,assigned_rep,created_by,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
   if(error){console.error(error);flash(lang==='ar'?'تعذر تحميل العملاء':'Could not load customers',true);return;}state.customers=data||[];
 }
 async function loadSales(){state.sales=await loadPaged((x,y)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('business_date',{ascending:false}).order('created_at',{ascending:false}).range(x,y),lang==='ar'?'السحوبات':'sales');}
@@ -408,14 +408,24 @@ function qualifiedActiveNewCustomers(customers,sales){
  for(const x of sales){const id=Number(x.customer_id);totals.set(id,(totals.get(id)||0)+Number(x.amount||0));}
  return customers.filter(c=>c.status==='active'&&(totals.get(Number(c.id))||0)>=ACTIVE_NEW_GOAL_MIN_SALES);
 }
+function goalNewCustomers(scope,repId,fromKey,toKey){
+ const repIds=new Set(state.profiles.filter(p=>p.role==='rep').map(p=>p.id));
+ return state.customers.filter(c=>{
+   const d=dateKeyRiyadh(c.created_at);
+   const dateOk=(!fromKey||d>=fromKey)&&(!toKey||d<=toKey);
+   const creatorOk=scope==='company'?repIds.has(c.created_by):c.created_by===repId;
+   return dateOk&&creatorOk;
+ });
+}
 function scopeAchievements(scope,repId=null){
- const month=monthRiyadh();
+ const month=monthRiyadh(),monthStart=month+'-01',today=todayRiyadh();
  const sales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)&&(scope==='company'||x.rep_id===repId));
- const newCustomers=state.customers.filter(c=>(scope==='company'||c.assigned_rep===repId)&&String(c.created_at||'').slice(0,7)===month);
+ const newCustomers=goalNewCustomers(scope,repId,monthStart,today);
+ const allMonthSales=state.sales.filter(x=>String(x.business_date||'').startsWith(month));
  return {
    totalSales:sales.reduce((z,x)=>z+Number(x.amount||0),0),
    newCustomers:newCustomers.length,
-   activeNewCustomers:qualifiedActiveNewCustomers(newCustomers,sales).length
+   activeNewCustomers:qualifiedActiveNewCustomers(newCustomers,allMonthSales).length
  };
 }
 function goalMetricView(scope,repId,type,achieved,label,isMoney=true){
@@ -429,9 +439,9 @@ function goalMetricView(scope,repId,type,achieved,label,isMoney=true){
 }
 function renderGoalScope(scope,repId,label){
  const ac=scopeAchievements(scope,repId);
- return `<div class="goal-v2-scope ${scope==='company'?'goal-v2-company':''}"><div class="goal-v2-scope-head"><div><h4>${esc(label)}</h4><span>${lang==='ar'?'نتيجة الشهر الحالي — العميل الجديد النشط يُحسب بعد وصول سحوباته إلى 5,000 ر.س':'Current month — a new active customer counts after reaching SAR 5,000 in sales'}</span></div></div><div class="goal-v2-grid">
+ return `<div class="goal-v2-scope ${scope==='company'?'goal-v2-company':''}"><div class="goal-v2-scope-head"><div><h4>${esc(label)}</h4><span>${lang==='ar'?'عملاء جدد: أي عميل يسجله المندوب مهما كانت حالته. النشط الجديد يُحسب بعد سحب 5,000 ر.س+':'New customers: every customer registered by the rep, regardless of status. Active-new counts after SAR 5,000+ in sales'}</span></div></div><div class="goal-v2-grid">
    ${goalMetricView(scope,repId,'total_sales',ac.totalSales,t('totalSalesGoal'),true)}
-   ${goalMetricView(scope,repId,'new_customers',ac.newCustomers,t('newCustomers'),false)}
+   ${goalMetricView(scope,repId,'new_customers',ac.newCustomers,lang==='ar'?'عملاء جدد (أي حالة)':'New customers (any status)',false)}
    ${goalMetricView(scope,repId,'active_new_customers',ac.activeNewCustomers,t('activeNewCustomers'),false)}
  </div></div>`;
 }
@@ -443,7 +453,7 @@ function renderRepGoalCompact(p){
  const ac=scopeAchievements('rep',p.id);
  return `<div class="goal-rep-card"><div class="goal-rep-name">${esc(p.full_name)}</div>
    ${compactGoalRow('rep',p.id,'total_sales',ac.totalSales,t('sales'),true)}
-   ${compactGoalRow('rep',p.id,'new_customers',ac.newCustomers,t('newCustomers'),false)}
+   ${compactGoalRow('rep',p.id,'new_customers',ac.newCustomers,lang==='ar'?'عملاء جدد (أي حالة)':'New customers (any status)',false)}
    ${compactGoalRow('rep',p.id,'active_new_customers',ac.activeNewCustomers,t('activeNewCustomers'),false)}
  </div>`;
 }
@@ -461,7 +471,7 @@ function openGoalsEditor(){
  const scopes=[{type:'company',id:null,label:t('company')},...state.profiles.filter(p=>p.role==='rep').map(p=>({type:'rep',id:p.id,label:p.full_name}))];
  const rows=scopes.map(sc=>`<div class="goal-edit-scope"><h4>${esc(sc.label)}</h4><div class="form-grid">
    <div><label>${t('totalSalesGoal')}</label><input type="number" min="0" step="1" data-goal-input data-scope="${sc.type}" data-rep="${sc.id||''}" data-type="total_sales" value="${Number(goalFor(sc.type,sc.id,'total_sales')?.monthly_target||0)}"></div>
-   <div><label>${t('newCustomers')}</label><input type="number" min="0" step="1" data-goal-input data-scope="${sc.type}" data-rep="${sc.id||''}" data-type="new_customers" value="${Number(goalFor(sc.type,sc.id,'new_customers')?.monthly_target||0)}"></div>
+   <div><label>${lang==='ar'?'عملاء جدد (أي حالة)':'New customers (any status)'}</label><input type="number" min="0" step="1" data-goal-input data-scope="${sc.type}" data-rep="${sc.id||''}" data-type="new_customers" value="${Number(goalFor(sc.type,sc.id,'new_customers')?.monthly_target||0)}"></div>
    <div><label>${t('activeNewCustomers')}</label><input type="number" min="0" step="1" data-goal-input data-scope="${sc.type}" data-rep="${sc.id||''}" data-type="active_new_customers" value="${Number(goalFor(sc.type,sc.id,'active_new_customers')?.monthly_target||0)}"></div>
  </div></div>`).join('');
  openModal(t('editGoals'),rows+`<div style="margin-top:14px"><button class="btn" id="saveGoalsBtn">${t('save')}</button></div>`);
@@ -633,10 +643,12 @@ function generateAnalytics(){
 
  if(type==='goals'){
    const scope=rep?'rep':'company',repId=rep||null;
-   const goalActiveNew=qualifiedActiveNewCustomers(newCustomers,sales).length;
+   const goalNew=goalNewCustomers(scope,repId,from,to);
+   const goalSalesAll=state.sales.filter(function(x){return inRange(x.business_date,from,to)});
+   const goalActiveNew=qualifiedActiveNewCustomers(goalNew,goalSalesAll).length;
    const data=[
     {key:'total_sales',label:t('totalSalesGoal'),got:total,m:true},
-    {key:'new_customers',label:t('newCustomers'),got:newCustomers.length,m:false},
+    {key:'new_customers',label:lang==='ar'?'عملاء جدد (أي حالة)':'New customers (any status)',got:goalNew.length,m:false},
     {key:'active_new_customers',label:t('activeNewCustomers'),got:goalActiveNew,m:false}
    ].map(function(x){const target=Number(goalFor(scope,repId,x.key)&&goalFor(scope,repId,x.key).monthly_target||0),pct=target?Math.round(x.got/target*100):0;return {label:x.label,got:x.got,target:target,pct:pct,m:x.m}});
    const kpis=data.map(function(x){return reportCard(x.label,x.m?money(x.got):fmt(x.got),x.target?x.pct+'% '+(lang==='ar'?'من الهدف':'of target'):(lang==='ar'?'الهدف غير محدد':'Target not set'))});
@@ -1064,8 +1076,17 @@ $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[da
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
    if(kind==='total_sales'){
      $('salePeriodFilter').value='month';$('saleSearch').value=rep?.full_name||'';gotoPage('sales');renderSales();
-   }else{
-     state.customerMonthOnly=false;if($('customerPeriodFilter'))$('customerPeriodFilter').value='month';$('customerSearch').value=rep?.full_name||'';$('customerStatusFilter').value=kind==='active_new_customers'?'active':'';gotoPage('customers');renderCustomers();
+   }else if(kind==='new_customers'||kind==='active_new_customers'){
+     const month=monthRiyadh(),monthStart=month+'-01',today=todayRiyadh(),scopeType=isCompany?'company':'rep',repId=rep?.id||null;
+     let rows=goalNewCustomers(scopeType,repId,monthStart,today);
+     const totals=new Map();
+     state.sales.filter(x=>String(x.business_date||'').startsWith(month)).forEach(x=>{const id=Number(x.customer_id);totals.set(id,(totals.get(id)||0)+Number(x.amount||0));});
+     if(kind==='active_new_customers')rows=rows.filter(c=>c.status==='active'&&(totals.get(Number(c.id))||0)>=ACTIVE_NEW_GOAL_MIN_SALES);
+     rows=rows.slice().sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+     const note=kind==='new_customers'?
+       (lang==='ar'?'يُحسب كل عميل سجله المندوب هذا الشهر مهما كانت حالته: رافض، متردد، متفق أو نشط.':'Every customer registered by the rep this month counts, regardless of status.'):
+       (lang==='ar'?'يُحسب فقط العميل الجديد الذي سجله المندوب، حالته نشط، ووصلت سحوباته هذا الشهر إلى 5,000 ر.س أو أكثر.':'Only rep-registered new customers that are Active and reached SAR 5,000+ in month sales count.');
+     openModal(kind==='new_customers'?(lang==='ar'?'العملاء الجدد المحتسبون':'Counted new customers'):(lang==='ar'?'العملاء الجدد النشطون المحتسبون':'Counted active new customers'),`<div class="notice" style="margin-bottom:10px">${note}</div><div class="table-wrap"><table><thead><tr><th>${t('customer')}</th><th>${t('status')}</th><th>${t('representative')}</th><th>${lang==='ar'?'سحوبات الشهر':'Month sales'}</th></tr></thead><tbody>${rows.length?rows.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${badgeStatus(c.status)}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${money(totals.get(Number(c.id))||0)}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">${t('noData')}</td></tr>`}</tbody></table></div>`);
    }
  }});
 

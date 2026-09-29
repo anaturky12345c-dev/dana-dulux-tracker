@@ -6,7 +6,7 @@
   <title>Dana Al-Taj - Dulux Sales Management</title>
   <meta name="theme-color" content="#111827" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com https://server.arcgisonline.com; connect-src 'self' https://bmpxtvhqpjvlyeoseuvz.supabase.co wss://bmpxtvhqpjvlyeoseuvz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; worker-src 'self'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com https://server.arcgisonline.com https://*.tile.openstreetmap.org; connect-src 'self' https://bmpxtvhqpjvlyeoseuvz.supabase.co wss://bmpxtvhqpjvlyeoseuvz.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; worker-src 'self'; upgrade-insecure-requests" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260927-push1" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
@@ -120,27 +120,57 @@
     </section>
 
     <section id="mapPage" class="section management-only">
-      <div class="map-toolbar">
-        <input id="mapSearch" class="search" placeholder="Search customer or area..." />
-        <select id="mapFilter">
-          <option value="">All Customers</option>
-          <option value="frequent">Repeated sale this month</option>
-          <option value="active">Active</option>
-          <option value="hesitant">Hesitant</option>
-          <option value="rejected">Rejected</option>
-          <option value="new">New</option>
-        </select>
-        <select id="mapRepFilter">
-          <option value="">All Representatives</option>
-        </select>
+      <div id="mapExperience" class="map-experience">
+        <div class="map-summary">
+          <div class="map-summary-card"><span id="mapStatVisibleLabel">Visible Customers</span><b id="mapStatVisible">0</b></div>
+          <div class="map-summary-card"><span id="mapStatActiveLabel">Active</span><b id="mapStatActive">0</b></div>
+          <div class="map-summary-card"><span id="mapStatHesitantLabel">Hesitant</span><b id="mapStatHesitant">0</b></div>
+          <div class="map-summary-card"><span id="mapStatRejectedLabel">Rejected</span><b id="mapStatRejected">0</b></div>
+          <div class="map-summary-card"><span id="mapStatSalesLabel">Sales This Month</span><b id="mapStatSales">0</b></div>
+        </div>
+        <div class="map-toolbar">
+          <input id="mapSearch" class="search" placeholder="Search customer or area..." />
+          <select id="mapFilter">
+            <option value="">All Statuses</option>
+            <option value="frequent">Repeated sale this month</option>
+            <option value="active">Active</option>
+            <option value="hesitant">Hesitant</option>
+            <option value="rejected">Rejected</option>
+            <option value="new">New</option>
+          </select>
+          <select id="mapRepFilter">
+            <option value="">All Representatives</option>
+          </select>
+          <select id="mapTypeFilter">
+            <option value="">All Customer Types</option>
+            <option value="shop">Shop</option>
+            <option value="factory">Factory</option>
+            <option value="project">Project</option>
+          </select>
+          <button class="btn secondary" id="mapFitBtn" type="button">Fit Customers</button>
+          <button class="btn secondary" id="mapClearBtn" type="button">Clear Filters</button>
+          <button class="btn secondary" id="mapFullscreenBtn" type="button">Full Screen</button>
+        </div>
+        <div class="map-legend">
+          <span><i class="legend-dot green star">★</i>Repeated sale</span>
+          <span><i class="legend-dot green"></i>Active</span>
+          <span><i class="legend-dot yellow"></i>Hesitant</span>
+          <span><i class="legend-dot red"></i>Rejected</span>
+          <span class="map-type-legend">🏪 Shop</span>
+          <span class="map-type-legend">🏭 Factory</span>
+          <span class="map-type-legend">🏗 Project</span>
+        </div>
+        <div id="mapWorkspace" class="map-workspace">
+          <aside class="map-side-panel">
+            <div class="map-side-head">
+              <div><b id="mapListTitle">Customers on Map</b><div class="small" id="mapListHint">Tap a customer to focus on it</div></div>
+              <span class="badge b-info" id="mapListCount">0</span>
+            </div>
+            <div id="mapCustomerList" class="map-customer-list"></div>
+          </aside>
+          <div class="map-canvas-card"><div id="map"></div></div>
+        </div>
       </div>
-      <div class="map-legend">
-        <span><i class="legend-dot green star">★</i>Repeated sale</span>
-        <span><i class="legend-dot green"></i>Active</span>
-        <span><i class="legend-dot yellow"></i>Hesitant</span>
-        <span><i class="legend-dot red"></i>Rejected</span>
-      </div>
-      <div id="map"></div>
     </section>
 
     <section id="analytics" class="section management-only">

@@ -10,7 +10,7 @@ let lang=localStorage.getItem('dana_lang')||'ar';
 const I18N={
  ar:{
   signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعة العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
-  new:'جديد',active:'نشط',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
+  new:'جديد',active:'نشط',agreed_pending:'متفق – بانتظار الطلبية',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
   admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',management_response:'متابعة الإدارة',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
   company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
@@ -27,7 +27,7 @@ const I18N={
  },
  en:{
   signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
-  new:'New',active:'Active',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
+  new:'New',active:'Active',agreed_pending:'Agreed – awaiting order',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
   admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',management_response:'Management follow-up',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
   company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
@@ -48,7 +48,7 @@ const statusLabel=k=>t(k);
 const actionLabel=k=>I18N[lang][k]||k||'-';
 const productLabel=k=>I18N[lang][k]||k||'-';
 const STATUS_KEYS=['hesitant','rejected','active'];
-const CHANGE_STATUS_KEYS=['active','hesitant','rejected'];
+const CHANGE_STATUS_KEYS=['active','agreed_pending','hesitant','rejected'];
 const FOLLOW_ACTION_KEYS=['admin_intervention','review_next_week','sample_request','customer_agreed'];
 const EDIT_ACTION_KEYS=[...FOLLOW_ACTION_KEYS,'management_response'];
 const PRODUCT_KEYS=['dulux_emulsion','dulux_oil','leafs_tinting','dulux_polyurethane'];
@@ -120,7 +120,7 @@ function applyLanguage(){
  heads('reports',[t('recordedAt'),t('customer'),t('representative'),t('action'),t('previousStatus'),t('newStatus'),t('reason'),lang==='ar'?'الإجراءات':'Actions']);
  heads('audit',[lang==='ar'?'الوقت':'Time',lang==='ar'?'المستخدم':'User',t('action'),lang==='ar'?'الكيان':'Entity',lang==='ar'?'التفاصيل':'Details']);
 
- const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span class="map-type-legend">🏪 ${t('shop')}</span><span class="map-type-legend">🏭 ${t('factory')}</span><span class="map-type-legend">🏗 ${t('project')}</span>`;
+ const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot blue"></i>${t('agreed_pending')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span class="map-type-legend">🏪 ${t('shop')}</span><span class="map-type-legend">🏭 ${t('factory')}</span><span class="map-type-legend">🏗 ${t('project')}</span>`;
 
  const at=$('analyticsType');if(at){const labs={sales:lang==='ar'?'المبيعات والسحوبات':'Sales / Withdrawals',reps:t('repPerformance'),customers:lang==='ar'?'حركة العملاء':'Customer Activity',followups:t('followups'),goals:lang==='ar'?'أداء الأهداف':'Goal Performance',executive:lang==='ar'?'التقرير الإداري الشامل':'Management Summary'};for(const o of at.options)o.text=labs[o.value]||o.value;}
  const labels=document.querySelectorAll('#analytics label');const al=[t('reportType'),t('representative'),t('from'),t('to')];al.forEach((x,i)=>{if(labels[i])labels[i].textContent=x;});if($('generateReportBtn'))$('generateReportBtn').textContent=t('generateReport');if($('printReportBtn'))$('printReportBtn').textContent=t('printPdf');
@@ -307,7 +307,7 @@ function activityForCustomer(cid){
 function customerCategory(c){const x=activityForCustomer(c.id);if(x.monthSalesCount>1)return 'frequent';return c.status||'hesitant';}
 function renderAll(){if(!$('mCustomers'))return;renderDashboard();renderCustomers();renderSales();renderReports();renderGoalsDashboard();renderRepPerformance();renderRepPasswordAdmin();window.dispatchEvent(new CustomEvent('dana:render'));}
 
-function badgeStatus(k){const cls={new:'b-info',active:'b-good',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
+function badgeStatus(k){const cls={new:'b-info',active:'b-good',agreed_pending:'b-info',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
 
 function goalFor(scope,repId,type){return state.goals.find(g=>g.scope_type===scope&&(scope==='company'||g.rep_id===repId)&&g.goal_type===type);}
 function goalProgress(goal,achieved,isMoney=true){
@@ -584,7 +584,7 @@ function openCustomerEditor(id){if(!canManage())return;const c=state.customers.f
 async function saveCustomerEdit(id){const customerType=$('ecCustomerType').value;if(!['shop','factory','project'].includes(customerType))return flash(lang==='ar'?'حدد نوع العميل: محل أو مصنع أو مشروع.':'Select customer type: Shop, Factory, or Project.',true);const {error}=await sb.rpc('admin_update_customer',{p_customer_id:id,p_name:$('ecName').value.trim(),p_area:$('ecArea').value.trim()||null,p_phone:$('ecPhone').value.trim()||null,p_assigned_rep:$('ecRep').value,p_customer_type:customerType});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 async function deleteCustomer(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_customer',{p_customer_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
 
-function openStatusForm(id){if(!isAdmin())return;const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c)return;const hasSale=!!activityForCustomer(c.id).lastSale;const allowed=CHANGE_STATUS_KEYS.filter(k=>k!==c.status&&(k!=='active'||hasSale));const opts=allowed.map(k=>`<option value="${k}">${t(k)}</option>`).join('');openModal(lang==='ar'?'تغيير حالة العميل':'Change Customer Status',`<div class="form-grid"><div><label>${lang==='ar'?'الحالة الحالية':'Current Status'}</label><input value="${esc(statusLabel(c.status))}" readonly></div><div><label>${t('newStatus')}</label><select id="stNew">${opts}</select></div>${!hasSale&&c.status!=='active'?'<div class="full security-warn">'+(lang==='ar'?'لتحويل العميل إلى نشط سجل له طلبية أولاً. الطلبية تحوله إلى نشط تلقائياً.':'To make the customer Active, record an order first. The order activates the customer automatically.')+'</div>':''}<div class="full"><label>${t('reason')}</label><textarea id="stReason" rows="4"></textarea></div><div class="full"><button class="btn" id="saveStatusBtn" data-id="${id}" ${allowed.length?'':'disabled'}>${t('save')}</button></div></div>`);}
+function openStatusForm(id){if(!isAdmin())return;const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c)return;const hasSale=!!activityForCustomer(c.id).lastSale;const allowed=CHANGE_STATUS_KEYS.filter(k=>k!==c.status&&(k!=='active'||hasSale)&&(k!=='agreed_pending'||!hasSale));const opts=allowed.map(k=>`<option value="${k}">${t(k)}</option>`).join('');openModal(lang==='ar'?'تغيير حالة العميل':'Change Customer Status',`<div class="form-grid"><div><label>${lang==='ar'?'الحالة الحالية':'Current Status'}</label><input value="${esc(statusLabel(c.status))}" readonly></div><div><label>${t('newStatus')}</label><select id="stNew">${opts}</select></div>${!hasSale&&c.status!=='active'?'<div class="full security-warn">'+(lang==='ar'?'لتحويل العميل إلى نشط سجل له طلبية أولاً. الطلبية تحوله إلى نشط تلقائياً.':'To make the customer Active, record an order first. The order activates the customer automatically.')+'</div>':''}<div class="full"><label>${t('reason')}</label><textarea id="stReason" rows="4"></textarea></div><div class="full"><button class="btn" id="saveStatusBtn" data-id="${id}" ${allowed.length?'':'disabled'}>${t('save')}</button></div></div>`);}
 async function changeStatus(id){const reason=$('stReason').value.trim(),newStatus=$('stNew')?.value;if(!newStatus)return flash(lang==='ar'?'لا توجد حالة متاحة للتغيير':'No status is available to change',true);if(reason.length<5)return flash(lang==='ar'?'اكتب سبباً واضحاً':'Enter a clear reason',true);const {error}=await sb.rpc('change_customer_status',{p_customer_id:id,p_new_status:newStatus,p_reason:reason,p_method:'Admin'});if(error)return flash(error.message==='active customer requires sale'?(lang==='ar'?'سجل طلبية للعميل أولاً، وسيتم تحويله إلى نشط تلقائياً.':'Record an order first; the customer will become Active automatically.'):error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 
 function openLocationEditor(id){if(!canManage())return;openModal(lang==='ar'?'تعديل موقع العميل':'Edit Customer Location',`<div><div id="customerPickerMap"></div><div class="location-box" style="margin-top:8px"><div><label>Latitude</label><input id="fLat" readonly></div><div><label>Longitude</label><input id="fLng" readonly></div></div><div style="margin-top:10px"><label>${t('reason')}</label><textarea id="locReason" rows="3"></textarea></div><button class="btn" style="margin-top:10px" id="saveLocationBtn" data-id="${id}">${t('save')}</button></div>`);setTimeout(async()=>{initCustomerPickerMap();const {data}=await sb.from('customer_locations').select('lat,lng').eq('customer_id',id).maybeSingle();if(data)setCustomerLocation(data.lat,data.lng,true);},80);}
@@ -612,23 +612,54 @@ async function saveSaleEdit(id){const {error}=await sb.rpc('admin_update_sale',{
 async function deleteSale(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_sale',{p_sale_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
 
 function updateReportStatusFields(){
- const cid=Number($('rCustomerId')?.value||0),c=state.customers.find(x=>Number(x.id)===cid),next=$('rNewStatus'),cur=$('rCurrentStatus'),rule=$('rActiveRule');if(!c||!next)return;
+ const cid=Number($('rCustomerId')?.value||0),c=state.customers.find(x=>Number(x.id)===cid),next=$('rNewStatus'),cur=$('rCurrentStatus'),rule=$('rActiveRule'),action=$('rAction')?.value||'';if(!c||!next)return;
  if(cur)cur.value=statusLabel(c.status);
  const hasSale=!!activityForCustomer(c.id).lastSale;
- next.innerHTML=`<option value="">${t('noChange')}</option>`+CHANGE_STATUS_KEYS.filter(k=>k!==c.status&&(k!=='active'||hasSale)).map(k=>`<option value="${k}">${t(k)}</option>`).join('');
- if(rule){rule.textContent=!hasSale&&c.status!=='active'?(lang==='ar'?'النشط يتطلب طلبية. سجل الطلبية وسيصبح العميل نشط تلقائياً.':'Active requires an order. Record the order and the customer will become Active automatically.'):'';rule.classList.toggle('hidden',!rule.textContent);}
+ if(action==='customer_agreed'){
+   const target=hasSale?'active':'agreed_pending';
+   next.innerHTML=`<option value="${target}">${t(target)}</option>`;
+   next.value=target;
+   next.disabled=true;
+   if(rule){
+     rule.textContent=hasSale
+       ?(lang==='ar'?'العميل لديه طلبية، لذلك الاتفاق يُثبت حالته كنشط.':'This customer already has an order, so the agreement keeps the customer Active.')
+       :(lang==='ar'?'عند الحفظ يصبح العميل «متفق – بانتظار الطلبية» لمدة 24 ساعة. أول سحب يحوله إلى نشط تلقائياً.':'Saving sets the customer to “Agreed – awaiting order” for 24 hours. The first sale activates the customer automatically.');
+     rule.classList.remove('hidden');
+   }
+   return;
+ }
+ next.disabled=false;
+ next.innerHTML=`<option value="">${t('noChange')}</option>`+CHANGE_STATUS_KEYS.filter(k=>k!==c.status&&(k!=='active'||hasSale)&&(k!=='agreed_pending'||!hasSale)).map(k=>`<option value="${k}">${t(k)}</option>`).join('');
+ if(rule){
+   rule.textContent=!hasSale&&c.status!=='active'
+     ?(lang==='ar'?'النشط يتطلب طلبية. إذا تم الاتفاق بدون طلبية اختر إجراء «العميل تم الاتفاق معه» وسيبدأ انتظار الطلبية لمدة 24 ساعة.':'Active requires an order. If an agreement is reached without an order, choose “Agreement reached with customer” to start the 24-hour awaiting-order period.')
+     :'';
+   rule.classList.toggle('hidden',!rule.textContent);
+ }
 }
 function openReportForm(id=null){
  const selected=state.customers.find(c=>Number(c.id)===Number(id))||null;if(!state.customers.length)return flash(t('noData'),true);
  openModal(lang==='ar'?'إضافة متابعة عميل':'Add Customer Follow-up',`<div class="danger-note">${lang==='ar'?'التقرير/السبب إلزامي. الحالة الجديدة لا تُحفظ بدون تقرير واضح.':'Report/reason is required. A status change cannot be saved without a clear report.'}</div><div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('r',selected?.id||null)}</div><div><label>${t('action')}</label><select id="rAction">${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div><div><label>${lang==='ar'?'الحالة الحالية':'Current Status'}</label><input id="rCurrentStatus" readonly></div><div><label>${t('newStatus')}</label><select id="rNewStatus"></select></div><div class="full security-warn hidden" id="rActiveRule"></div><div class="full"><label>${t('reason')}</label><textarea id="rNote" rows="4"></textarea></div><div class="full"><button class="btn" id="saveReportBtn">${t('save')}</button></div></div>`);
- setTimeout(()=>{bindCustomerPicker('r',updateReportStatusFields);updateReportStatusFields();},0);
+ setTimeout(()=>{bindCustomerPicker('r',updateReportStatusFields);$('rAction')?.addEventListener('change',updateReportStatusFields);updateReportStatusFields();},0);
 }
 async function addReport(){
- const customerId=Number($('rCustomerId')?.value||0),note=$('rNote').value.trim(),newStatus=$('rNewStatus').value||null;
+ const customerId=Number($('rCustomerId')?.value||0),note=$('rNote').value.trim(),action=$('rAction').value,newStatus=$('rNewStatus').value||null;
  if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
  if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً أو سبباً واضحاً':'Enter a clear report or reason',true);
- const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:$('rAction').value,p_note:note,p_new_status:newStatus});
- if(error)return flash(error.message==='active customer requires sale'?(lang==='ar'?'لا يمكن تحويل العميل إلى نشط بدون طلبية. سجل الطلبية أولاً.':'The customer cannot become Active without an order. Record the order first.'):error.message,true);closeModal();flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));await refreshAll();
+ const customer=state.customers.find(c=>Number(c.id)===customerId),hasSale=customer?!!activityForCustomer(customer.id).lastSale:false;
+ const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:action,p_note:note,p_new_status:newStatus});
+ if(error){
+   const msg=error.message==='active customer requires sale'
+     ?(lang==='ar'?'لا يمكن تحويل العميل إلى نشط بدون طلبية. سجل الطلبية أولاً.':'The customer cannot become Active without an order. Record the order first.')
+     :error.message==='customer already awaiting order'
+       ?(lang==='ar'?'العميل بالفعل متفق وبانتظار الطلبية. سجّل نتيجة المتابعة الجديدة بدل إعادة بدء مهلة الـ24 ساعة.':'The customer is already awaiting the order. Record the new follow-up result instead of restarting the 24-hour period.')
+       :error.message;
+   return flash(msg,true);
+ }
+ closeModal();
+ if(action==='customer_agreed'&&!hasSale)flash(lang==='ar'?'تم الاتفاق. العميل الآن بانتظار الطلبية لمدة 24 ساعة.':'Agreement saved. The customer is now awaiting the order for 24 hours.');
+ else flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));
+ await refreshAll();
 }
 function openReportEditor(id){if(!canManage())return;const r=state.reports.find(x=>Number(x.id)===Number(id));if(!r)return;openModal(lang==='ar'?'تعديل المتابعة':'Edit Follow-up',`<div class="form-grid"><div><label>${t('action')}</label><select id="erAction">${EDIT_ACTION_KEYS.map(k=>`<option value="${k}" ${r.action_code===k?'selected':''}>${t(k)}</option>`).join('')}</select></div><div class="full"><label>${t('reason')}</label><textarea id="erNote" rows="5">${esc(r.note)}</textarea></div><div class="full"><button class="btn" id="saveReportEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveReportEdit(id){const note=$('erNote').value.trim();if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً واضحاً':'Enter a clear report',true);const {error}=await sb.rpc('admin_update_report',{p_report_id:id,p_action_code:$('erAction').value,p_note:note});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
@@ -808,7 +839,7 @@ $('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});$('mapCustomerList')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-customer]');if(b)focusMapCustomer(Number(b.dataset.mapCustomer));});document.addEventListener('fullscreenchange',()=>{if(state.map&&document.querySelector('#mapPage.section.active'))setTimeout(()=>state.map.invalidateSize(),120);});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});
-$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
+$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
    if(kind==='total_sales'){
      $('salePeriodFilter').value='month';$('saleSearch').value=rep?.full_name||'';gotoPage('sales');renderSales();

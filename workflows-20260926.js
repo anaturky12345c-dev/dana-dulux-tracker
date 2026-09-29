@@ -224,7 +224,7 @@ function followupRows(){
   return followupStates.map(function(fs){
     return {fs:fs,customer:customerFor(fs.customer_id)};
   }).filter(function(x){
-    return x.customer&&['hesitant','agreed_pending','rejected'].includes(x.customer.status)&&x.fs.next_due_at;
+    return x.customer&&['hesitant','rejected'].includes(x.customer.status)&&x.fs.next_due_at;
   }).sort(function(a,b){
     return deadlineMs(a.fs.next_due_at)-deadlineMs(b.fs.next_due_at);
   });
@@ -274,7 +274,7 @@ function renderFollowups(){
   var p=byId('workloadFollowupPreview');
   if(p)p.innerHTML=preview.length?preview.map(function(x){
     return '<div class="event"><b>'+e(x.customer.name)+'</b><div class="small">'+e(repName(x.customer))+' — '+statusBadge(x.customer.status)+' — '+(x.fs.owner_mode==='management'?tx('بانتظار تدخل الإدارة','Waiting for management'):e(dueLabel(x.fs.next_due_at)))+'</div><div style="margin-top:6px">'+followupAction(x,true)+'</div></div>';
-  }).join(''):'<div class="small">'+tx('لا توجد عملاء مترددين أو متفقين بانتظار الطلبية أو رافضين يحتاجون متابعة.','No hesitant, awaiting-order, or rejected customers need follow-up.')+'</div>';
+  }).join(''):'<div class="small">'+tx('لا توجد عملاء مترددين أو رافضين يحتاجون متابعة.','No hesitant or rejected customers need follow-up.')+'</div>';
 
   var attention=byId('attentionList');
   if(attention){

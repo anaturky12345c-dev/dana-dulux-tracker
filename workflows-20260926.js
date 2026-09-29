@@ -119,14 +119,6 @@ function injectUi(){
   }
 
   var dashboard=byId('dashboard');
-  if(dashboard&&!byId('workloadFollowupDashboard')){
-    var repSummary=dashboard.querySelector('.dashboard-panels');
-    var f=document.createElement('div');
-    f.className='card workload-card';
-    f.id='workloadFollowupDashboard';
-    f.innerHTML='<div class="workload-collapsed-head" id="workloadFollowupToggle" role="button" tabindex="0" aria-expanded="false"><div><h3 id="workloadFollowupDashboardTitle"></h3><div class="small" id="workloadFollowupHint"></div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn workload-collapse-count" id="followRequiredCount">0</span><span class="workload-collapse-arrow">⌄</span></div></div><div id="workloadFollowupBody" class="workload-collapse-body hidden"><div class="workload-head"><span></span><button class="btn secondary mini" id="openFollowupsBtn"></button></div><div class="workload-metrics"><div class="workload-metric"><span id="followTodayLabel"></span><b id="followTodayCount">0</b></div><div class="workload-metric"><span id="followOverdueLabel"></span><b id="followOverdueCount">0</b></div><div class="workload-metric"><span id="followManagementLabel"></span><b id="followManagementCount">0</b></div></div><div id="workloadFollowupPreview" class="workload-list"></div></div>';
-    dashboard.insertBefore(f,dashboard.firstChild);
-  }
   if(TASKS_ENABLED&&dashboard&&!byId('workloadTaskDashboard')){
     var f2=document.createElement('div');
     f2.className='card workload-card';
@@ -134,15 +126,6 @@ function injectUi(){
     f2.innerHTML='<div class="workload-head"><h3 id="workloadTaskDashboardTitle"></h3><button class="btn secondary mini" id="openTasksBtn"></button></div><div class="workload-metrics"><div class="workload-metric"><span id="taskTodayLabel"></span><b id="taskTodayCount">0</b></div><div class="workload-metric"><span id="taskOverdueLabel"></span><b id="taskOverdueCount">0</b></div><div class="workload-metric"><span id="taskUpcomingLabel"></span><b id="taskUpcomingCount">0</b></div><div class="workload-metric"><span id="taskCompletedLabel"></span><b id="taskCompletedCount">0</b></div></div><div id="workloadTaskPreview" class="workload-list"></div>';
     var att=dashboard.querySelector('.dashboard-attention');
     if(att&&att.nextSibling)dashboard.insertBefore(f2,att.nextSibling);else dashboard.appendChild(f2);
-  }
-
-  var reports=byId('reports');
-  if(reports&&!byId('followupQueueCard')){
-    var q=document.createElement('div');
-    q.className='card workload-card';
-    q.id='followupQueueCard';
-    q.innerHTML='<div class="workload-collapsed-head" id="followupQueueToggle" role="button" tabindex="0" aria-expanded="false"><div><h3 id="followupQueueTitle"></h3><div class="small" id="followupQueueHint"></div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn workload-collapse-count" id="followupQueueCount">0</span><span class="workload-collapse-arrow">⌄</span></div></div><div id="followupQueueContent" class="workload-collapse-body hidden"><div class="toolbar" id="followupRepFilterWrap"><select id="followupRepFilter"><option value=""></option></select></div><div class="table-wrap followup-desktop-table"><table id="followupQueue"><thead><tr><th id="fqCustomer"></th><th id="fqRep"></th><th id="fqStatus"></th><th id="fqOwner"></th><th id="fqDeadline"></th><th id="fqTiming"></th><th id="fqAction"></th></tr></thead><tbody id="followupQueueBody"></tbody></table></div><div id="followupQueueMobile" class="followup-mobile-list"></div></div>';
-    reports.insertBefore(q,reports.firstChild);
   }
 
   var main=document.querySelector('main');
@@ -173,28 +156,12 @@ function refreshFollowupRepFilter(){
 function renderLabels(){
   if(TASKS_ENABLED)setText('tasksNavBtn',tx('المهام','Tasks'));
   if(byId('tasks')&&byId('tasks').classList.contains('active'))setText('pageTitle',tx('المهام','Tasks'));
-  setText('workloadFollowupDashboardTitle',tx('المتابعات المطلوبة','Required follow-ups'));
-  setText('workloadFollowupHint',tx('اضغط لعرض العملاء','Tap to view customers'));
-  setText('openFollowupsBtn',tx('عرض القائمة كاملة','View full list'));
-  setText('followTodayLabel',tx('متابعات اليوم','Follow-ups today'));
-  setText('followOverdueLabel',tx('متابعات متأخرة','Overdue follow-ups'));
-  setText('followManagementLabel',tx('بانتظار تدخل الإدارة','Waiting for management'));
   setText('workloadTaskDashboardTitle',tx('المهام','Tasks'));
   setText('openTasksBtn',tx('عرض كل المهام','View all tasks'));
   setText('taskTodayLabel',tx('مهام اليوم','Tasks today'));
   setText('taskOverdueLabel',tx('مهام متأخرة','Overdue tasks'));
   setText('taskUpcomingLabel',tx('مهام قادمة','Upcoming tasks'));
   setText('taskCompletedLabel',tx('مكتملة هذا الشهر','Completed this month'));
-  setText('followupQueueTitle',tx('المتابعات المطلوبة','Required follow-ups'));
-  setText('followupQueueHint',tx('اضغط لفتح قائمة العملاء','Tap to open customer list'));
-  refreshFollowupRepFilter();
-  setText('fqCustomer',tx('العميل','Customer'));
-  setText('fqRep',tx('المندوب','Representative'));
-  setText('fqStatus',tx('الحالة','Status'));
-  setText('fqOwner',tx('المسؤول الآن','Current owner'));
-  setText('fqDeadline',tx('الموعد','Deadline'));
-  setText('fqTiming',tx('التوقيت','Timing'));
-  setText('fqAction',tx('الإجراء','Action'));
   setText('newTaskBtn',tx('+ إضافة مهمة','+ Add Task'));
   var n=byId('newTaskBtn');if(n)n.classList.toggle('hidden',!isManagement());
   var s=byId('taskSearch');if(s)s.placeholder=tx('ابحث بالمهمة أو العميل أو المندوب...','Search task, customer or representative...');
@@ -224,64 +191,31 @@ function followupRows(){
   return followupStates.map(function(fs){
     return {fs:fs,customer:customerFor(fs.customer_id)};
   }).filter(function(x){
-    return x.customer&&['hesitant','rejected'].includes(x.customer.status)&&x.fs.next_due_at;
+    return x.customer&&x.fs.owner_mode==='management'&&x.fs.next_due_at;
   }).sort(function(a,b){
     return deadlineMs(a.fs.next_due_at)-deadlineMs(b.fs.next_due_at);
   });
 }
 
 function followupAction(row,mini){
-  var c=row.customer,fs=row.fs,cl=mini?' mini':'';
-  if(fs.owner_mode==='management'){
-    if(isManagement())return '<button class="btn warn'+cl+'" data-w-resolve="'+c.id+'">'+tx('تسجيل متابعة الإدارة','Record management follow-up')+'</button>';
-    return '<span class="badge b-purple">'+tx('بانتظار الإدارة','Waiting for management')+'</span>';
-  }
-  return '<button class="btn secondary'+cl+'" data-w-follow="'+c.id+'">'+tx('تسجيل متابعة','Record follow-up')+'</button>';
+  var c=row.customer,cl=mini?' mini':'';
+  if(isManagement())return '<button class="btn warn'+cl+'" data-w-resolve="'+c.id+'">'+tx('تسجيل رد الإدارة','Record management response')+'</button>';
+  return '<span class="badge b-purple">'+tx('بانتظار الإدارة','Waiting for management')+'</span>';
 }
 
 function renderFollowups(){
-  var allRows=followupRows(),repFilter=byId('followupRepFilter')?byId('followupRepFilter').value:'',rows=allRows.filter(function(x){return !repFilter||x.customer.assigned_rep===repFilter;}),body=byId('followupQueueBody');
-  setText('followupQueueCount',String(rows.length));
-  if(body){
-    body.innerHTML=rows.length?rows.map(function(x){
-      var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
-      return '<tr class="'+(late?'workload-row-overdue':'')+'"><td><b>'+e(c.name)+'</b></td><td>'+e(repName(c))+'</td><td>'+statusBadge(c.status)+'</td><td>'+(fs.owner_mode==='management'?'<span class="badge b-purple">'+tx('الإدارة','Management')+'</span>':'<span class="badge b-info">'+tx('المندوب','Representative')+'</span>')+'</td><td>'+app.dateTime(fs.next_due_at)+'</td><td><b class="'+(late?'due-bad':'due-ok')+'">'+e(dueLabel(fs.next_due_at))+'</b></td><td>'+followupAction(x,true)+'</td></tr>';
-    }).join(''):'<tr><td colspan="7" class="empty">'+tx('لا توجد متابعات مطلوبة.','No required follow-ups.')+'</td></tr>';
-  }
-
-  var mobile=byId('followupQueueMobile');
-  if(mobile){
-    mobile.innerHTML=rows.length?rows.map(function(x){
-      var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
-      return '<div class="followup-mobile-card"><div class="dashboard-head" style="margin-bottom:5px"><b>'+e(c.name)+'</b>'+statusBadge(c.status)+'</div><div class="small">'+tx('المندوب: ','Representative: ')+e(repName(c))+'</div><div class="small">'+tx('الموعد: ','Deadline: ')+app.dateTime(fs.next_due_at)+'</div><div class="small '+(late?'due-bad':'due-ok')+'"><b>'+e(dueLabel(fs.next_due_at))+'</b></div><div style="margin-top:8px">'+followupAction(x,true)+'</div></div>';
-    }).join(''):'<div class="small">'+tx('لا توجد متابعات مطلوبة.','No required follow-ups.')+'</div>';
-  }
-
-  var n=nowMs(),td=today();
-  var repRows=allRows.filter(function(x){return x.fs.owner_mode==='rep';});
-  var overdue=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)<n;});
-  var dueToday=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)>=n&&dateKey(x.fs.next_due_at)===td;});
-  var waiting=allRows.filter(function(x){return x.fs.owner_mode==='management';});
-  setText('followTodayCount',String(dueToday.length));
-  setText('followOverdueCount',String(overdue.length));
-  setText('followManagementCount',String(waiting.length));
-  setText('followRequiredCount',String(allRows.length));
-
-  var upcoming=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)>=n&&dateKey(x.fs.next_due_at)!==td;});
-  var preview=overdue.concat(waiting).concat(dueToday).concat(upcoming);
-  var seen={};
-  preview=preview.filter(function(x){if(seen[x.customer.id])return false;seen[x.customer.id]=1;return true;}).slice(0,6);
-  var p=byId('workloadFollowupPreview');
-  if(p)p.innerHTML=preview.length?preview.map(function(x){
-    return '<div class="event"><b>'+e(x.customer.name)+'</b><div class="small">'+e(repName(x.customer))+' — '+statusBadge(x.customer.status)+' — '+(x.fs.owner_mode==='management'?tx('بانتظار تدخل الإدارة','Waiting for management'):e(dueLabel(x.fs.next_due_at)))+'</div><div style="margin-top:6px">'+followupAction(x,true)+'</div></div>';
-  }).join(''):'<div class="small">'+tx('لا توجد عملاء مترددين أو رافضين يحتاجون متابعة.','No hesitant or rejected customers need follow-up.')+'</div>';
-
+  var waiting=followupRows();
+  setText('attentionCount',String(waiting.length));
+  setText('attentionSub',waiting.length?tx('طلبات تدخل إدارة مفتوحة فقط.','Only open management-intervention requests are shown.'):tx('لا توجد حالات مفتوحة تحتاج تدخل الإدارة.','No open management-intervention cases.'));
   var attention=byId('attentionList');
   if(attention){
     attention.innerHTML=waiting.length?waiting.slice(0,8).map(function(x){
       var r=app.state.reports.find(function(y){return Number(y.id)===Number(x.fs.management_report_id);});
-      return '<div class="event"><b>'+e(x.customer.name)+'</b><div class="workload-note">'+e(r&&r.note?r.note:'')+'</div><div class="small">'+e(repName(x.customer))+' — '+e(dueLabel(x.fs.next_due_at))+' — '+app.dateTime(x.fs.next_due_at)+'</div><div style="margin-top:6px">'+followupAction(x,true)+'</div></div>';
-    }).join(''):'<div class="small">'+tx('لا توجد حالات بانتظار تدخل الإدارة.','No customers are waiting for management intervention.')+'</div>';
+      return '<button type="button" class="attention-item" data-w-resolve="'+x.customer.id+'">'
+        +'<span class="attention-main"><b>'+e(x.customer.name)+'</b><span>'+e(r&&r.note?r.note:'')+'</span></span>'
+        +'<span class="attention-meta">'+e(repName(x.customer))+'<small>'+e(dueLabel(x.fs.next_due_at))+' — '+app.dateTime(x.fs.next_due_at)+'</small></span>'
+        +'<span class="attention-open">'+tx('رد الإدارة','Respond')+'</span></button>';
+    }).join(''):'<div class="attention-empty">'+tx('لا توجد حالات تحتاج تدخل الإدارة حالياً.','No cases need management intervention right now.')+'</div>';
   }
 }
 
@@ -472,25 +406,18 @@ function openManagementResolution(id){
   if(!isManagement())return;
   var c=customerFor(id),fs=followupFor(id);
   if(!c||!fs||fs.owner_mode!=='management')return app.flash(tx('هذه الحالة لم تعد بانتظار الإدارة.','This customer is no longer waiting for management.'),true);
-  var opts='<option value="">'+tx('بدون تغيير الحالة','No status change')+'</option>';
-  ['active','agreed_pending','hesitant','rejected'].forEach(function(k){
-    if(k!==c.status)opts+='<option value="'+k+'">'+e(app.statusLabel(k))+'</option>';
-  });
-  var html='<div class="security-warn">'+tx('المهلة المحددة لتدخل الإدارة: 48 ساعة.','Management intervention deadline: 48 hours.')+'<br><b>'+e(c.name)+'</b> — '+e(dueLabel(fs.next_due_at))+' — '+app.dateTime(fs.next_due_at)+'</div>'
-    +'<div class="form-grid" style="margin-top:12px"><div><label>'+tx('الحالة الحالية','Current status')+'</label><input value="'+e(app.statusLabel(c.status))+'" readonly></div>'
-    +'<div><label>'+tx('الحالة الجديدة','New status')+'</label><select id="wManagementStatus">'+opts+'</select></div>'
-    +'<div class="full"><label>'+tx('نتيجة متابعة الإدارة','Management follow-up result')+'</label><textarea id="wManagementNote" rows="5"></textarea></div>'
-    +'<div class="full"><button class="btn" id="wSaveManagement" data-id="'+c.id+'">'+tx('حفظ المتابعة','Save follow-up')+'</button></div></div>';
-  app.openModal(tx('متابعة الإدارة','Management follow-up'),html);
+  var html='<div class="security-warn">'+tx('هذه متابعة خدمة فقط ولا تغيّر حالة العميل. المهلة المحددة لتدخل الإدارة: 48 ساعة.','This is a service response only and does not change customer status. Management intervention deadline: 48 hours.')+'<br><b>'+e(c.name)+'</b> — '+e(dueLabel(fs.next_due_at))+' — '+app.dateTime(fs.next_due_at)+'</div>'
+    +'<div class="form-grid" style="margin-top:12px"><div class="full"><label>'+tx('رد / نتيجة متابعة الإدارة','Management response / result')+'</label><textarea id="wManagementNote" rows="5"></textarea></div>'
+    +'<div class="full"><button class="btn" id="wSaveManagement" data-id="'+c.id+'">'+tx('حفظ رد الإدارة','Save management response')+'</button></div></div>';
+  app.openModal(tx('رد الإدارة','Management Response'),html);
 }
 async function saveManagementResolution(id){
   var note=(byId('wManagementNote')&&byId('wManagementNote').value||'').trim();
-  var st=byId('wManagementStatus')&&byId('wManagementStatus').value||null;
-  if(note.length<5)return app.flash(tx('اكتب نتيجة واضحة لمتابعة الإدارة.','Enter a clear management follow-up result.'),true);
-  var res=await sb.rpc('resolve_management_intervention',{p_customer_id:Number(id),p_note:note,p_new_status:st});
+  if(note.length<5)return app.flash(tx('اكتب نتيجة واضحة لمتابعة الإدارة.','Enter a clear management response.'),true);
+  var res=await sb.rpc('resolve_management_intervention',{p_customer_id:Number(id),p_note:note,p_new_status:null});
   if(res.error)return app.flash(res.error.message,true);
   app.closeModal();
-  app.flash(tx('تم حفظ متابعة الإدارة.','Management follow-up saved.'));
+  app.flash(tx('تم حفظ رد الإدارة بدون تغيير حالة العميل.','Management response saved without changing customer status.'));
   await app.refreshAll();
 }
 
@@ -510,10 +437,6 @@ function toggleFollowupQueue(){
 }
 
 function bindEvents(){
-  var ft=byId('workloadFollowupToggle');
-  if(ft&&!ft.dataset.bound){ft.dataset.bound='1';ft.addEventListener('click',toggleFollowupDashboard);ft.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggleFollowupDashboard();}});}
-  var fq=byId('followupQueueToggle');
-  if(fq&&!fq.dataset.bound){fq.dataset.bound='1';fq.addEventListener('click',toggleFollowupQueue);fq.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggleFollowupQueue();}});}
   if(initialized)return;
   initialized=true;
   document.addEventListener('click',function(ev){

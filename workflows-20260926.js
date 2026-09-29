@@ -224,7 +224,7 @@ function followupRows(){
   return followupStates.map(function(fs){
     return {fs:fs,customer:customerFor(fs.customer_id)};
   }).filter(function(x){
-    return x.customer&&(x.customer.status==='hesitant'||x.customer.status==='rejected')&&x.fs.next_due_at;
+    return x.customer&&['hesitant','agreed_pending','rejected'].includes(x.customer.status)&&x.fs.next_due_at;
   }).sort(function(a,b){
     return deadlineMs(a.fs.next_due_at)-deadlineMs(b.fs.next_due_at);
   });
@@ -274,7 +274,7 @@ function renderFollowups(){
   var p=byId('workloadFollowupPreview');
   if(p)p.innerHTML=preview.length?preview.map(function(x){
     return '<div class="event"><b>'+e(x.customer.name)+'</b><div class="small">'+e(repName(x.customer))+' — '+statusBadge(x.customer.status)+' — '+(x.fs.owner_mode==='management'?tx('بانتظار تدخل الإدارة','Waiting for management'):e(dueLabel(x.fs.next_due_at)))+'</div><div style="margin-top:6px">'+followupAction(x,true)+'</div></div>';
-  }).join(''):'<div class="small">'+tx('لا توجد عملاء مترددين أو رافضين يحتاجون متابعة.','No hesitant or rejected customers need follow-up.')+'</div>';
+  }).join(''):'<div class="small">'+tx('لا توجد عملاء مترددين أو متفقين بانتظار الطلبية أو رافضين يحتاجون متابعة.','No hesitant, awaiting-order, or rejected customers need follow-up.')+'</div>';
 
   var attention=byId('attentionList');
   if(attention){
@@ -473,7 +473,7 @@ function openManagementResolution(id){
   var c=customerFor(id),fs=followupFor(id);
   if(!c||!fs||fs.owner_mode!=='management')return app.flash(tx('هذه الحالة لم تعد بانتظار الإدارة.','This customer is no longer waiting for management.'),true);
   var opts='<option value="">'+tx('بدون تغيير الحالة','No status change')+'</option>';
-  ['active','hesitant','rejected'].forEach(function(k){
+  ['active','agreed_pending','hesitant','rejected'].forEach(function(k){
     if(k!==c.status)opts+='<option value="'+k+'">'+e(app.statusLabel(k))+'</option>';
   });
   var html='<div class="security-warn">'+tx('المهلة المحددة لتدخل الإدارة: 48 ساعة.','Management intervention deadline: 48 hours.')+'<br><b>'+e(c.name)+'</b> — '+e(dueLabel(fs.next_due_at))+' — '+app.dateTime(fs.next_due_at)+'</div>'

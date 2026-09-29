@@ -11,7 +11,7 @@ const I18N={
  ar:{
   signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعة العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
   new:'جديد',active:'نشط',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
-  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',management_response:'متابعة الإدارة',location_mismatch:'متابعة مرفوضة - خارج موقع العميل',
+  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',management_response:'متابعة الإدارة',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
   company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
@@ -28,7 +28,7 @@ const I18N={
  en:{
   signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
   new:'New',active:'Active',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
-  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',management_response:'Management follow-up',location_mismatch:'Rejected follow-up - outside customer location',
+  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',management_response:'Management follow-up',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
   company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
@@ -56,7 +56,7 @@ const ACTION = {
  customer_created:'Customer created',customer_updated:'Customer updated',customer_deleted:'Customer deleted',
  status_changed:'Status changed',sale_added:'Sale / withdrawal added',sale_updated:'Sale updated',sale_deleted:'Sale deleted',
  report_added:'Follow-up added',report_updated:'Follow-up updated',report_deleted:'Follow-up deleted',
- location_corrected:'Location corrected',password_changed:'Password changed',password_reset_by_admin:'Representative password reset by admin',followup_location_rejected:'Follow-up rejected by location',followup_location_verified:'Follow-up location verified',performance_goal_updated:'Performance goal updated'
+ location_corrected:'Location corrected',password_changed:'Password changed',password_reset_by_admin:'Representative password reset by admin',performance_goal_updated:'Performance goal updated'
 };
 const MAX_IDLE_MS = 60*60*1000;
 const MAX_SESSION_MS = 8*60*60*1000;
@@ -416,12 +416,7 @@ function renderSales(){
 }
 function renderReports(){
  const f=$('reportActionFilter')?.value||'',rows=state.reports.filter(r=>!f||r.action_code===f);
- $('reportsBody').innerHTML=rows.length?rows.map(r=>{
-   const locationRejected=r.action_code==='location_mismatch';
-   const actionHtml=locationRejected?'<span class="badge b-bad">'+esc(actionLabel(r.action_code))+'</span>':esc(actionLabel(r.action_code)||'-');
-   const actions=locationRejected?'-':(canManage()?'<button class="btn secondary mini" data-edit-report="'+r.id+'">'+t('edit')+'</button>'+(isAdmin()?' <button class="btn bad mini" data-delete-report="'+r.id+'">'+t('del')+'</button>':''):'-');
-   return '<tr><td>'+dateTime(r.created_at)+'</td><td>'+esc(r.customer?.name||'-')+'</td><td>'+esc(r.rep?.full_name||'-')+'</td><td>'+actionHtml+'</td><td>'+(r.old_status?badgeStatus(r.old_status):'-')+'</td><td>'+(r.new_status?badgeStatus(r.new_status):'-')+'</td><td>'+esc(r.note)+'</td><td>'+actions+'</td></tr>';
- }).join(''):'<tr><td colspan="8" class="empty">'+t('noData')+'</td></tr>';
+ $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${esc(actionLabel(r.action_code)||'-')}</td><td>${r.old_status?badgeStatus(r.old_status):'-'}</td><td>${r.new_status?badgeStatus(r.new_status):'-'}</td><td>${esc(r.note)}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">${t('noData')}</td></tr>`;
 }
 function reportRange(){return {from:$('analyticsFrom').value,to:$('analyticsTo').value,rep:$('analyticsRep').value,type:$('analyticsType').value};}
 function inRange(d,x,y){const v=String(d||'').slice(0,10);return (!x||v>=x)&&(!y||v<=y);}
@@ -618,80 +613,15 @@ function updateReportStatusFields(){
 }
 function openReportForm(id=null){
  const selected=state.customers.find(c=>Number(c.id)===Number(id))||null;if(!state.customers.length)return flash(t('noData'),true);
- const locationNote=!canManage()?'<div class="notice"><b>'+(lang==='ar'?'التحقق من الموقع إلزامي':'Location verification is required')+'</b><br>'+(lang==='ar'?'عند حفظ المتابعة سيأخذ النظام موقعك الحالي تلقائياً ويقارنه بموقع العميل. لا يوجد إدخال يدوي للموقع.':'When saving, the system will automatically read your current location and compare it with the customer location. Manual location entry is not available.')+'</div>':'';
- const actionOptions=FOLLOW_ACTION_KEYS.map(k=>'<option value="'+esc(k)+'">'+esc(t(k))+'</option>').join('');
- const html=locationNote+'<div class="danger-note">'+(lang==='ar'?'التقرير/السبب إلزامي. الحالة الجديدة لا تُحفظ بدون تقرير واضح.':'Report/reason is required. A status change cannot be saved without a clear report.')+'</div><div class="form-grid">'+
-   '<div class="full"><label>'+t('customer')+'</label>'+customerPickerHtml('r',selected?.id||null)+'</div>'+
-   '<div><label>'+t('action')+'</label><select id="rAction">'+actionOptions+'</select></div>'+
-   '<div><label>'+(lang==='ar'?'الحالة الحالية':'Current Status')+'</label><input id="rCurrentStatus" readonly></div>'+
-   '<div><label>'+t('newStatus')+'</label><select id="rNewStatus"></select></div>'+
-   '<div class="full security-warn hidden" id="rActiveRule"></div>'+
-   '<div class="full"><label>'+t('reason')+'</label><textarea id="rNote" rows="4"></textarea></div>'+
-   '<div class="full"><div id="rLocationStatus" class="small" style="margin-bottom:8px"></div><button class="btn" id="saveReportBtn">'+(!canManage()?(lang==='ar'?'تحقق من موقعي واحفظ المتابعة':'Verify my location and save'):t('save'))+'</button></div></div>';
- openModal(lang==='ar'?'إضافة متابعة عميل':'Add Customer Follow-up',html);
+ openModal(lang==='ar'?'إضافة متابعة عميل':'Add Customer Follow-up',`<div class="danger-note">${lang==='ar'?'التقرير/السبب إلزامي. الحالة الجديدة لا تُحفظ بدون تقرير واضح.':'Report/reason is required. A status change cannot be saved without a clear report.'}</div><div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('r',selected?.id||null)}</div><div><label>${t('action')}</label><select id="rAction">${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div><div><label>${lang==='ar'?'الحالة الحالية':'Current Status'}</label><input id="rCurrentStatus" readonly></div><div><label>${t('newStatus')}</label><select id="rNewStatus"></select></div><div class="full security-warn hidden" id="rActiveRule"></div><div class="full"><label>${t('reason')}</label><textarea id="rNote" rows="4"></textarea></div><div class="full"><button class="btn" id="saveReportBtn">${t('save')}</button></div></div>`);
  setTimeout(()=>{bindCustomerPicker('r',updateReportStatusFields);updateReportStatusFields();},0);
 }
-function getFreshFollowupLocation(){
- return new Promise((resolve,reject)=>{
-   if(!navigator.geolocation)return reject({kind:'unsupported'});
-   let best=null,done=false,watchId=null;
-   const finish=(value,error)=>{if(done)return;done=true;if(watchId!==null)navigator.geolocation.clearWatch(watchId);clearTimeout(timer);error?reject(error):resolve(value);};
-   const timer=setTimeout(()=>{if(best&&best.accuracy<=100)finish(best,null);else finish(null,{kind:'poor_accuracy',accuracy:best?.accuracy||null});},20000);
-   watchId=navigator.geolocation.watchPosition(pos=>{
-     const cur={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:Number(pos.coords.accuracy||9999),capturedAt:new Date(pos.timestamp||Date.now()).toISOString()};
-     if(!best||cur.accuracy<best.accuracy)best=cur;
-     if(cur.accuracy<=100)finish(cur,null);
-   },err=>{
-     if(err?.code===1)finish(null,{kind:'denied'});
-     else if(err?.code===2)finish(null,{kind:'unavailable'});
-     else if(err?.code===3)finish(null,{kind:'timeout'});
-     else finish(null,{kind:'unavailable'});
-   },{enableHighAccuracy:true,maximumAge:0,timeout:18000});
- });
-}
 async function addReport(){
- const customerId=Number($('rCustomerId')?.value||0),note=$('rNote').value.trim(),newStatus=$('rNewStatus').value||null,action=$('rAction').value;
+ const customerId=Number($('rCustomerId')?.value||0),note=$('rNote').value.trim(),newStatus=$('rNewStatus').value||null;
  if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
  if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً أو سبباً واضحاً':'Enter a clear report or reason',true);
- if(canManage()){
-   const result=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:action,p_note:note,p_new_status:newStatus});
-   if(result.error)return flash(result.error.message==='active customer requires sale'?(lang==='ar'?'لا يمكن تحويل العميل إلى نشط بدون طلبية. سجل الطلبية أولاً.':'The customer cannot become Active without an order. Record the order first.'):result.error.message,true);
-   closeModal();flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));await refreshAll();return;
- }
- const btn=$('saveReportBtn'),statusBox=$('rLocationStatus');
- if(btn){btn.disabled=true;btn.textContent=lang==='ar'?'جاري تحديد موقعك الحالي...':'Getting your current location...';}
- if(statusBox)statusBox.textContent=lang==='ar'?'فعّل خدمة الموقع وانتظر حتى يتم التحقق من الدقة.':'Enable location services and wait for an accurate reading.';
- try{
-   const loc=await getFreshFollowupLocation();
-   if(statusBox)statusBox.textContent=(lang==='ar'?'تم تحديد الموقع بدقة تقريبية ':'Location accuracy about ')+Math.round(loc.accuracy)+(lang==='ar'?' متر. جاري المطابقة...':' m. Checking customer location...');
-   const result=await sb.rpc('add_report_with_current_location',{p_customer_id:customerId,p_action_code:action,p_note:note,p_new_status:newStatus,p_lat:loc.lat,p_lng:loc.lng,p_accuracy_m:loc.accuracy,p_captured_at:loc.capturedAt});
-   if(result.error){
-     const em=result.error.message||'';
-     if(em.includes('location accuracy too low'))throw {kind:'poor_accuracy'};
-     if(em.includes('stale current location'))throw {kind:'stale'};
-     throw result.error;
-   }
-   if(result.data?.accepted===false){
-     const dist=Math.round(Number(result.data.distance_m||0));
-     closeModal();
-     flash((lang==='ar'?'تم تسجيل متابعة مرفوضة: أنت خارج موقع العميل (':'Rejected follow-up recorded: you are outside the customer location (')+dist+(lang==='ar'?' متر). لديك 24 ساعة لإعادة المتابعة من موقع العميل.':' m). You have 24 hours to retry from the customer location.'),true);
-     await refreshAll();return;
-   }
-   closeModal();
-   flash(lang==='ar'?(newStatus?'تم التحقق من موقعك وحفظ المتابعة وتغيير الحالة':'تم التحقق من موقعك وحفظ المتابعة'):(newStatus?'Location verified; follow-up saved and status updated':'Location verified; follow-up saved'));
-   await refreshAll();
- }catch(err){
-   const kind=err?.kind||'';let msg;
-   if(kind==='denied')msg=lang==='ar'?'لا يمكن حفظ المتابعة بدون السماح للموقع. فعّل إذن الموقع من المتصفح ثم حاول مرة أخرى.':'The follow-up cannot be saved without location permission. Enable browser location permission and try again.';
-   else if(kind==='poor_accuracy')msg=lang==='ar'?'دقة الموقع ضعيفة. انتقل لمكان تكون فيه إشارة GPS أفضل ثم حاول مرة أخرى.':'Location accuracy is too low. Move somewhere with a better GPS signal and try again.';
-   else if(kind==='timeout')msg=lang==='ar'?'لم يتم تحديد موقعك في الوقت المطلوب. حاول مرة أخرى.':'Your location could not be obtained in time. Try again.';
-   else if(kind==='unsupported')msg=lang==='ar'?'هذا الجهاز أو المتصفح لا يدعم تحديد الموقع.':'This device or browser does not support location.';
-   else if(kind==='stale')msg=lang==='ar'?'قراءة الموقع قديمة. حاول الحفظ مرة أخرى للحصول على موقع جديد.':'The location reading is stale. Save again to get a fresh location.';
-   else msg=err?.message||(lang==='ar'?'تعذر التحقق من موقعك.':'Could not verify your location.');
-   if(statusBox)statusBox.textContent=msg;flash(msg,true);
- }finally{
-   if(btn){btn.disabled=false;btn.textContent=lang==='ar'?'تحقق من موقعي واحفظ المتابعة':'Verify my location and save';}
- }
+ const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:$('rAction').value,p_note:note,p_new_status:newStatus});
+ if(error)return flash(error.message==='active customer requires sale'?(lang==='ar'?'لا يمكن تحويل العميل إلى نشط بدون طلبية. سجل الطلبية أولاً.':'The customer cannot become Active without an order. Record the order first.'):error.message,true);closeModal();flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));await refreshAll();
 }
 function openReportEditor(id){if(!canManage())return;const r=state.reports.find(x=>Number(x.id)===Number(id));if(!r)return;openModal(lang==='ar'?'تعديل المتابعة':'Edit Follow-up',`<div class="form-grid"><div><label>${t('action')}</label><select id="erAction">${EDIT_ACTION_KEYS.map(k=>`<option value="${k}" ${r.action_code===k?'selected':''}>${t(k)}</option>`).join('')}</select></div><div class="full"><label>${t('reason')}</label><textarea id="erNote" rows="5">${esc(r.note)}</textarea></div><div class="full"><button class="btn" id="saveReportEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveReportEdit(id){const note=$('erNote').value.trim();if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً واضحاً':'Enter a clear report',true);const {error}=await sb.rpc('admin_update_report',{p_report_id:id,p_action_code:$('erAction').value,p_note:note});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}

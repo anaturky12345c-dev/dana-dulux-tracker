@@ -13,7 +13,7 @@ const I18N={
   new:'جديد',active:'نشط',agreed_pending:'متفق – بانتظار الطلبية',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
   admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',management_response:'متابعة الإدارة',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
-  company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
+  company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين (سحب 5,000+)',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
   customer:'العميل',customerType:'نوع العميل',shop:'محل',factory:'مصنع',project:'مشروع',notSet:'غير محدد',representative:'المندوب',area:'المنطقة',phone:'الجوال',status:'الحالة',action:'الإجراء',reason:'التقرير / السبب',product:'المنتج',quantity:'الكمية',value:'القيمة',reference:'المرجع',date:'التاريخ',
   totalCustomers:'إجمالي العملاء',salesThisMonth:'سحوبات الشهر',activeCustomers:'العملاء النشطون',hesitantCustomers:'العملاء المترددون',rejectedCustomers:'العملاء الرافضون',clickView:'اضغط للعرض',
@@ -30,7 +30,7 @@ const I18N={
   new:'New',active:'Active',agreed_pending:'Agreed – awaiting order',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
   admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',management_response:'Management follow-up',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
-  company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
+  company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers (SAR 5,000+)',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
   customer:'Customer',customerType:'Customer Type',shop:'Shop',factory:'Factory',project:'Project',notSet:'Not set',representative:'Representative',area:'Area',phone:'Phone',status:'Status',action:'Action',reason:'Report / Reason',product:'Product',quantity:'Quantity',value:'Value',reference:'Reference',date:'Date',
   totalCustomers:'Total Customers',salesThisMonth:'Sales This Month',activeCustomers:'Active Customers',hesitantCustomers:'Hesitant Customers',rejectedCustomers:'Rejected Customers',clickView:'Click to view',
@@ -63,6 +63,7 @@ const MAX_SESSION_MS = 8*60*60*1000;
 const LOGIN_LOCK_MS = 5*60*1000;
 const LOGIN_FAIL_LIMIT = 5;
 const PAGE_SIZE = 1000;
+const ACTIVE_NEW_GOAL_MIN_SALES = 5000;
 const state={session:null,profile:null,customers:[],sales:[],reports:[],profiles:[],goals:[],map:null,markerLayer:null,mapLocations:[],pickerMap:null,pickerMarker:null,securityGateMode:null,mfaFactorId:null,lastActivity:Date.now(),activityCache:new Map(),customerMonthOnly:false};
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -402,6 +403,11 @@ function renderRepPerformance(){
  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>'+t('representative')+'</th><th>'+t('customers')+'</th><th>'+t('newCustomers')+'</th><th>'+t('activeCustomers')+'</th><th>'+t('salesThisMonth')+'</th><th>'+t('followups')+'</th></tr></thead><tbody>'+
  reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;return `<tr class="clickable-row" data-rep-customers="${p.id}"><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${cs.filter(c=>c.status==='active').length}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table></div>';
 }
+function qualifiedActiveNewCustomers(customers,sales){
+ const totals=new Map();
+ for(const x of sales){const id=Number(x.customer_id);totals.set(id,(totals.get(id)||0)+Number(x.amount||0));}
+ return customers.filter(c=>c.status==='active'&&(totals.get(Number(c.id))||0)>=ACTIVE_NEW_GOAL_MIN_SALES);
+}
 function scopeAchievements(scope,repId=null){
  const month=monthRiyadh();
  const sales=state.sales.filter(x=>String(x.business_date||'').startsWith(month)&&(scope==='company'||x.rep_id===repId));
@@ -409,7 +415,7 @@ function scopeAchievements(scope,repId=null){
  return {
    totalSales:sales.reduce((z,x)=>z+Number(x.amount||0),0),
    newCustomers:newCustomers.length,
-   activeNewCustomers:newCustomers.filter(c=>c.status==='active').length
+   activeNewCustomers:qualifiedActiveNewCustomers(newCustomers,sales).length
  };
 }
 function goalMetricView(scope,repId,type,achieved,label,isMoney=true){
@@ -423,7 +429,7 @@ function goalMetricView(scope,repId,type,achieved,label,isMoney=true){
 }
 function renderGoalScope(scope,repId,label){
  const ac=scopeAchievements(scope,repId);
- return `<div class="goal-v2-scope ${scope==='company'?'goal-v2-company':''}"><div class="goal-v2-scope-head"><div><h4>${esc(label)}</h4><span>${lang==='ar'?'نتيجة الشهر الحالي حتى الآن':'Current-month result so far'}</span></div></div><div class="goal-v2-grid">
+ return `<div class="goal-v2-scope ${scope==='company'?'goal-v2-company':''}"><div class="goal-v2-scope-head"><div><h4>${esc(label)}</h4><span>${lang==='ar'?'نتيجة الشهر الحالي — العميل الجديد النشط يُحسب بعد وصول سحوباته إلى 5,000 ر.س':'Current month — a new active customer counts after reaching SAR 5,000 in sales'}</span></div></div><div class="goal-v2-grid">
    ${goalMetricView(scope,repId,'total_sales',ac.totalSales,t('totalSalesGoal'),true)}
    ${goalMetricView(scope,repId,'new_customers',ac.newCustomers,t('newCustomers'),false)}
    ${goalMetricView(scope,repId,'active_new_customers',ac.activeNewCustomers,t('activeNewCustomers'),false)}
@@ -627,10 +633,11 @@ function generateAnalytics(){
 
  if(type==='goals'){
    const scope=rep?'rep':'company',repId=rep||null;
+   const goalActiveNew=qualifiedActiveNewCustomers(newCustomers,sales).length;
    const data=[
     {key:'total_sales',label:t('totalSalesGoal'),got:total,m:true},
     {key:'new_customers',label:t('newCustomers'),got:newCustomers.length,m:false},
-    {key:'active_new_customers',label:t('activeNewCustomers'),got:activeNew,m:false}
+    {key:'active_new_customers',label:t('activeNewCustomers'),got:goalActiveNew,m:false}
    ].map(function(x){const target=Number(goalFor(scope,repId,x.key)&&goalFor(scope,repId,x.key).monthly_target||0),pct=target?Math.round(x.got/target*100):0;return {label:x.label,got:x.got,target:target,pct:pct,m:x.m}});
    const kpis=data.map(function(x){return reportCard(x.label,x.m?money(x.got):fmt(x.got),x.target?x.pct+'% '+(lang==='ar'?'من الهدف':'of target'):(lang==='ar'?'الهدف غير محدد':'Target not set'))});
    const bars=data.map(function(x){return {label:x.label,value:x.pct,note:(lang==='ar'?'المحقق ':'Achieved ')+(x.m?money(x.got):fmt(x.got))+' / '+(x.target?(x.m?money(x.target):fmt(x.target)):'-')}});

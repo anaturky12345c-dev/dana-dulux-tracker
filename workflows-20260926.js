@@ -157,7 +157,7 @@ function refreshFollowupRepFilter(){
 }
 function renderLabels(){
   setText('requiredFollowupTitle',tx('المتابعات المطلوبة','Required Sales Follow-ups'));
-  setText('requiredFollowupHint',tx('للعملاء المترددين والرافضين — كل 3 أيام عمل، من السبت إلى الخميس.','For hesitant and rejected customers — every 3 workdays, Saturday through Thursday.'));
+  setText('requiredFollowupHint',tx('المتردد: كل 3 أيام عمل. الرافض: كل 7 أيام عمل. الجمعة لا تُحسب.','Hesitant: every 3 workdays. Rejected: every 7 workdays. Friday is not counted.'));
   setText('rfCustomer',tx('العميل','Customer'));
   setText('rfRep',tx('المندوب','Representative'));
   setText('rfStatus',tx('الحالة','Status'));
@@ -259,7 +259,7 @@ function renderFollowups(){
 
   var waiting=managementRows();
   setText('attentionCount',String(waiting.length));
-  setText('attentionSub',waiting.length?tx('طلبات تدخل إدارة مفتوحة — المهلة 3 أيام عمل.','Open management-intervention requests — 3-workday deadline.'):tx('لا توجد حالات مفتوحة تحتاج تدخل الإدارة.','No open management-intervention cases.'));
+  setText('attentionSub',waiting.length?tx('طلبات تدخل إدارة مفتوحة — المهلة 48 ساعة ضمن أيام العمل.','Open management-intervention requests — 48 working hours; Friday is not counted.'):tx('لا توجد حالات مفتوحة تحتاج تدخل الإدارة.','No open management-intervention cases.'));
 
   var attention=byId('attentionList');
   if(attention){
@@ -463,7 +463,7 @@ function openManagementResolution(id){
   if(!isManagement())return;
   var c=customerFor(id),fs=followupFor(id);
   if(!c||!fs||fs.owner_mode!=='management')return app.flash(tx('هذه الحالة لم تعد بانتظار الإدارة.','This customer is no longer waiting for management.'),true);
-  var html='<div class="security-warn">'+tx('هذه متابعة خدمة فقط ولا تغيّر حالة العميل. المهلة المحددة لتدخل الإدارة: 3 أيام عمل (السبت إلى الخميس).','This is a service response only and does not change customer status. Management intervention deadline: 3 workdays (Saturday through Thursday).')+'<br><b>'+e(c.name)+'</b> — '+e(dueLabel(fs.next_due_at))+' — '+app.dateTime(fs.next_due_at)+'</div>'
+  var html='<div class="security-warn">'+tx('هذه متابعة خدمة فقط ولا تغيّر حالة العميل. المهلة المحددة لتدخل الإدارة: 48 ساعة ضمن أيام العمل، والجمعة لا تُحسب.','This is a service response only and does not change customer status. Management intervention deadline: 48 working hours; Friday is not counted.')+'<br><b>'+e(c.name)+'</b> — '+e(dueLabel(fs.next_due_at))+' — '+app.dateTime(fs.next_due_at)+'</div>'
     +'<div class="form-grid" style="margin-top:12px"><div class="full"><label>'+tx('رد / نتيجة متابعة الإدارة','Management response / result')+'</label><textarea id="wManagementNote" rows="5"></textarea></div>'
     +'<div class="full"><button class="btn" id="wSaveManagement" data-id="'+c.id+'">'+tx('حفظ رد الإدارة','Save management response')+'</button></div></div>';
   app.openModal(tx('رد الإدارة','Management Response'),html);

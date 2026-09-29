@@ -643,3 +643,5 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
     grid-column:auto;
   }
 }
+
+.dormant-visit.overdue{background:#fff1f2;color:#b91c1c}

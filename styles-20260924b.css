@@ -471,3 +471,63 @@ html[dir="ltr"] .flash{left:18px;right:auto}html[dir="rtl"] .flash{right:18px;le
   .rep-summary-stats span{font-size:10px}
   .rep-summary-stats b{font-size:18px}
 }
+
+
+/* Dashboard metric cards - light distinctive states */
+.dashboard-cards .metric-card{
+  position:relative;
+  overflow:hidden;
+  border-width:1px;
+  box-shadow:0 6px 18px rgba(15,23,42,.05);
+}
+.dashboard-cards .metric-card::before{
+  content:"";
+  position:absolute;
+  inset-block:0;
+  inset-inline-start:0;
+  width:4px;
+  border-radius:14px 0 0 14px;
+}
+html[dir="rtl"] .dashboard-cards .metric-card::before{
+  inset-inline-start:auto;
+  inset-inline-end:0;
+  border-radius:0 14px 14px 0;
+}
+.dashboard-cards .metric-card[data-dashboard-link="customers"]{
+  background:#f5f9ff;
+  border-color:#dbeafe;
+}
+.dashboard-cards .metric-card[data-dashboard-link="customers"]::before{background:#2563eb}
+.dashboard-cards .metric-card[data-dashboard-link="sales-month"],
+.dashboard-cards .metric-card[data-dashboard-link="sales-day"]{
+  background:#f3fbf6;
+  border-color:#d1fae5;
+}
+.dashboard-cards .metric-card[data-dashboard-link="sales-month"]::before,
+.dashboard-cards .metric-card[data-dashboard-link="sales-day"]::before{background:#15803d}
+.dashboard-cards .metric-card[data-dashboard-link="active"]{
+  background:#f2fbf8;
+  border-color:#ccfbf1;
+}
+.dashboard-cards .metric-card[data-dashboard-link="active"]::before{background:#0f766e}
+.dashboard-cards .metric-card[data-dashboard-link="hesitant"]{
+  background:#fffaf0;
+  border-color:#fde7b0;
+}
+.dashboard-cards .metric-card[data-dashboard-link="hesitant"]::before{background:#d97706}
+.dashboard-cards .metric-card[data-dashboard-link="rejected"]{
+  background:#fff6f6;
+  border-color:#fecaca;
+}
+.dashboard-cards .metric-card[data-dashboard-link="rejected"]::before{background:#b91c1c}
+.dashboard-cards .metric-card .metric{color:#0f172a}
+.dashboard-cards .metric-card .label{font-weight:700;color:#334155}
+.dashboard-cards .metric-card .card-hint{color:#64748b}
+.dashboard-cards .metric-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 9px 24px rgba(15,23,42,.09);
+}
+@media(max-width:768px){
+  .dashboard-cards .metric-card{min-height:108px}
+  .dashboard-cards .metric-card .metric{font-size:23px}
+}

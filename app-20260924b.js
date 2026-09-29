@@ -114,7 +114,7 @@ function applyLanguage(){
  const nav={dashboard:'dashboard',customers:'customers',sales:'sales',reports:'followups',mapPage:'map',analytics:'reports',audit:'audit',account:'account'};
  for(const [p,k] of Object.entries(nav)){const e=document.querySelector('[data-page="'+p+'"]');if(e)e.textContent=t(k);}
 
- if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');
+ if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');set('#servicePageTitle',lang==='ar'?'طلبات وشكاوى العملاء':'Customer Requests & Complaints');set('#servicePageHint',lang==='ar'?'هذه الصفحة للشكاوى وطلبات العينات وطلبات تدخل الإدارة ومتابعة الخدمة فقط. لا يتم تغيير حالة العميل من هنا.':'This page is only for complaints, sample requests, management intervention, and service follow-up. Customer status is not changed here.');
  ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
 
  set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#dormantTitle',lang==='ar'?'عملاء خاملون – مطلوب زيارة':'Inactive Customers – Visit Required');set('#goalsTitle',t('goals'));
@@ -325,7 +325,7 @@ function activityForCustomer(cid){
  for(const x of state.sales){if(Number(x.customer_id)!==cid)continue;if(String(x.business_date||'').startsWith(month)){monthSalesCount++;monthSalesValue+=Number(x.amount||0);}if(!lastSale||new Date(x.created_at)>new Date(lastSale.created_at))lastSale=x;}
  const out={monthSalesCount,monthSalesValue,lastSale};state.activityCache.set(cid,out);return out;
 }
-function customerCategory(c){const x=activityForCustomer(c.id);if(x.monthSalesCount>1)return 'frequent';return c.status||'hesitant';}
+function customerCategory(c){const x=activityForCustomer(c.id);if(c.status==='inactive')return 'inactive';if(x.monthSalesCount>1)return 'frequent';return c.status||'hesitant';}
 function renderAll(){if(!$('mCustomers'))return;renderDashboard();renderCustomers();renderSales();renderReports();renderGoalsDashboard();renderRepPerformance();renderRepPasswordAdmin();window.dispatchEvent(new CustomEvent('dana:render'));}
 
 function badgeStatus(k){const cls={new:'b-info',active:'b-good',inactive:'b-purple',agreed_pending:'b-info',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
@@ -628,11 +628,12 @@ function generateAnalytics(){
  const uniqueBuyers=new Set(sales.map(function(x){return Number(x.customer_id)})).size;
  const repeatBuyers=customerRows.filter(function(x){return x.orders>=2}).length;
  const activeNew=newCustomers.filter(function(c){return c.status==='active'}).length;
- const attention=reports.filter(function(r){return r.action_code==='admin_intervention'});
- const agreements=reports.filter(function(r){return r.action_code==='customer_agreed'});
+ const serviceReports=reports.filter(function(r){return r.action_code!=='inactive_visit'});
+ const attention=serviceReports.filter(function(r){return r.action_code==='admin_intervention'});
+ const complaints=serviceReports.filter(function(r){return r.action_code==='complaint'});
  const repRows=state.profiles.filter(function(p){return p.role==='rep'&&(!rep||p.id===rep)}).map(function(p){
-   const ss=sales.filter(function(x){return x.rep_id===p.id}),rr=reports.filter(function(x){return x.rep_id===p.id}),cs=state.customers.filter(function(c){return c.assigned_rep===p.id}),nc=cs.filter(function(c){return inRange(dateKeyRiyadh(c.created_at),from,to)});
-   return {name:p.full_name,value:salesSum(ss),orders:ss.length,followups:rr.length,newCustomers:nc.length,agreements:rr.filter(function(x){return x.action_code==='customer_agreed'}).length,active:cs.filter(function(c){return c.status==='active'}).length};
+   const ss=sales.filter(function(x){return x.rep_id===p.id}),rr=serviceReports.filter(function(x){return x.rep_id===p.id}),cs=state.customers.filter(function(c){return c.assigned_rep===p.id}),nc=cs.filter(function(c){return inRange(dateKeyRiyadh(c.created_at),from,to)});
+   return {name:p.full_name,value:salesSum(ss),orders:ss.length,serviceRequests:rr.length,newCustomers:nc.length,managementRequests:rr.filter(function(x){return x.action_code==='admin_intervention'}).length,active:cs.filter(function(c){return c.status==='active'}).length};
  }).sort(function(a,b){return b.value-a.value});
 
  if(type==='executive'){
@@ -641,19 +642,19 @@ function generateAnalytics(){
      reportCard(lang==='ar'?'عدد الطلبيات':'Orders',fmt(orders),(lang==='ar'?'متوسط ':'Average ')+money(avg)),
      reportCard(lang==='ar'?'عملاء سحبوا':'Buying Customers',fmt(uniqueBuyers),(lang==='ar'?'كرر السحب ':'Repeat buyers ')+repeatBuyers),
      reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length),(lang==='ar'?'نشط منهم ':'Active ')+activeNew),
-     reportCard(lang==='ar'?'المتابعات':'Follow-ups',fmt(reports.length),(lang==='ar'?'اتفاقات ':'Agreements ')+agreements.length),
-     reportCard(lang==='ar'?'تدخل الإدارة':'Management Cases',fmt(attention.length),lang==='ar'?'تحتاج مراجعة':'Needs review')
+     reportCard(lang==='ar'?'طلبات وشكاوى':'Requests & Complaints',fmt(serviceReports.length),(lang==='ar'?'شكاوى ':'Complaints ')+complaints.length),
+     reportCard(lang==='ar'?'طلبات تدخل الإدارة':'Management Requests',fmt(attention.length),lang==='ar'?'مسجلة خلال الفترة':'Recorded in period')
    ];
    const insights='<div class="report-insight-strip">'+
      '<div>'+(productRows[0]?(lang==='ar'?'أعلى منتج بالقيمة: ':'Top product: ')+'<b>'+esc(productRows[0].label)+'</b> — '+money(productRows[0].value):(lang==='ar'?'لا توجد سحوبات منتجات.':'No product sales.'))+'</div>'+
      '<div>'+(customerRows[0]?(lang==='ar'?'أعلى عميل سحباً: ':'Top customer: ')+'<b>'+esc(customerRows[0].name)+'</b> — '+money(customerRows[0].value):(lang==='ar'?'لا توجد سحوبات عملاء.':'No customer sales.'))+'</div>'+
      '<div>'+(lang==='ar'?'عملاء كرروا السحب: ':'Repeat buyers: ')+'<b>'+repeatBuyers+'</b></div>'+
-     '<div>'+(lang==='ar'?'حالات تدخل الإدارة: ':'Management cases: ')+'<b>'+attention.length+'</b></div></div>';
+     '<div>'+(lang==='ar'?'طلبات تدخل الإدارة: ':'Management requests: ')+'<b>'+attention.length+'</b></div></div>';
    const prod=reportBars(productRows.map(function(x){return {label:x.label,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')}}),true);
-   const reps=reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.followups+' '+(lang==='ar'?'متابعة':'follow-ups')}}),true);
+   const reps=reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.serviceRequests+' '+(lang==='ar'?'طلب/شكوى':'requests')}}),true);
    const top=reportTable([t('customer'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('representative')],customerRows.slice(0,10).map(function(x){const c=customers.find(function(z){return Number(z.id)===x.id});return [esc(x.name),money(x.value),fmt(x.orders),esc(c&&c.rep&&c.rep.full_name||'-')]}));
    const att=attention.length?'<div class="report-attention-list">'+attention.slice(0,8).map(function(r){return '<div><b>'+esc(r.customer&&r.customer.name||'-')+'</b><span>'+esc(r.note)+'</span><small>'+esc(r.rep&&r.rep.full_name||'-')+' — '+dateOnly(r.business_date||dateKeyRiyadh(r.created_at))+'</small></div>'}).join('')+'</div>':'<div class="report-good-note">'+(lang==='ar'?'لا توجد حالات تدخل إدارة مسجلة في الفترة.':'No management cases recorded in this period.')+'</div>';
-   renderManagementReport(lang==='ar'?'لوحة الإدارة التنفيذية':'Executive Management Report',from,to,repName,kpis,insights+'<div class="report-two-col">'+reportSection(lang==='ar'?'مزيج المنتجات':'Product Mix',prod)+reportSection(lang==='ar'?'حركة المناديب':'Representative Sales',reps)+'</div>'+reportSection(lang==='ar'?'أعلى العملاء سحباً':'Top Customers',top)+reportSection(lang==='ar'?'حالات تحتاج تدخل الإدارة':'Management Intervention',att),lang==='ar'?'هذا التقرير يجمع أهم الأرقام التي تحتاجها الإدارة لاتخاذ قرار سريع.':'A management view of the numbers that matter for quick decisions.');
+   renderManagementReport(lang==='ar'?'لوحة الإدارة التنفيذية':'Executive Management Report',from,to,repName,kpis,insights+'<div class="report-two-col">'+reportSection(lang==='ar'?'مزيج المنتجات':'Product Mix',prod)+reportSection(lang==='ar'?'حركة المناديب':'Representative Sales',reps)+'</div>'+reportSection(lang==='ar'?'أعلى العملاء سحباً':'Top Customers',top)+reportSection(lang==='ar'?'طلبات تدخل الإدارة خلال الفترة':'Management Requests in Period',att),lang==='ar'?'هذا التقرير يجمع أهم الأرقام التي تحتاجها الإدارة لاتخاذ قرار سريع.':'A management view of the numbers that matter for quick decisions.');
    return;
  }
 
@@ -675,8 +676,8 @@ function generateAnalytics(){
  }
 
  if(type==='reps'){
-   const kpis=[reportCard(lang==='ar'?'إجمالي السحوبات':'Total Sales',money(total)),reportCard(lang==='ar'?'عدد المندوبين':'Representatives',fmt(repRows.length)),reportCard(lang==='ar'?'الطلبيات':'Orders',fmt(orders)),reportCard(lang==='ar'?'المتابعات':'Follow-ups',fmt(reports.length)),reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length)),reportCard(lang==='ar'?'متوسط الطلبية':'Average Order',money(avg))];
-   const table=reportTable([t('representative'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('newCustomers'),t('followups'),lang==='ar'?'اتفاقات':'Agreements',t('activeCustomers')],repRows.map(function(x){return [esc(x.name),money(x.value),fmt(x.orders),fmt(x.newCustomers),fmt(x.followups),fmt(x.agreements),fmt(x.active)]}));
+   const kpis=[reportCard(lang==='ar'?'إجمالي السحوبات':'Total Sales',money(total)),reportCard(lang==='ar'?'عدد المندوبين':'Representatives',fmt(repRows.length)),reportCard(lang==='ar'?'الطلبيات':'Orders',fmt(orders)),reportCard(lang==='ar'?'طلبات وشكاوى':'Requests & Complaints',fmt(serviceReports.length)),reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length)),reportCard(lang==='ar'?'متوسط الطلبية':'Average Order',money(avg))];
+   const table=reportTable([t('representative'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('newCustomers'),lang==='ar'?'طلبات/شكاوى':'Requests',lang==='ar'?'طلبات إدارة':'Management Requests',t('activeCustomers')],repRows.map(function(x){return [esc(x.name),money(x.value),fmt(x.orders),fmt(x.newCustomers),fmt(x.serviceRequests),fmt(x.managementRequests),fmt(x.active)]}));
    renderManagementReport(lang==='ar'?'تقرير أداء المناديب':'Representative Performance Report',from,to,repName,kpis,reportSection(lang==='ar'?'المبيعات حسب المندوب':'Sales by Representative',reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.followups+' '+(lang==='ar'?'متابعة':'follow-ups')}}),true))+reportSection(lang==='ar'?'التفاصيل الرقمية':'Detailed Metrics',table),'');
    return;
  }

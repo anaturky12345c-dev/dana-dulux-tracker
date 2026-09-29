@@ -619,17 +619,18 @@ async function saveLocation(id){const reason=$('locReason').value.trim();if(reas
 function openSaleForm(customerId=null){
  const requested=state.customers.find(c=>Number(c.id)===Number(customerId))||null;
  if(!state.customers.length)return flash(lang==='ar'?'لا يوجد عميل متاح لتسجيل طلبية.':'There is no customer available for an order.',true);
- openModal(lang==='ar'?'تسجيل سحب / فاتورة':'Record Sale / Withdrawal',`<div class="notice" style="margin-bottom:10px">${lang==='ar'?'إذا كان العميل متردد أو رافض، تسجيل الطلبية سيحوّله إلى نشط تلقائياً.':'If the customer is Hesitant or Rejected, recording an order will automatically make the customer Active.'}</div><div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('s',requested?.id||null,false)}</div><div><label>${t('product')}</label><select id="sProduct">${productOptions()}</select></div><div><label>${t('quantity')}</label><input id="sQty" type="number" min="0.01" step="0.01"></div><div><label>${t('value')}</label><input id="sAmount" type="number" min="0.01" step="0.01"></div><div class="full"><label>${t('reference')}</label><input id="sRef"></div><div class="full"><button class="btn" id="saveSaleBtn">${t('save')}</button></div></div>`);
+ openModal(lang==='ar'?'تسجيل سحب / فاتورة':'Record Sale / Withdrawal',`<div class="notice" style="margin-bottom:10px">${lang==='ar'?'إذا كان العميل متردد أو رافض، تسجيل الطلبية سيحوّله إلى نشط تلقائياً.':'If the customer is Hesitant or Rejected, recording an order will automatically make the customer Active.'}</div><div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('s',requested?.id||null,false)}</div><div class="full sale-date-card"><label>${lang==='ar'?'تاريخ الطلبية':'Order date'} <span class="required-star">*</span></label><input id="sDate" class="sale-date-input" type="date" required autocomplete="off"><div class="sale-date-hint">${lang==='ar'?'اضغط لاختيار تاريخ الطلبية. لن يتم وضع تاريخ اليوم تلقائياً.':'Tap to choose the order date. Today is not filled automatically.'}</div></div><div><label>${t('product')}</label><select id="sProduct">${productOptions()}</select></div><div><label>${t('quantity')}</label><input id="sQty" type="number" min="0.01" step="0.01"></div><div><label>${t('value')}</label><input id="sAmount" type="number" min="0.01" step="0.01"></div><div class="full"><label>${t('reference')}</label><input id="sRef"></div><div class="full"><button class="btn" id="saveSaleBtn">${t('save')}</button></div></div>`);
  setTimeout(()=>bindCustomerPicker('s',null,false),0);
 }
 async function addSale(){
- const customerId=Number($('sCustomerId')?.value||0),qty=Number($('sQty').value),amount=Number($('sAmount').value);
+ const customerId=Number($('sCustomerId')?.value||0),businessDate=$('sDate')?.value||'',qty=Number($('sQty').value),amount=Number($('sAmount').value);
  if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
  const customer=state.customers.find(c=>Number(c.id)===customerId);
  if(!customer)return flash(lang==='ar'?'العميل غير موجود':'Customer not found',true);
+ if(!businessDate)return flash(lang==='ar'?'اختر تاريخ الطلبية':'Choose the order date',true);
  if(!(qty>0)||!(amount>0))return flash(lang==='ar'?'أكمل بيانات السحب':'Complete sale details',true);
  const wasInactive=customer.status!=='active';
- const {error}=await sb.rpc('add_sale',{p_customer_id:customerId,p_product:$('sProduct').value,p_quantity:qty,p_amount:amount,p_order_ref:$('sRef').value.trim()||null});
+ const {error}=await sb.rpc('add_sale',{p_customer_id:customerId,p_product:$('sProduct').value,p_quantity:qty,p_amount:amount,p_business_date:businessDate,p_order_ref:$('sRef').value.trim()||null});
  if(error)return flash(error.message,true);
  closeModal();flash(lang==='ar'?(wasInactive?'تم حفظ الطلبية وتحويل العميل إلى نشط':'تم حفظ الطلبية'):(wasInactive?'Order saved and customer activated':'Order saved'));await refreshAll();
 }

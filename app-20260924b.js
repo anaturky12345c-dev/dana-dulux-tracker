@@ -112,7 +112,7 @@ function applyLanguage(){
  const st=$('customerStatusFilter');if(st){st.options[0].text=t('allStatuses');for(let i=1;i<st.options.length;i++)st.options[i].text=t(st.options[i].value);} const crf=$('customerRepFilter');if(crf&&crf.options.length)crf.options[0].text=t('allReps');
  const sp=$('salePeriodFilter');if(sp){const labels={'':t('allDates'),day:t('today'),week:t('thisWeek'),month:t('thisMonth')};for(const o of sp.options)o.text=labels[o.value]||o.value;}
  const rf=$('reportActionFilter');if(rf){rf.options[0].text=t('allActions');for(let i=1;i<rf.options.length;i++)rf.options[i].text=t(rf.options[i].value);}
- const mf=$('mapFilter');if(mf){mf.options[0].text=lang==='ar'?'كل العملاء':'All Customers';for(let i=1;i<mf.options.length;i++){const v=mf.options[i].value;mf.options[i].text=v==='frequent'?(lang==='ar'?'سحب متكرر هذا الشهر':'Repeated sale this month'):t(v);}} const mrf=$('mapRepFilter');if(mrf&&mrf.options.length)mrf.options[0].text=t('allReps');
+ const mf=$('mapFilter');if(mf){mf.options[0].text=lang==='ar'?'كل الحالات':'All Statuses';for(let i=1;i<mf.options.length;i++){const v=mf.options[i].value;mf.options[i].text=v==='frequent'?(lang==='ar'?'سحب متكرر هذا الشهر':'Repeated sale this month'):t(v);}} const mrf=$('mapRepFilter');if(mrf&&mrf.options.length)mrf.options[0].text=t('allReps');const mtf=$('mapTypeFilter');if(mtf){const labs={'':lang==='ar'?'كل أنواع العملاء':'All Customer Types',shop:t('shop'),factory:t('factory'),project:t('project')};for(const o of mtf.options)o.text=labs[o.value]||o.value;}if(typeof setMapText==='function')setMapText();
  const ar=$('analyticsRep');if(ar&&ar.options.length)ar.options[0].text=t('allReps');
 
  heads('customers',[t('customer'),t('customerType'),t('customerAddedAt'),t('area'),t('representative'),t('status'),t('salesCountMonth'),t('salesValueMonth'),'']);
@@ -120,7 +120,7 @@ function applyLanguage(){
  heads('reports',[t('recordedAt'),t('customer'),t('representative'),t('action'),t('previousStatus'),t('newStatus'),t('reason'),lang==='ar'?'الإجراءات':'Actions']);
  heads('audit',[lang==='ar'?'الوقت':'Time',lang==='ar'?'المستخدم':'User',t('action'),lang==='ar'?'الكيان':'Entity',lang==='ar'?'التفاصيل':'Details']);
 
- const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span>`;
+ const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span class="map-type-legend">🏪 ${t('shop')}</span><span class="map-type-legend">🏭 ${t('factory')}</span><span class="map-type-legend">🏗 ${t('project')}</span>`;
 
  const at=$('analyticsType');if(at){const labs={sales:lang==='ar'?'المبيعات والسحوبات':'Sales / Withdrawals',reps:t('repPerformance'),customers:lang==='ar'?'حركة العملاء':'Customer Activity',followups:t('followups'),goals:lang==='ar'?'أداء الأهداف':'Goal Performance',executive:lang==='ar'?'التقرير الإداري الشامل':'Management Summary'};for(const o of at.options)o.text=labs[o.value]||o.value;}
  const labels=document.querySelectorAll('#analytics label');const al=[t('reportType'),t('representative'),t('from'),t('to')];al.forEach((x,i)=>{if(labels[i])labels[i].textContent=x;});if($('generateReportBtn'))$('generateReportBtn').textContent=t('generateReport');if($('printReportBtn'))$('printReportBtn').textContent=t('printPdf');
@@ -134,7 +134,10 @@ function applyLanguage(){
 function toggleLanguage(){lang=lang==='ar'?'en':'ar';localStorage.setItem('dana_lang',lang);applyLanguage();}
 
 function addBaseMap(map){
-  const layer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});
+  const layer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19,
+    attribution:'© OpenStreetMap contributors'
+  });
   layer.addTo(map);
   return layer;
 }
@@ -628,30 +631,147 @@ async function saveReportEdit(id){const note=$('erNote').value.trim();if(note.le
 async function deleteReport(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_report',{p_report_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
 
 
-function markerIcon(category){const star=category==='frequent'?'★':'';return L.divIcon({className:'map-pin-wrap',html:`<div class="map-pin pin-${category}"><span>${star}</span></div>`,iconSize:[30,30],iconAnchor:[15,28],popupAnchor:[0,-28]});}
-function refreshMapRepFilter(){const el=$('mapRepFilter');if(!el)return;const selected=el.value;const reps=state.profiles.filter(p=>p.role==='rep');el.innerHTML=`<option value="">${t('allReps')}</option>`+reps.map(p=>`<option value="${p.id}">${esc(p.full_name)}</option>`).join('');if(reps.some(p=>p.id===selected))el.value=selected;}
+
+function mapTypeGlyph(type){return {shop:'🏪',factory:'🏭',project:'🏗'}[type]||'●';}
+function markerIcon(category,type){
+ const star=category==='frequent'?'<span class="map-marker-star">★</span>':'';
+ return L.divIcon({
+   className:'map-pin-wrap',
+   html:'<div class="map-marker marker-'+esc(category)+'"><span class="map-marker-core">'+mapTypeGlyph(type)+'</span>'+star+'</div>',
+   iconSize:[42,42],iconAnchor:[21,21],popupAnchor:[0,-22]
+ });
+}
+function refreshMapRepFilter(){
+ const el=$('mapRepFilter');if(!el)return;
+ const selected=el.value,reps=state.profiles.filter(p=>p.role==='rep');
+ el.innerHTML='<option value="">'+t('allReps')+'</option>'+reps.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.full_name)+'</option>').join('');
+ if(reps.some(p=>p.id===selected))el.value=selected;
+}
+function mapFilteredRows(){
+ const filter=$('mapFilter')?.value||'',repFilter=$('mapRepFilter')?.value||'',typeFilter=$('mapTypeFilter')?.value||'',q=($('mapSearch')?.value||'').trim().toLowerCase();
+ const rows=[];
+ for(const x of state.mapLocations||[]){
+   const c=state.customers.find(z=>Number(z.id)===Number(x.customer_id));
+   if(!c||x.lat==null||x.lng==null)continue;
+   const ac=activityForCustomer(c.id),category=customerCategory(c);
+   const statusOk=!filter||(filter==='frequent'?category==='frequent':c.status===filter);
+   if(!statusOk)continue;
+   if(repFilter&&c.assigned_rep!==repFilter)continue;
+   if(typeFilter&&c.customer_type!==typeFilter)continue;
+   if(q&&!((c.name||'')+' '+(c.area||'')+' '+(c.rep?.full_name||'')+' '+t(c.customer_type||'')).toLowerCase().includes(q))continue;
+   const fu=(state.mapFollowups||[]).find(z=>Number(z.customer_id)===Number(c.id))||null;
+   const lastReport=state.reports.find(r=>Number(r.customer_id)===Number(c.id))||null;
+   rows.push({x,c,ac,category,fu,lastReport});
+ }
+ return rows;
+}
+function setMapText(){
+ const ar=lang==='ar';
+ if($('mapStatVisibleLabel'))$('mapStatVisibleLabel').textContent=ar?'العملاء المعروضون':'Visible Customers';
+ if($('mapStatActiveLabel'))$('mapStatActiveLabel').textContent=t('active');
+ if($('mapStatHesitantLabel'))$('mapStatHesitantLabel').textContent=t('hesitant');
+ if($('mapStatRejectedLabel'))$('mapStatRejectedLabel').textContent=t('rejected');
+ if($('mapStatSalesLabel'))$('mapStatSalesLabel').textContent=t('salesThisMonth');
+ if($('mapListTitle'))$('mapListTitle').textContent=ar?'العملاء حسب الفلاتر':'Customers by filters';
+ if($('mapListHint'))$('mapListHint').textContent=ar?'اضغط على العميل للانتقال إليه':'Tap a customer to focus on it';
+ if($('mapFitBtn'))$('mapFitBtn').textContent=ar?'إظهار الكل':'Fit Customers';
+ if($('mapClearBtn'))$('mapClearBtn').textContent=ar?'مسح الفلاتر':'Clear Filters';
+ if($('mapFullscreenBtn'))$('mapFullscreenBtn').textContent=ar?'ملء الشاشة':'Full Screen';
+ const mt=$('mapTypeFilter');
+ if(mt){
+   const labs={'':ar?'كل أنواع العملاء':'All Customer Types',shop:t('shop'),factory:t('factory'),project:t('project')};
+   for(const o of mt.options)o.text=labs[o.value]||o.value;
+ }
+}
+function renderMapSummary(rows){
+ const active=rows.filter(r=>r.c.status==='active').length;
+ const hesitant=rows.filter(r=>r.c.status==='hesitant').length;
+ const rejected=rows.filter(r=>r.c.status==='rejected').length;
+ const sales=rows.reduce((n,r)=>n+Number(r.ac.monthSalesValue||0),0);
+ if($('mapStatVisible'))$('mapStatVisible').textContent=fmt(rows.length);
+ if($('mapStatActive'))$('mapStatActive').textContent=fmt(active);
+ if($('mapStatHesitant'))$('mapStatHesitant').textContent=fmt(hesitant);
+ if($('mapStatRejected'))$('mapStatRejected').textContent=fmt(rejected);
+ if($('mapStatSales'))$('mapStatSales').textContent=money(sales);
+ if($('mapListCount'))$('mapListCount').textContent=fmt(rows.length);
+}
+function renderMapCustomerList(rows){
+ const el=$('mapCustomerList');if(!el)return;
+ const ar=lang==='ar';
+ el.innerHTML=rows.length?rows.map(r=>{
+   const due=r.fu?.next_due_at?dateTime(r.fu.next_due_at):'-';
+   return '<button type="button" class="map-customer-item" data-map-customer="'+r.c.id+'">'+
+     '<span class="map-customer-type">'+mapTypeGlyph(r.c.customer_type)+'</span>'+
+     '<span class="map-customer-main"><b>'+esc(r.c.name)+'</b><small>'+esc(t(r.c.customer_type||'notSet'))+' • '+esc(r.c.area||'-')+'</small><small>'+esc(r.c.rep?.full_name||'-')+' • '+(ar?'المتابعة: ':'Follow-up: ')+esc(due)+'</small></span>'+
+     '<span class="map-customer-status">'+badgeStatus(r.c.status)+'</span>'+
+   '</button>';
+ }).join(''):'<div class="empty">'+t('noData')+'</div>';
+}
+function fitMapRows(rows){
+ if(!state.map||!rows.length)return;
+ const bounds=rows.map(r=>[r.x.lat,r.x.lng]);
+ state.map.fitBounds(bounds,{padding:[45,45],maxZoom:15});
+}
+function focusMapCustomer(id){
+ const marker=state.mapMarkers?.get(Number(id));
+ if(!marker||!state.map)return;
+ state.map.setView(marker.getLatLng(),Math.max(state.map.getZoom(),16),{animate:true});
+ marker.openPopup();
+}
 async function renderMap(){
   if(!isAdmin())return;
-  refreshMapRepFilter();
-  if(!state.map){state.map=L.map('map').setView([24.78,46.76],11);addBaseMap(state.map);state.markerLayer=L.layerGroup().addTo(state.map);}
-  const {data,error}=await sb.from('customer_locations').select('customer_id,lat,lng'); if(error){console.error(error);return flash(lang==='ar'?'تعذر تحميل الخريطة':'Could not load map',true);} state.mapLocations=data||[]; drawMapMarkers(); setTimeout(()=>state.map.invalidateSize(),60);
+  refreshMapRepFilter();setMapText();
+  if(!state.map){
+    state.map=L.map('map',{zoomControl:true}).setView([24.78,46.76],11);
+    addBaseMap(state.map);
+    state.markerLayer=L.layerGroup().addTo(state.map);
+    state.mapMarkers=new Map();
+  }
+  const results=await Promise.all([
+    sb.from('customer_locations').select('customer_id,lat,lng'),
+    sb.from('customer_followup_state').select('customer_id,owner_mode,next_due_at')
+  ]);
+  if(results[0].error){console.error(results[0].error);return flash(lang==='ar'?'تعذر تحميل الخريطة':'Could not load map',true);}
+  state.mapLocations=results[0].data||[];
+  state.mapFollowups=results[1].error?[]:(results[1].data||[]);
+  drawMapMarkers(true);
+  setTimeout(()=>state.map.invalidateSize(),80);
 }
-function drawMapMarkers(){
- if(!state.map||!state.markerLayer)return;state.markerLayer.clearLayers();
- const filter=$('mapFilter')?.value||'',repFilter=$('mapRepFilter')?.value||'',q=($('mapSearch')?.value||'').trim().toLowerCase(),bounds=[];
- for(const x of state.mapLocations){
-  const c=state.customers.find(z=>Number(z.id)===Number(x.customer_id));if(!c||x.lat==null||x.lng==null)continue;
-  const ac=activityForCustomer(c.id),category=customerCategory(c);if(filter&&category!==filter)continue;if(repFilter&&c.assigned_rep!==repFilter)continue;if(q&&!`${c.name} ${c.area||''} ${c.rep?.full_name||''}`.toLowerCase().includes(q))continue;
-  const m=L.marker([x.lat,x.lng],{icon:markerIcon(category)}).addTo(state.markerLayer),div=document.createElement('div');div.dir=lang==='ar'?'rtl':'ltr';div.style.minWidth='230px';
-  div.innerHTML=`<b>${esc(c.name)}</b><br>${esc(c.area||'')}<br>${esc(c.rep?.full_name||'')}<br>${t('status')}: ${esc(statusLabel(c.status))}${category==='frequent'?'<br><b class="finance-ok">★ '+(lang==='ar'?'سحب أكثر من مرة هذا الشهر':'Repeated sale this month')+'</b>':''}<div class="popup-finance">${t('salesCountMonth')}: ${ac.monthSalesCount}<br>${t('salesValueMonth')}: ${money(ac.monthSalesValue)}</div>`;
-  const actions=document.createElement('div');actions.style.display='flex';actions.style.gap='6px';actions.style.flexWrap='wrap';actions.style.marginTop='7px';
-  const btn=document.createElement('button');btn.className='btn secondary';btn.textContent=t('view');btn.addEventListener('click',()=>openCustomer(c.id));actions.appendChild(btn);
-  const g=document.createElement('a');g.className='btn secondary';g.textContent=lang==='ar'?'Google Maps':'Google Maps';g.href=googleMapsDirectionsUrl(x.lat,x.lng);g.target='_blank';g.rel='noopener noreferrer';actions.appendChild(g);
-  div.appendChild(actions);m.bindPopup(div);bounds.push([x.lat,x.lng]);
+function drawMapMarkers(fit=true){
+ if(!state.map||!state.markerLayer)return;
+ state.markerLayer.clearLayers();
+ state.mapMarkers=new Map();
+ setMapText();
+ const rows=mapFilteredRows();
+ for(const row of rows){
+  const x=row.x,c=row.c,ac=row.ac,category=row.category,fu=row.fu,lastReport=row.lastReport;
+  const m=L.marker([x.lat,x.lng],{icon:markerIcon(category,c.customer_type),riseOnHover:true}).addTo(state.markerLayer);
+  state.mapMarkers.set(Number(c.id),m);
+  const div=document.createElement('div');
+  div.dir=lang==='ar'?'rtl':'ltr';div.className='map-popup-card';
+  const ar=lang==='ar';
+  div.innerHTML=
+    '<div class="map-popup-title"><span class="map-popup-type">'+mapTypeGlyph(c.customer_type)+'</span><div><b>'+esc(c.name)+'</b><div class="small">'+esc(t(c.customer_type||'notSet'))+' • '+esc(c.area||'-')+'</div></div></div>'+
+    '<div class="map-popup-grid">'+
+      '<div><span>'+t('representative')+'</span><b>'+esc(c.rep?.full_name||'-')+'</b></div>'+
+      '<div><span>'+t('status')+'</span><b>'+esc(statusLabel(c.status))+'</b></div>'+
+      '<div><span>'+t('salesCountMonth')+'</span><b>'+fmt(ac.monthSalesCount)+'</b></div>'+
+      '<div><span>'+t('salesValueMonth')+'</span><b>'+money(ac.monthSalesValue)+'</b></div>'+
+      '<div><span>'+(ar?'آخر سحب':'Last Sale')+'</span><b>'+(ac.lastSale?dateOnly(ac.lastSale.business_date):'-')+'</b></div>'+
+      '<div><span>'+(ar?'المتابعة القادمة':'Next Follow-up')+'</span><b>'+(fu?.next_due_at?dateTime(fu.next_due_at):'-')+'</b></div>'+
+    '</div>'+
+    (lastReport?'<div class="map-popup-last"><span>'+(ar?'آخر متابعة':'Last Follow-up')+'</span><b>'+dateTime(lastReport.created_at)+'</b><div>'+esc(lastReport.note||'')+'</div></div>':'');
+  if(category==='frequent'){
+    const tag=document.createElement('div');tag.className='map-popup-frequent';tag.textContent='★ '+(ar?'سحب متكرر هذا الشهر':'Repeated sale this month');div.appendChild(tag);
+  }
+  const actions=document.createElement('div');actions.className='map-popup-actions';
+  const btn=document.createElement('button');btn.className='btn';btn.textContent=t('view');btn.addEventListener('click',()=>openCustomer(c.id));actions.appendChild(btn);
+  const g=document.createElement('a');g.className='btn secondary';g.textContent='Google Maps';g.href=googleMapsDirectionsUrl(x.lat,x.lng);g.target='_blank';g.rel='noopener noreferrer';actions.appendChild(g);
+  div.appendChild(actions);m.bindPopup(div,{maxWidth:360});
  }
- if(bounds.length)state.map.fitBounds(bounds,{padding:[30,30],maxZoom:14});
+ renderMapSummary(rows);renderMapCustomerList(rows);
+ if(fit)fitMapRows(rows);
 }
-
 async function renderAudit(){if(!isAdmin())return;const {data,error}=await sb.from('audit_log').select('id,action,entity_type,entity_id,details,created_at,actor:profiles!audit_log_actor_id_fkey(full_name)').order('created_at',{ascending:false}).limit(500);if(error){console.error(error);return;}$('auditBody').innerHTML=(data||[]).map(a=>`<tr><td>${dateTime(a.created_at)}</td><td>${esc(a.actor?.full_name||'-')}</td><td>${esc(ACTION[a.action]||a.action)}</td><td>${esc(a.entity_type)} #${esc(a.entity_id||'')}</td><td>${esc(JSON.stringify(a.details||{}))}</td></tr>`).join('')||`<tr><td colspan="5" class="empty">${t('noData')}</td></tr>`;}
 
 async function changePassword(forced=false){
@@ -678,10 +798,10 @@ function gotoPage(id){
 $('loginBtn')?.addEventListener('click',login);$('loginPass')?.addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('logoutBtn')?.addEventListener('click',()=>logout());$('closeModalBtn')?.addEventListener('click',closeModal);$('modal')?.addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});
 $('langBtn')?.addEventListener('click',toggleLanguage);$('langBtnLogin')?.addEventListener('click',toggleLanguage);
 document.querySelectorAll('.nav-grid button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='customers'){state.customerMonthOnly=false;$('customerSearch').value='';$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';}if(b.dataset.page==='sales'){$('saleSearch').value='';$('salePeriodFilter').value='';}gotoPage(b.dataset.page);}));
-$('customerSearch')?.addEventListener('input',renderCustomers);$('customerStatusFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerRepFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('saleSearch')?.addEventListener('input',renderSales);$('salePeriodFilter')?.addEventListener('change',renderSales);$('reportActionFilter')?.addEventListener('change',renderReports);$('mapSearch')?.addEventListener('input',drawMapMarkers);$('mapFilter')?.addEventListener('change',drawMapMarkers);$('mapRepFilter')?.addEventListener('change',drawMapMarkers);
+$('customerSearch')?.addEventListener('input',renderCustomers);$('customerStatusFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerRepFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('saleSearch')?.addEventListener('input',renderSales);$('salePeriodFilter')?.addEventListener('change',renderSales);$('reportActionFilter')?.addEventListener('change',renderReports);$('mapSearch')?.addEventListener('input',()=>drawMapMarkers(true));$('mapFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapRepFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapTypeFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapFitBtn')?.addEventListener('click',()=>fitMapRows(mapFilteredRows()));$('mapClearBtn')?.addEventListener('click',()=>{if($('mapSearch'))$('mapSearch').value='';if($('mapFilter'))$('mapFilter').value='';if($('mapRepFilter'))$('mapRepFilter').value='';if($('mapTypeFilter'))$('mapTypeFilter').value='';drawMapMarkers(true);});$('mapFullscreenBtn')?.addEventListener('click',async()=>{const el=$('mapExperience');if(!el)return;try{if(!document.fullscreenElement)await el.requestFullscreen();else await document.exitFullscreen();}catch(_){}});
 $('editGoalsBtn')?.addEventListener('click',openGoalsEditor);$('generateReportBtn')?.addEventListener('click',generateAnalytics);$('printReportBtn')?.addEventListener('click',()=>{generateAnalytics();setTimeout(()=>window.print(),50);});
 $('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?.addEventListener('click',()=>openSaleForm());$('newReportBtn')?.addEventListener('click',()=>openReportForm());$('changePasswordBtn')?.addEventListener('click',()=>changePassword(false));$('repPasswordAdminBtn')?.addEventListener('click',resetRepresentativePassword);
-$('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});
+$('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});$('mapCustomerList')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-customer]');if(b)focusMapCustomer(Number(b.dataset.mapCustomer));});document.addEventListener('fullscreenchange',()=>{if(state.map&&document.querySelector('#mapPage.section.active'))setTimeout(()=>state.map.invalidateSize(),120);});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});
 $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){

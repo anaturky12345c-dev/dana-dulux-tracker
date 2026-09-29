@@ -5,6 +5,7 @@ var app=window.DANA_APP;
 if(!app||!app.sb)return;
 var sb=app.sb;
 var followupStates=[];
+var salesFollowupStates=[];
 var tasks=[];
 var loading=false;
 var initialized=false;
@@ -17,6 +18,7 @@ function e(v){return app.esc(v);}
 function byId(id){return document.getElementById(id);}
 function customerFor(id){return app.state.customers.find(function(c){return Number(c.id)===Number(id);})||null;}
 function followupFor(id){return followupStates.find(function(x){return Number(x.customer_id)===Number(id);})||null;}
+function salesFollowupFor(id){return salesFollowupStates.find(function(x){return Number(x.customer_id)===Number(id);})||null;}
 function repName(c){return c&&c.rep&&c.rep.full_name?c.rep.full_name:'-';}
 function nowMs(){return Date.now();}
 function deadlineMs(v){return v?new Date(v).getTime():0;}
@@ -154,6 +156,15 @@ function refreshFollowupRepFilter(){
   if(reps.some(function(p){return p.id===selected;}))el.value=selected;
 }
 function renderLabels(){
+  setText('requiredFollowupTitle',tx('المتابعات المطلوبة','Required Sales Follow-ups'));
+  setText('requiredFollowupHint',tx('للعملاء المترددين والرافضين — كل 3 أيام عمل، من السبت إلى الخميس.','For hesitant and rejected customers — every 3 workdays, Saturday through Thursday.'));
+  setText('rfCustomer',tx('العميل','Customer'));
+  setText('rfRep',tx('المندوب','Representative'));
+  setText('rfStatus',tx('الحالة','Status'));
+  setText('rfDue',tx('موعد المتابعة','Follow-up due'));
+  setText('rfTiming',tx('التوقيت','Timing'));
+  setText('rfAction',tx('الإجراء','Action'));
+  refreshFollowupRepFilter();
   if(TASKS_ENABLED)setText('tasksNavBtn',tx('المهام','Tasks'));
   if(byId('tasks')&&byId('tasks').classList.contains('active'))setText('pageTitle',tx('المهام','Tasks'));
   setText('workloadTaskDashboardTitle',tx('المهام','Tasks'));
@@ -187,7 +198,7 @@ function renderLabels(){
   }
 }
 
-function followupRows(){
+function managementRows(){
   return followupStates.map(function(fs){
     return {fs:fs,customer:customerFor(fs.customer_id)};
   }).filter(function(x){
@@ -197,16 +208,59 @@ function followupRows(){
   });
 }
 
+function salesFollowupRows(){
+  return salesFollowupStates.map(function(fs){
+    return {fs:fs,customer:customerFor(fs.customer_id)};
+  }).filter(function(x){
+    return x.customer&&['hesitant','rejected'].includes(x.customer.status)&&x.fs.next_due_at;
+  }).sort(function(a,b){
+    return deadlineMs(a.fs.next_due_at)-deadlineMs(b.fs.next_due_at);
+  });
+}
+
 function followupAction(row,mini){
   var c=row.customer,cl=mini?' mini':'';
-  if(isManagement())return '<button class="btn warn'+cl+'" data-w-resolve="'+c.id+'">'+tx('تسجيل رد الإدارة','Record management response')+'</button>';
-  return '<span class="badge b-purple">'+tx('بانتظار الإدارة','Waiting for management')+'</span>';
+  return '<button class="btn secondary'+cl+'" data-sales-followup="'+c.id+'">'+tx('تسجيل متابعة','Record follow-up')+'</button>';
 }
 
 function renderFollowups(){
-  var waiting=followupRows();
+  var repFilter=byId('followupRepFilter')?byId('followupRepFilter').value:'';
+  var salesRows=salesFollowupRows().filter(function(x){return !repFilter||x.customer.assigned_rep===repFilter;});
+  var body=byId('requiredFollowupBody');
+
+  setText('requiredFollowupCount',String(salesRows.length));
+
+  if(body){
+    body.innerHTML=salesRows.length?salesRows.map(function(x){
+      var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
+      return '<tr class="'+(late?'workload-row-overdue':'')+'">'
+        +'<td><b>'+e(c.name)+'</b></td>'
+        +'<td>'+e(repName(c))+'</td>'
+        +'<td>'+statusBadge(c.status)+'</td>'
+        +'<td>'+app.dateTime(fs.next_due_at)+'</td>'
+        +'<td><b class="'+(late?'due-bad':'due-ok')+'">'+e(dueLabel(fs.next_due_at))+'</b></td>'
+        +'<td>'+followupAction(x,true)+'</td>'
+        +'</tr>';
+    }).join(''):'<tr><td colspan="6" class="empty">'+tx('لا توجد متابعات مطلوبة حالياً.','No required follow-ups right now.')+'</td></tr>';
+  }
+
+  var mobile=byId('requiredFollowupMobile');
+  if(mobile){
+    mobile.innerHTML=salesRows.length?salesRows.map(function(x){
+      var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
+      return '<div class="followup-mobile-card">'
+        +'<div class="dashboard-head" style="margin-bottom:5px"><b>'+e(c.name)+'</b>'+statusBadge(c.status)+'</div>'
+        +'<div class="small">'+tx('المندوب: ','Representative: ')+e(repName(c))+'</div>'
+        +'<div class="small">'+tx('موعد المتابعة: ','Follow-up due: ')+app.dateTime(fs.next_due_at)+'</div>'
+        +'<div class="small '+(late?'due-bad':'due-ok')+'"><b>'+e(dueLabel(fs.next_due_at))+'</b></div>'
+        +'<div style="margin-top:8px">'+followupAction(x,true)+'</div></div>';
+    }).join(''):'<div class="small">'+tx('لا توجد متابعات مطلوبة حالياً.','No required follow-ups right now.')+'</div>';
+  }
+
+  var waiting=managementRows();
   setText('attentionCount',String(waiting.length));
-  setText('attentionSub',waiting.length?tx('طلبات تدخل إدارة مفتوحة فقط.','Only open management-intervention requests are shown.'):tx('لا توجد حالات مفتوحة تحتاج تدخل الإدارة.','No open management-intervention cases.'));
+  setText('attentionSub',waiting.length?tx('طلبات تدخل إدارة مفتوحة — المهلة 3 أيام عمل.','Open management-intervention requests — 3-workday deadline.'):tx('لا توجد حالات مفتوحة تحتاج تدخل الإدارة.','No open management-intervention cases.'));
+
   var attention=byId('attentionList');
   if(attention){
     attention.innerHTML=waiting.length?waiting.slice(0,8).map(function(x){
@@ -218,6 +272,7 @@ function renderFollowups(){
     }).join(''):'<div class="attention-empty">'+tx('لا توجد حالات تحتاج تدخل الإدارة حالياً.','No cases need management intervention right now.')+'</div>';
   }
 }
+
 
 function renderTasks(){
   if(!TASKS_ENABLED)return;
@@ -278,18 +333,20 @@ function renderAll(){
 
 async function loadAll(){
   if(loading)return;
-  if(!app.state.profile){followupStates=[];tasks=[];lastProfileId=null;renderAll();return;}
+  if(!app.state.profile){followupStates=[];salesFollowupStates=[];tasks=[];lastProfileId=null;renderAll();return;}
   var currentProfileId=app.state.profile.id;
-  if(lastProfileId&&lastProfileId!==currentProfileId){followupStates=[];tasks=[];renderAll();}
+  if(lastProfileId&&lastProfileId!==currentProfileId){followupStates=[];salesFollowupStates=[];tasks=[];renderAll();}
   lastProfileId=currentProfileId;
   loading=true;
   try{
     var results=await Promise.all([
       sb.from('customer_followup_state').select('customer_id,owner_mode,next_due_at,management_report_id,management_requested_at,management_resolved_at,updated_at'),
+      sb.from('sales_followup_state').select('customer_id,next_due_at,updated_at'),
       sb.from('tasks').select('id,title,details,task_type,assigned_rep,customer_id,product_code,priority,deadline,status,result,created_at,updated_at,completed_at,customer:customers(name),rep:profiles!tasks_assigned_rep_fkey(full_name)').order('deadline',{ascending:true})
     ]);
     if(results[0].error)console.error(results[0].error);else followupStates=results[0].data||[];
-    if(results[1].error)console.error(results[1].error);else tasks=results[1].data||[];
+    if(results[1].error)console.error(results[1].error);else salesFollowupStates=results[1].data||[];
+    if(results[2].error)console.error(results[2].error);else tasks=results[2].data||[];
     renderAll();
   }finally{
     loading=false;
@@ -406,7 +463,7 @@ function openManagementResolution(id){
   if(!isManagement())return;
   var c=customerFor(id),fs=followupFor(id);
   if(!c||!fs||fs.owner_mode!=='management')return app.flash(tx('هذه الحالة لم تعد بانتظار الإدارة.','This customer is no longer waiting for management.'),true);
-  var html='<div class="security-warn">'+tx('هذه متابعة خدمة فقط ولا تغيّر حالة العميل. المهلة المحددة لتدخل الإدارة: 48 ساعة.','This is a service response only and does not change customer status. Management intervention deadline: 48 hours.')+'<br><b>'+e(c.name)+'</b> — '+e(dueLabel(fs.next_due_at))+' — '+app.dateTime(fs.next_due_at)+'</div>'
+  var html='<div class="security-warn">'+tx('هذه متابعة خدمة فقط ولا تغيّر حالة العميل. المهلة المحددة لتدخل الإدارة: 3 أيام عمل (السبت إلى الخميس).','This is a service response only and does not change customer status. Management intervention deadline: 3 workdays (Saturday through Thursday).')+'<br><b>'+e(c.name)+'</b> — '+e(dueLabel(fs.next_due_at))+' — '+app.dateTime(fs.next_due_at)+'</div>'
     +'<div class="form-grid" style="margin-top:12px"><div class="full"><label>'+tx('رد / نتيجة متابعة الإدارة','Management response / result')+'</label><textarea id="wManagementNote" rows="5"></textarea></div>'
     +'<div class="full"><button class="btn" id="wSaveManagement" data-id="'+c.id+'">'+tx('حفظ رد الإدارة','Save management response')+'</button></div></div>';
   app.openModal(tx('رد الإدارة','Management Response'),html);
@@ -441,6 +498,7 @@ function bindEvents(){
   initialized=true;
   document.addEventListener('click',function(ev){
     var b;
+    if((b=ev.target.closest('[data-sales-followup]'))){app.openSalesFollowupForm(Number(b.getAttribute('data-sales-followup')));return;}
     if((b=ev.target.closest('#tasksNavBtn'))){app.gotoPage('tasks');return;}
     if((b=ev.target.closest('#openFollowupsBtn'))){app.gotoPage('reports');return;}
     if((b=ev.target.closest('#openTasksBtn'))){app.gotoPage('tasks');return;}
@@ -460,10 +518,11 @@ function bindEvents(){
   document.addEventListener('change',function(ev){
     if(ev.target&&ev.target.id==='taskStatusFilter')renderTasks();
     if(ev.target&&ev.target.id==='followupRepFilter')renderFollowups();
+    if(ev.target&&ev.target.id==='followupRepFilter')renderFollowups();
   });
 }
 
-window.DANA_WORKLOAD={load:loadAll,render:renderAll,getFollowups:function(){return followupStates.slice();},getTasks:function(){return tasks.slice();}};
+window.DANA_WORKLOAD={load:loadAll,render:renderAll,getFollowups:function(){return salesFollowupStates.slice();},getManagementCases:function(){return followupStates.slice();},getTasks:function(){return tasks.slice();}};
 window.addEventListener('dana:render',function(){injectUi();loadAll();});
 injectUi();
 renderLabels();

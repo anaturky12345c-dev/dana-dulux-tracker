@@ -464,7 +464,7 @@ function boot(){
     if(claimedList)claimedList.innerHTML='<div class="small">'+(ar()?'جاري التحميل...':'Loading...')+'</div>';
     if(availableList)availableList.innerHTML='<div class="small">'+(ar()?'جاري التحميل...':'Loading...')+'</div>';
 
-    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,market_area,district,address,phone,website,contact_name,contact_role,recommended_contact_role,linked_contractor_name,linked_contractor_phone,linked_contractor_source_url,priority_reason,google_maps_url,google_maps_verified,location_source_url,location_checked_at,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep,claimed_at,report_due_at,last_report_at').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
+    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,market_area,district,address,phone,website,contact_name,contact_role,recommended_contact_role,linked_contractor_name,linked_contractor_phone,linked_contractor_source_url,priority_reason,google_maps_url,google_maps_verified,location_source_url,location_checked_at,intelligence_checked_at,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep,claimed_at,report_due_at,last_report_at').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
     const st=document.getElementById('aiOppStatusFilter')?.value||'';if(st)q=q.eq('status',st);
     const ty=document.getElementById('aiOppTypeFilter')?.value||'';if(ty)q=q.eq('opportunity_type',ty);
     const gr=document.getElementById('aiOppGradeFilter')?.value||'';if(gr)q=q.eq('grade',gr);
@@ -479,7 +479,7 @@ function boot(){
       return;
     }
 
-    const rows=data||[],rmap=repMap();
+    const rows=(data||[]).filter(x=>x.intelligence_checked_at||x.assigned_rep||!['new','reviewed'].includes(x.status)),rmap=repMap();
     opportunityById=new Map(rows.map(x=>[x.id,x]));
     renderSummary(rows);renderRepDashboard(rows);
 

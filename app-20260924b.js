@@ -9,9 +9,9 @@ const USERS = {admin:'admin@dana.local',management:'management@dana.local',mohse
 let lang=localStorage.getItem('dana_lang')||'ar';
 const I18N={
  ar:{
-  signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعة العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
-  new:'جديد',active:'نشط',agreed_pending:'متفق – بانتظار الطلبية',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
-  admin_intervention:'تدخل من قبل الإدارة',review_next_week:'مراجعة العميل الأسبوع القادم',sample_request:'العميل يريد عينة المنتج',customer_agreed:'العميل تم الاتفاق معه',management_response:'متابعة الإدارة',
+  signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'طلبات وشكاوى العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
+  new:'جديد',active:'نشط',inactive:'خامل',agreed_pending:'متفق – بانتظار الطلبية',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
+  admin_intervention:'طلب تدخل الإدارة',complaint:'شكوى عميل',service_followup:'طلب متابعة لاحقة',inactive_visit:'زيارة عميل خامل',review_next_week:'متابعة قديمة',sample_request:'طلب عينة',customer_agreed:'اتفاق عميل - سجل قديم',management_response:'رد / متابعة الإدارة',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
   company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين (سحب 5,000+)',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
@@ -20,15 +20,15 @@ const I18N={
   repSummary:'ملخص المناديب اليومي',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'ملخص الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
   allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة أو رقم الجوال...',newCustomer:'+ عميل جديد',customerAddedAt:'تاريخ الإضافة',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
   recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',today:'هذا اليوم',thisWeek:'هذا الأسبوع',thisMonth:'هذا الشهر',
-  addFollowup:'+ إضافة متابعة',allActions:'كل الإجراءات',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
+  addFollowup:'+ تسجيل طلب / شكوى',allActions:'كل الأنواع',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
   reportType:'نوع التقرير',allReps:'كل المندوبين',from:'من تاريخ',to:'إلى تاريخ',generateReport:'عرض التقرير',printPdf:'تصدير PDF / طباعة',
   username:'اسم المستخدم',password:'كلمة المرور',language:'English',accountSecurity:'أمان الحساب',
   noData:'لا توجد بيانات.',confirmDelete:'هل أنت متأكد من الحذف؟',saved:'تم الحفظ',deleted:'تم الحذف',updated:'تم التعديل'
  },
  en:{
-  signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
-  new:'New',active:'Active',agreed_pending:'Agreed – awaiting order',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
-  admin_intervention:'Management intervention',review_next_week:'Review customer next week',sample_request:'Customer requests product sample',customer_agreed:'Agreement reached with customer',management_response:'Management follow-up',
+  signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Requests & Complaints',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
+  new:'New',active:'Active',inactive:'Inactive',agreed_pending:'Agreed – awaiting order',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
+  admin_intervention:'Request management intervention',complaint:'Customer complaint',service_followup:'Service follow-up request',inactive_visit:'Inactive customer visit',review_next_week:'Legacy follow-up',sample_request:'Sample request',customer_agreed:'Legacy customer agreement',management_response:'Management response / follow-up',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
   company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers (SAR 5,000+)',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
@@ -37,7 +37,7 @@ const I18N={
   repSummary:'Daily Representative Summary',managementIntervention:'Management Intervention',goals:'Goal Summary',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
   allStatuses:'All Statuses',searchCustomer:'Search customer, area or phone...',newCustomer:'+ New Customer',customerAddedAt:'Date Added',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
   recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',today:'Today',thisWeek:'This Week',thisMonth:'This Month',
-  addFollowup:'+ Add Follow-up',allActions:'All Actions',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
+  addFollowup:'+ Add Request / Complaint',allActions:'All Types',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
   reportType:'Report Type',allReps:'All Representatives',from:'From',to:'To',generateReport:'Generate Report',printPdf:'Export PDF / Print',
   username:'Username',password:'Password',language:'العربية',accountSecurity:'Account Security',
   noData:'No data.',confirmDelete:'Are you sure you want to delete this record?',saved:'Saved',deleted:'Deleted',updated:'Updated'
@@ -49,8 +49,8 @@ const actionLabel=k=>I18N[lang][k]||k||'-';
 const productLabel=k=>I18N[lang][k]||k||'-';
 const STATUS_KEYS=['hesitant','agreed_pending','rejected','active'];
 const CHANGE_STATUS_KEYS=['active','agreed_pending','hesitant','rejected'];
-const FOLLOW_ACTION_KEYS=['admin_intervention','review_next_week','sample_request','customer_agreed'];
-const EDIT_ACTION_KEYS=[...FOLLOW_ACTION_KEYS,'management_response'];
+const FOLLOW_ACTION_KEYS=['complaint','sample_request','admin_intervention','service_followup'];
+const EDIT_ACTION_KEYS=[...FOLLOW_ACTION_KEYS,'management_response','review_next_week','customer_agreed','inactive_visit'];
 const PRODUCT_KEYS=['dulux_emulsion','dulux_oil','leafs_tinting','dulux_polyurethane'];
 const ACTION = {
  customer_created:'Customer created',customer_updated:'Customer updated',customer_deleted:'Customer deleted',
@@ -117,7 +117,7 @@ function applyLanguage(){
  if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');
  ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
 
- set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#goalsTitle',t('goals'));
+ set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#dormantTitle',lang==='ar'?'عملاء خاملون – مطلوب زيارة':'Inactive Customers – Visit Required');set('#goalsTitle',t('goals'));
  const goalSmall=document.querySelector('#goalsTitle + .small');if(goalSmall)goalSmall.textContent=t('currentMonth');
  const rp=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head h3');if(rp)rp.textContent=t('repPerformance');
  const rpSmall=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head .small');if(rpSmall)rpSmall.textContent=t('currentMonth');
@@ -138,12 +138,12 @@ function applyLanguage(){
 
  heads('customers',[t('customer'),t('customerType'),t('customerAddedAt'),t('area'),t('representative'),t('status'),t('salesCountMonth'),t('salesValueMonth'),'']);
  heads('sales',[t('date'),t('customer'),t('product'),t('quantity'),t('value'),t('reference'),t('representative'),lang==='ar'?'الإجراءات':'Actions']);
- heads('reports',[t('recordedAt'),t('customer'),t('representative'),t('action'),t('previousStatus'),t('newStatus'),t('reason'),lang==='ar'?'الإجراءات':'Actions']);
+ heads('reports',[t('recordedAt'),t('customer'),t('representative'),lang==='ar'?'النوع':'Type',lang==='ar'?'التفاصيل':'Details',lang==='ar'?'الإجراءات':'Actions']);
  heads('audit',[lang==='ar'?'الوقت':'Time',lang==='ar'?'المستخدم':'User',t('action'),lang==='ar'?'الكيان':'Entity',lang==='ar'?'التفاصيل':'Details']);
 
- const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot blue"></i>${t('agreed_pending')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span class="map-type-legend">🏪 ${t('shop')}</span><span class="map-type-legend">🏭 ${t('factory')}</span><span class="map-type-legend">🏗 ${t('project')}</span>`;
+ const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot purple"></i>${t('inactive')}</span><span><i class="legend-dot blue"></i>${t('agreed_pending')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span class="map-type-legend">🏪 ${t('shop')}</span><span class="map-type-legend">🏭 ${t('factory')}</span><span class="map-type-legend">🏗 ${t('project')}</span>`;
 
- const at=$('analyticsType');if(at){const labs={'':lang==='ar'?'اختر نوع التقرير...':'Choose report type...',executive:lang==='ar'?'لوحة الإدارة التنفيذية':'Executive Management',sales:lang==='ar'?'تحليل المبيعات':'Sales Intelligence',products:lang==='ar'?'أداء المنتجات':'Product Performance',reps:lang==='ar'?'أداء المناديب':'Representative Performance',customers:lang==='ar'?'حركة وتحويل العملاء':'Customer Movement & Conversion',followups:lang==='ar'?'فعالية المتابعات':'Follow-up Effectiveness',goals:lang==='ar'?'أداء الأهداف':'Goal Performance'};for(const o of at.options)o.text=labs[o.value]||o.value;}
+ const at=$('analyticsType');if(at){const labs={'':lang==='ar'?'اختر نوع التقرير...':'Choose report type...',executive:lang==='ar'?'لوحة الإدارة التنفيذية':'Executive Management',sales:lang==='ar'?'تحليل المبيعات':'Sales Intelligence',products:lang==='ar'?'أداء المنتجات':'Product Performance',reps:lang==='ar'?'أداء المناديب':'Representative Performance',customers:lang==='ar'?'حركة وتحويل العملاء':'Customer Movement & Conversion',followups:lang==='ar'?'طلبات وشكاوى العملاء':'Customer Requests & Complaints',goals:lang==='ar'?'أداء الأهداف':'Goal Performance'};for(const o of at.options)o.text=labs[o.value]||o.value;}
  const labels=document.querySelectorAll('#analytics label');const al=[t('reportType'),t('representative'),t('from'),t('to')];al.forEach((x,i)=>{if(labels[i])labels[i].textContent=x;});const rph=$('analytics')?.querySelector('.report-page-head');if(rph){const h=rph.querySelector('h2'),p=rph.querySelector('p'),e=rph.querySelector('.report-eyebrow');if(h)h.textContent=lang==='ar'?'التقارير والتحليلات':'Reports & Analytics';if(p)p.textContent=lang==='ar'?'اختر التقرير والفترة لتحصل على قراءة إدارية واضحة، وليس مجرد جدول أرقام.':'Choose a report and period to get a management view, not just a raw table.';if(e)e.textContent=lang==='ar'?'ذكاء إداري':'Management Intelligence';}const preset=$('analytics')?.querySelector('.report-preset-row');if(preset){const s=preset.querySelector('span'),bs=preset.querySelectorAll('button');if(s)s.textContent=lang==='ar'?'فترة سريعة:':'Quick period:';if(bs[0])bs[0].textContent=t('thisWeek');if(bs[1])bs[1].textContent=t('thisMonth');if(bs[2])bs[2].textContent=lang==='ar'?'آخر 30 يوم':'Last 30 Days';}if($('generateReportBtn'))$('generateReportBtn').textContent=t('generateReport');if($('printReportBtn'))$('printReportBtn').textContent=t('printPdf');
  const empty=$('printableReport')?.querySelector('.empty');if(empty&&!state.profile)empty.textContent=lang==='ar'?'حدد نوع التقرير والفترة ثم اضغط عرض التقرير.':'Select a report type and date range, then generate the report.';
 
@@ -312,7 +312,7 @@ async function refreshAll(){
 }
 async function loadProfiles(){const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name');state.profiles=error?[]:(data||[]);}
 async function loadCustomers(){
-  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,customer_type,created_at,assigned_rep,created_by,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,customer_type,created_at,updated_at,inactive_since,assigned_rep,created_by,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
   if(error){console.error(error);flash(lang==='ar'?'تعذر تحميل العملاء':'Could not load customers',true);return;}state.customers=data||[];
 }
 async function loadSales(){state.sales=await loadPaged((x,y)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('business_date',{ascending:false}).order('created_at',{ascending:false}).range(x,y),lang==='ar'?'السحوبات':'sales');}
@@ -328,12 +328,69 @@ function activityForCustomer(cid){
 function customerCategory(c){const x=activityForCustomer(c.id);if(x.monthSalesCount>1)return 'frequent';return c.status||'hesitant';}
 function renderAll(){if(!$('mCustomers'))return;renderDashboard();renderCustomers();renderSales();renderReports();renderGoalsDashboard();renderRepPerformance();renderRepPasswordAdmin();window.dispatchEvent(new CustomEvent('dana:render'));}
 
-function badgeStatus(k){const cls={new:'b-info',active:'b-good',agreed_pending:'b-info',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
+function badgeStatus(k){const cls={new:'b-info',active:'b-good',inactive:'b-purple',agreed_pending:'b-info',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
 
 function goalFor(scope,repId,type){return state.goals.find(g=>g.scope_type===scope&&(scope==='company'||g.rep_id===repId)&&g.goal_type===type);}
 function goalProgress(goal,achieved,isMoney=true){
  const target=Number(goal?.monthly_target||0),pct=target>0?Math.round(achieved/target*100):0,remaining=Math.max(0,target-achieved);
  return `<div class="goal-progress"><div class="goal-numbers"><span>${t('goal')}: <b>${isMoney?money(target):fmt(target)}</b></span><span>${t('achieved')}: <b>${isMoney?money(achieved):fmt(achieved)}</b></span><span>${t('remaining')}: <b>${isMoney?money(remaining):fmt(remaining)}</b></span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.min(100,pct)}%"></div></div><div class="small">${t('progress')}: ${pct}%</div></div>`;
+}
+
+
+function inactiveVisitForCustomer(c){
+ const since=c?.inactive_since?new Date(c.inactive_since).getTime():0;
+ return state.reports
+   .filter(r=>Number(r.customer_id)===Number(c?.id)&&r.action_code==='inactive_visit'&&new Date(r.created_at||0).getTime()>=since)
+   .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null;
+}
+function renderDormantDashboard(){
+ const box=$('dormantList'),count=$('dormantCount'),sub=$('dormantSub');if(!box)return;
+ const repId=state.profile?.id;
+ const rows=state.customers.filter(c=>c.status==='inactive'&&(canManage()||c.assigned_rep===repId))
+   .slice().sort((a,b)=>new Date(a.inactive_since||a.updated_at||0)-new Date(b.inactive_since||b.updated_at||0));
+ if(count)count.textContent=String(rows.length);
+ if(sub)sub.textContent=lang==='ar'
+   ?(rows.length?'عملاء نشطون سابقاً لم يسجلوا طلبية في أسبوع العمل السابق. مطلوب زيارة وتقرير.':'لا يوجد عملاء خاملون حالياً.')
+   :(rows.length?'Previously active customers with no order in the last Sat–Thu workweek. Visit and report required.':'No inactive customers right now.');
+ box.innerHTML=rows.length?rows.slice(0,10).map(c=>{
+   const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c);
+   return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
+     <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
+     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small></span>
+     <span class="dormant-visit ${visit?'done':'pending'}">${visit?(lang==='ar'?'تم تسجيل زيارة':'Visit logged'):(lang==='ar'?'مطلوب زيارة':'Visit required')}</span>
+   </button>`;
+ }).join(''):`<div class="attention-empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`;
+}
+function openDormantCustomer(id){
+ const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c||c.status!=='inactive')return;
+ const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c);
+ openModal(lang==='ar'?'عميل خامل':'Inactive Customer',`
+   <div class="notice"><b>${esc(c.name)}</b><br>${lang==='ar'?'هذا العميل تحول إلى خامل آلياً لعدم وجود طلبية خلال أسبوع العمل من السبت إلى الخميس.':'This customer was automatically marked Inactive because no order was recorded during the Sat–Thu workweek.'}</div>
+   <div class="detail-grid" style="margin-top:10px">
+     <div><b>${t('representative')}</b>${esc(c.rep?.full_name||'-')}</div>
+     <div><b>${t('status')}</b>${badgeStatus(c.status)}</div>
+     <div><b>${lang==='ar'?'آخر طلبية':'Last order'}</b>${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</div>
+     <div><b>${lang==='ar'?'خامل منذ':'Inactive since'}</b>${dateTime(c.inactive_since||c.updated_at||c.created_at)}</div>
+   </div>
+   <div class="${visit?'security-good':'security-warn'}" style="margin-top:10px">
+     ${visit?(lang==='ar'?'تم تسجيل زيارة بعد تحوله إلى خامل: ':'A visit was logged after inactivity: ')+esc(visit.note):(lang==='ar'?'زيارة العميل وتسجيل تقرير إلزامي. ويمكن تسجيل التقرير داخل شاشة الطلبية إذا نتجت الزيارة عن طلبية.':'A customer visit and report are required. The report can also be entered inside the order screen if the visit results in an order.')}
+   </div>
+   <div class="toolbar" style="margin-top:12px">
+     <button class="btn secondary" data-inactive-visit="${c.id}">${lang==='ar'?'تسجيل زيارة':'Record Visit'}</button>
+     <button class="btn" data-add-sale="${c.id}">${lang==='ar'?'تسجيل طلبية':'Record Order'}</button>
+   </div>`);
+}
+function openInactiveVisitForm(id){
+ const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c||c.status!=='inactive')return flash(lang==='ar'?'العميل لم يعد خاملًا.':'Customer is no longer inactive.',true);
+ openModal(lang==='ar'?'تقرير زيارة عميل خامل':'Inactive Customer Visit Report',`
+   <div class="notice"><b>${esc(c.name)}</b><br>${lang==='ar'?'اكتب نتيجة الزيارة. تسجيل التقرير لا يغيّر حالة العميل؛ يبقى خاملًا إلى أن تسجل له طلبية.':'Write the visit result. Saving this report does not change the customer status; the customer stays Inactive until an order is recorded.'}</div>
+   <div class="form-grid" style="margin-top:12px"><div class="full"><label>${lang==='ar'?'نتيجة الزيارة':'Visit result'}</label><textarea id="inactiveVisitNote" rows="5"></textarea></div><div class="full"><button class="btn" id="saveInactiveVisitBtn" data-id="${c.id}">${t('save')}</button></div></div>`);
+}
+async function saveInactiveVisit(id){
+ const note=$('inactiveVisitNote')?.value.trim()||'';if(note.length<5)return flash(lang==='ar'?'اكتب تقرير زيارة واضح.':'Enter a clear visit report.',true);
+ const {error}=await sb.rpc('record_inactive_visit',{p_customer_id:id,p_note:note});
+ if(error)return flash(error.message,true);
+ closeModal();flash(lang==='ar'?'تم تسجيل زيارة العميل الخامل.':'Inactive-customer visit recorded.');await refreshAll();
 }
 
 function renderDashboard(){
@@ -351,10 +408,11 @@ function renderDashboard(){
  $('mActive').textContent=visibleCustomers.filter(c=>c.status==='active').length;
  $('mHesitant').textContent=visibleCustomers.filter(c=>c.status==='hesitant').length;
  $('mRejected').textContent=visibleCustomers.filter(c=>c.status==='rejected').length;
- const attention=state.reports.filter(r=>r.action_code==='admin_intervention').slice().sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+ const attention=state.reports.filter(r=>r.action_code==='admin_intervention'&&!state.reports.some(x=>Number(x.customer_id)===Number(r.customer_id)&&x.action_code==='management_response'&&new Date(x.created_at||0)>new Date(r.created_at||0))).slice().sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
  if($('attentionCount'))$('attentionCount').textContent=String(attention.length);
- if($('attentionSub'))$('attentionSub').textContent=lang==='ar'?(attention.length?'راجع الحالات الأحدث أولاً وافتح العميل مباشرة من هنا.':'لا توجد حالات مسجلة تحتاج تدخل الإدارة.'):(attention.length?'Review the newest cases first and open the customer directly from here.':'No management-intervention cases are recorded.');
+ if($('attentionSub'))$('attentionSub').textContent=lang==='ar'?(attention.length?'هذه طلبات تدخل إدارة مفتوحة فقط.':'لا توجد حالات مفتوحة تحتاج تدخل الإدارة.'):(attention.length?'Only open management-intervention requests are shown.':'No open management-intervention cases.');
  $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<button type="button" class="attention-item" data-attention-customer="${r.customer_id}"><span class="attention-main"><b>${esc(r.customer?.name||'-')}</b><span>${esc(r.note)}</span></span><span class="attention-meta">${esc(r.rep?.full_name||'-')}<small>${dateTime(r.created_at)}</small></span><span class="attention-open">${lang==='ar'?'فتح العميل':'Open'}</span></button>`).join(''):`<div class="attention-empty">${lang==='ar'?'لا توجد حالات تحتاج تدخل الإدارة حالياً.':'No cases need management intervention right now.'}</div>`;
+ renderDormantDashboard();
  const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile];
  const repDailyRows=reps.map(p=>{
    const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
@@ -519,11 +577,13 @@ function renderSales(){
  if($('salesTotalLabel'))$('salesTotalLabel').textContent=lang==='ar'?'مجموع السحبيات المعروضة':'Total displayed sales';
  if($('salesTotalValue'))$('salesTotalValue').textContent=money(total);
 }
+
 function renderReports(){
  const f=$('reportActionFilter')?.value||'',period=$('reportPeriodFilter')?.value||'all';
- const rows=state.reports.filter(r=>(!f||r.action_code===f)&&periodMatchesDate(r.business_date||dateKeyRiyadh(r.created_at),period));
- $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${esc(actionLabel(r.action_code)||'-')}</td><td>${r.old_status?badgeStatus(r.old_status):'-'}</td><td>${r.new_status?badgeStatus(r.new_status):'-'}</td><td>${esc(r.note)}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">${t('noData')}</td></tr>`;
+ const rows=state.reports.filter(r=>r.action_code!=='inactive_visit'&&(!f||r.action_code===f)&&periodMatchesDate(r.business_date||dateKeyRiyadh(r.created_at),period));
+ $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${esc(actionLabel(r.action_code)||'-')}</td><td>${esc(r.note)}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="6" class="empty">${t('noData')}</td></tr>`;
 }
+
 function reportRange(){return {from:$('analyticsFrom').value,to:$('analyticsTo').value,rep:$('analyticsRep').value,type:$('analyticsType').value};}
 function inRange(d,x,y){const v=String(d||'').slice(0,10);return (!x||v>=x)&&(!y||v<=y);}
 function reportCard(label,value,note){
@@ -631,16 +691,26 @@ function generateAnalytics(){
  }
 
  if(type==='followups'){
-   const actionKeys=Array.from(new Set(reports.map(function(x){return x.action_code}).filter(Boolean)));
-   const actionRows=actionKeys.map(function(k){return {label:actionLabel(k),value:reports.filter(function(x){return x.action_code===k}).length}}).sort(function(a,b){return b.value-a.value});
-   const uniqueFollowed=new Set(reports.map(function(x){return Number(x.customer_id)})).size;
-   const statusChanges=reports.filter(function(x){return x.new_status&&x.new_status!==x.old_status}).length;
-   const kpis=[reportCard(lang==='ar'?'إجمالي المتابعات':'Follow-ups',fmt(reports.length)),reportCard(lang==='ar'?'عملاء تمت متابعتهم':'Customers Followed',fmt(uniqueFollowed)),reportCard(lang==='ar'?'اتفاقات':'Agreements',fmt(agreements.length)),reportCard(lang==='ar'?'تغييرات حالة':'Status Changes',fmt(statusChanges)),reportCard(lang==='ar'?'تدخل الإدارة':'Management Cases',fmt(attention.length)),reportCard(lang==='ar'?'متوسط المتابعات/عميل':'Avg Follow-ups/Customer',uniqueFollowed?fmt(reports.length/uniqueFollowed):'0')];
-   const latest=reports.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)}).slice(0,20).map(function(x){return [dateOnly(x.business_date||dateKeyRiyadh(x.created_at)),esc(x.customer&&x.customer.name||'-'),esc(x.rep&&x.rep.full_name||'-'),esc(actionLabel(x.action_code)||'-'),x.new_status?esc(statusLabel(x.new_status)):'-',esc(x.note)]});
-   renderManagementReport(lang==='ar'?'تقرير فعالية المتابعات':'Follow-up Effectiveness Report',from,to,repName,kpis,reportSection(lang==='ar'?'أنواع إجراءات المتابعة':'Follow-up Actions',reportBars(actionRows,false))+reportSection(lang==='ar'?'أحدث المتابعات':'Latest Follow-ups',reportTable([t('date'),t('customer'),t('representative'),t('action'),t('newStatus'),t('reason')],latest)),'');
+   const serviceReports=reports.filter(function(x){return x.action_code!=='inactive_visit'});
+   const actionKeys=Array.from(new Set(serviceReports.map(function(x){return x.action_code}).filter(Boolean)));
+   const actionRows=actionKeys.map(function(k){return {label:actionLabel(k),value:serviceReports.filter(function(x){return x.action_code===k}).length}}).sort(function(a,b){return b.value-a.value});
+   const uniqueCustomers=new Set(serviceReports.map(function(x){return Number(x.customer_id)})).size;
+   const complaints=serviceReports.filter(function(x){return x.action_code==='complaint'}).length;
+   const samples=serviceReports.filter(function(x){return x.action_code==='sample_request'}).length;
+   const managementCases=serviceReports.filter(function(x){return x.action_code==='admin_intervention'}).length;
+   const managementResponses=serviceReports.filter(function(x){return x.action_code==='management_response'}).length;
+   const kpis=[
+     reportCard(lang==='ar'?'إجمالي الطلبات والشكاوى':'Requests & complaints',fmt(serviceReports.length)),
+     reportCard(lang==='ar'?'عملاء لديهم طلبات':'Customers with requests',fmt(uniqueCustomers)),
+     reportCard(lang==='ar'?'شكاوى':'Complaints',fmt(complaints)),
+     reportCard(lang==='ar'?'طلبات عينة':'Sample requests',fmt(samples)),
+     reportCard(lang==='ar'?'طلبات تدخل الإدارة':'Management requests',fmt(managementCases)),
+     reportCard(lang==='ar'?'ردود الإدارة':'Management responses',fmt(managementResponses))
+   ];
+   const latest=serviceReports.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)}).slice(0,20).map(function(x){return [dateOnly(x.business_date||dateKeyRiyadh(x.created_at)),esc(x.customer&&x.customer.name||'-'),esc(x.rep&&x.rep.full_name||'-'),esc(actionLabel(x.action_code)||'-'),esc(x.note)]});
+   renderManagementReport(lang==='ar'?'تقرير طلبات وشكاوى العملاء':'Customer Requests & Complaints Report',from,to,repName,kpis,reportSection(lang==='ar'?'أنواع الطلبات والشكاوى':'Request & Complaint Types',reportBars(actionRows,false))+reportSection(lang==='ar'?'أحدث السجلات':'Latest Records',reportTable([t('date'),t('customer'),t('representative'),t('action'),lang==='ar'?'التفاصيل':'Details'],latest)),'');
    return;
  }
-
  if(type==='goals'){
    const scope=rep?'rep':'company',repId=rep||null;
    const goalNew=goalNewCustomers(scope,repId,from,to);
@@ -668,15 +738,15 @@ async function openCustomer(id){
  const hs=await sb.from('customer_status_history').select('id,old_status,new_status,reason,method,created_at,actor:profiles!customer_status_history_changed_by_fkey(full_name)').eq('customer_id',id).order('created_at',{ascending:false});
  const sales=state.sales.filter(x=>Number(x.customer_id)===Number(id)).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at));
  const reps=state.reports.filter(r=>Number(r.customer_id)===Number(id));
- const managementButtons=canManage()?`<button class="btn secondary" data-edit-customer="${c.id}">${t('edit')}</button><button class="btn secondary" data-edit-location="${c.id}">${lang==='ar'?'تعديل الموقع':'Edit Location'}</button>`:'';
+ const managementButtons=canManage()?`<button class="btn" data-add-sale="${c.id}">${t('recordSale')}</button><button class="btn secondary" data-add-report="${c.id}">${t('addFollowup')}</button><button class="btn secondary" data-edit-customer="${c.id}">${t('edit')}</button><button class="btn secondary" data-edit-location="${c.id}">${lang==='ar'?'تعديل الموقع':'Edit Location'}</button>`:'';
  const fullAdminButtons=isAdmin()?`<button class="btn secondary" data-change-status="${c.id}">${lang==='ar'?'تعديل الحالة - إدارة':'Admin Status Edit'}</button><button class="btn bad" data-delete-customer="${c.id}">${t('del')}</button>`:'';
  openModal(c.name,`
  <div class="detail-grid"><div><b>${t('customerType')}</b>${esc(c.customer_type?t(c.customer_type):t('notSet'))}</div><div><b>${t('area')}</b>${esc(c.area||'-')}</div><div><b>${t('representative')}</b>${esc(c.rep?.full_name||'-')}</div><div><b>${t('status')}</b>${badgeStatus(c.status)}</div><div><b>${t('phone')}</b>${esc(c.phone||'-')}</div><div><b>${lang==='ar'?'موقع العميل':'Customer Location'}</b>${loc?`<a class="btn secondary mini" href="${googleMapsDirectionsUrl(loc.lat,loc.lng)}" target="_blank" rel="noopener noreferrer">${lang==='ar'?'فتح في Google Maps':'Open in Google Maps'}</a>`:`<span class="small">${lang==='ar'?'غير متوفر':'Not available'}</span>`}</div></div>
  <div class="account-summary"><div><b>${t('salesCountMonth')}</b><strong>${ac.monthSalesCount}</strong></div><div><b>${t('salesValueMonth')}</b><strong>${money(ac.monthSalesValue)}</strong></div><div><b>${lang==='ar'?'آخر سحب':'Last Sale'}</b><strong>${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</strong></div></div>
- <div class="toolbar"><button class="btn" data-add-sale="${c.id}">${t('recordSale')}</button><button class="btn secondary" data-add-report="${c.id}">${t('addFollowup')}</button>${managementButtons}${fullAdminButtons}</div>${c.status!=='active'?`<div class="security-warn" style="margin-top:10px">${lang==='ar'?'تسجيل طلبية لهذا العميل سيحوّله إلى نشط تلقائياً.':'Recording an order for this customer will automatically make the customer Active.'}</div>`:''}
+ ${!canManage()?`<div class="notice" style="margin-top:10px">${lang==='ar'?'هذه الصفحة لبيانات العميل فقط. الطلبية من صفحة السحوبات، والشكوى أو الطلب من صفحة طلبات وشكاوى العملاء.':'This page is customer data only. Record orders from Sales and service requests from Customer Requests & Complaints.'}</div>`:''}<div class="toolbar">${managementButtons}${fullAdminButtons}</div>
  <h4>${t('sales')}</h4><div class="table-wrap"><table><thead><tr><th>${t('date')}</th><th>${t('product')}</th><th>${t('quantity')}</th><th>${t('value')}</th><th>${t('reference')}</th><th></th></tr></thead><tbody>${sales.length?sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(productLabel(x.product))}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.order_ref||'-')}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-sale="${x.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-sale="${x.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="6" class="empty">${t('noData')}</td></tr>`}</tbody></table></div>
  <h4>${lang==='ar'?'تاريخ حالة العميل':'Customer Status History'}</h4><div class="timeline">${(hs.data||[]).length?(hs.data||[]).map(h=>`<div class="event"><div class="status-flow">${h.old_status?badgeStatus(h.old_status):'<span class="badge b-gray">'+(lang==='ar'?'بداية':'Initial')+'</span>'}<span class="status-arrow">→</span>${badgeStatus(h.new_status)}</div><div>${esc(h.reason||'')}</div><div class="small">${dateTime(h.created_at)} — ${esc(h.actor?.full_name||'-')}</div></div>`).join(''):`<div class="small">${t('noData')}</div>`}</div>
- <h4>${t('followups')}</h4><div class="timeline">${reps.length?reps.map(r=>`<div class="event"><b>${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')} — ${esc(actionLabel(r.action_code))}</b>${r.new_status?`<div class="status-flow">${badgeStatus(r.old_status)}<span class="status-arrow">→</span>${badgeStatus(r.new_status)}</div>`:''}<div>${esc(r.note)}</div>${canManage()?`<div style="margin-top:7px"><button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:''}</div>`:''}</div>`).join(''):`<div class="small">${t('noData')}</div>`}</div>`);
+ <h4>${lang==='ar'?'طلبات وشكاوى وسجل خدمة العميل':'Customer requests, complaints & service history'}</h4><div class="timeline">${reps.length?reps.map(r=>`<div class="event"><b>${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')} — ${esc(actionLabel(r.action_code))}</b>${r.new_status?`<div class="status-flow">${badgeStatus(r.old_status)}<span class="status-arrow">→</span>${badgeStatus(r.new_status)}</div>`:''}<div>${esc(r.note)}</div>${canManage()?`<div style="margin-top:7px"><button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:''}</div>`:''}</div>`).join(''):`<div class="small">${t('noData')}</div>`}</div>`);
 }
 
 function openModal(title,html){$('modalTitle').textContent=title;$('modalContent').innerHTML=html;$('modal').classList.add('open');}
@@ -815,85 +885,142 @@ async function changeStatus(id){const newStatus=$('stNew')?.value;if(!newStatus)
 function openLocationEditor(id){if(!canManage())return;openModal(lang==='ar'?'تعديل موقع العميل':'Edit Customer Location',`<div><div id="customerPickerMap"></div><div class="location-box" style="margin-top:8px"><div><label>Latitude</label><input id="fLat" readonly></div><div><label>Longitude</label><input id="fLng" readonly></div></div><div style="margin-top:10px"><label>${t('reason')}</label><textarea id="locReason" rows="3"></textarea></div><button class="btn" style="margin-top:10px" id="saveLocationBtn" data-id="${id}">${t('save')}</button></div>`);setTimeout(async()=>{initCustomerPickerMap();const {data}=await sb.from('customer_locations').select('lat,lng').eq('customer_id',id).maybeSingle();if(data)setCustomerLocation(data.lat,data.lng,true);},80);}
 async function saveLocation(id){const reason=$('locReason').value.trim();if(reason.length<4)return flash(lang==='ar'?'اكتب سبب التعديل':'Enter a reason',true);const {error}=await sb.rpc('correct_customer_location',{p_customer_id:id,p_lat:Number($('fLat').value),p_lng:Number($('fLng').value),p_reason:reason});if(error)return flash(error.message,true);closeModal();flash(t('updated'));}
 
+
+function inactiveVisitAlreadyLogged(customer){
+ return !!inactiveVisitForCustomer(customer);
+}
+function updateSaleWorkflowFields(){
+ const customerId=Number($('sCustomerId')?.value||0),c=state.customers.find(x=>Number(x.id)===customerId);
+ const gate=$('sWorkflowGate'),saleFields=$('sSaleFields'),activationWrap=$('sActivationReasonWrap'),inactiveWrap=$('sInactiveVisitWrap'),confirmed=$('sActivationConfirmed');
+ if(!gate||!saleFields)return;
+ saleFields.classList.add('hidden');if(activationWrap)activationWrap.classList.add('hidden');if(inactiveWrap)inactiveWrap.classList.add('hidden');if(confirmed)confirmed.value='';
+ if(!c){gate.innerHTML=`<div class="notice">${lang==='ar'?'اختر العميل أولاً لمعرفة مسار تسجيل الطلبية.':'Choose the customer first to see the order workflow.'}</div>`;return;}
+ if(c.status==='active'){
+   gate.innerHTML=`<div class="security-good"><b>${t('active')}</b> — ${lang==='ar'?'يمكن تسجيل الطلبية مباشرة.':'Order entry is available directly.'}</div>`;saleFields.classList.remove('hidden');return;
+ }
+ if(c.status==='agreed_pending'){
+   gate.innerHTML=`<div class="notice"><b>${t('agreed_pending')}</b> — ${lang==='ar'?'سجّل الطلبية، وبعد نجاح الحفظ يتحول العميل إلى نشط تلقائياً.':'Record the order. After a successful save, the customer becomes Active automatically.'}</div>`;saleFields.classList.remove('hidden');return;
+ }
+ if(c.status==='inactive'){
+   const hasVisit=inactiveVisitAlreadyLogged(c);
+   gate.innerHTML=`<div class="security-warn"><b>${t('inactive')}</b> — ${lang==='ar'?'هذا العميل كان نشطاً ثم توقف عن السحب أسبوعياً. تسجيل الطلبية يعيده إلى نشط تلقائياً.':'This customer was Active and then missed the weekly-order requirement. Saving an order reactivates the customer automatically.'}</div>`;
+   if(inactiveWrap){inactiveWrap.classList.toggle('hidden',hasVisit);inactiveWrap.innerHTML=hasVisit?`<div class="security-good">${lang==='ar'?'تم تسجيل زيارة للعميل بعد تحوله إلى خامل.':'A visit has already been recorded since the customer became inactive.'}</div>`:`<label>${lang==='ar'?'تقرير زيارة العميل الخامل':'Inactive customer visit report'} <span class="required-star">*</span></label><textarea id="sInactiveVisitNote" rows="4" placeholder="${lang==='ar'?'اكتب نتيجة الزيارة قبل حفظ الطلبية...':'Enter the visit result before saving the order...'}"></textarea><div class="small">${lang==='ar'?'لن تُحفظ الطلبية بدون تقرير زيارة، إلا إذا كانت زيارة مسجلة مسبقاً بعد تحوله إلى خامل.':'The order cannot be saved without a visit report unless a visit was already logged after the customer became inactive.'}</div>`;}
+   saleFields.classList.remove('hidden');return;
+ }
+ if(c.status==='hesitant'||c.status==='rejected'){
+   gate.innerHTML=`<div class="security-warn"><b>${badgeStatus(c.status)}</b><br>${lang==='ar'?'تسجيل طلبية يتطلب تحويل العميل إلى نشط مع كتابة سبب التحويل. لن تتغير الحالة إلا بعد نجاح حفظ الطلبية.':'Recording an order requires converting the customer to Active with a reason. The status will not change until the order is saved successfully.'}<div class="toolbar" style="margin-top:10px"><button type="button" class="btn" id="sActivateNowBtn">${lang==='ar'?'تغيير الحالة الآن':'Change status now'}</button><button type="button" class="btn secondary" id="sAgreedPendingBtn">${lang==='ar'?'متفق – بانتظار الطلبية':'Agreed – awaiting order'}</button></div><div id="sPendingAgreementWrap" class="hidden" style="margin-top:10px"><label>${lang==='ar'?'سبب الاتفاق':'Agreement reason'} <span class="required-star">*</span></label><textarea id="sPendingReason" rows="3"></textarea><button type="button" class="btn secondary" id="sSaveAgreedPendingBtn" style="margin-top:8px">${lang==='ar'?'حفظ كمتفق – بانتظار الطلبية':'Save as agreed – awaiting order'}</button></div></div>`;return;
+ }
+ gate.innerHTML=`<div class="danger-note">${lang==='ar'?'حالة العميل الحالية لا تسمح بتسجيل طلبية.':'The current customer status does not allow order entry.'}</div>`;
+}
+function enableSaleActivation(){
+ const c=state.customers.find(x=>Number(x.id)===Number($('sCustomerId')?.value||0));if(!c||!['hesitant','rejected'].includes(c.status))return;
+ $('sActivationConfirmed').value='1';$('sActivationReasonWrap').classList.remove('hidden');$('sSaleFields').classList.remove('hidden');
+ $('sPendingAgreementWrap')?.classList.add('hidden');$('sActivationReason')?.focus();
+}
+function showPendingAgreementForm(){
+ const c=state.customers.find(x=>Number(x.id)===Number($('sCustomerId')?.value||0));if(!c||!['hesitant','rejected'].includes(c.status))return;
+ $('sPendingAgreementWrap')?.classList.remove('hidden');$('sPendingReason')?.focus();
+}
+async function markAgreedPendingFromSales(){
+ const customerId=Number($('sCustomerId')?.value||0),reason=$('sPendingReason')?.value.trim()||'',c=state.customers.find(x=>Number(x.id)===customerId);
+ if(!c||!['hesitant','rejected'].includes(c.status))return flash(lang==='ar'?'حالة العميل تغيرت. أعد فتح العملية.':'Customer status changed. Reopen the workflow.',true);
+ if(reason.length<5)return flash(lang==='ar'?'اكتب سبب الاتفاق بشكل واضح.':'Enter a clear agreement reason.',true);
+ const {error}=await sb.rpc('mark_customer_agreed_pending',{p_customer_id:customerId,p_reason:reason});
+ if(error)return flash(error.message,true);
+ closeModal();flash(lang==='ar'?'تم تحويل العميل إلى «متفق – بانتظار الطلبية».':'Customer marked Agreed – awaiting order.');await refreshAll();
+}
 function openSaleForm(customerId=null){
  const requested=state.customers.find(c=>Number(c.id)===Number(customerId))||null;
  if(!state.customers.length)return flash(lang==='ar'?'لا يوجد عميل متاح لتسجيل طلبية.':'There is no customer available for an order.',true);
- openModal(lang==='ar'?'تسجيل سحب / فاتورة':'Record Sale / Withdrawal',`<div class="notice" style="margin-bottom:10px">${lang==='ar'?'إذا كان العميل متردد أو رافض، تسجيل الطلبية سيحوّله إلى نشط تلقائياً.':'If the customer is Hesitant or Rejected, recording an order will automatically make the customer Active.'}</div><div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('s',requested?.id||null,false)}</div><div class="full sale-date-card"><label>${lang==='ar'?'تاريخ الطلبية':'Order date'} <span class="required-star">*</span></label><input id="sDate" class="sale-date-input" type="date" required autocomplete="off"><div class="sale-date-hint">${lang==='ar'?'اضغط لاختيار تاريخ الطلبية. لن يتم وضع تاريخ اليوم تلقائياً.':'Tap to choose the order date. Today is not filled automatically.'}</div></div><div><label>${t('product')}</label><select id="sProduct"><option value="">${lang==='ar'?'اختر المنتج...':'Choose product...'}</option>${productOptions()}</select></div><div><label>${t('quantity')}</label><input id="sQty" type="number" min="0.01" step="0.01"></div><div><label>${t('value')}</label><input id="sAmount" type="number" min="0.01" step="0.01"></div><div class="full"><label>${t('reference')}</label><input id="sRef"></div><div class="full"><button class="btn" id="saveSaleBtn">${t('save')}</button></div></div>`);
- setTimeout(()=>bindCustomerPicker('s',null,false),0);
+ openModal(lang==='ar'?'تسجيل سحب / فاتورة':'Record Sale / Withdrawal',`
+   <div class="notice" style="margin-bottom:10px">${lang==='ar'?'مسار الطلبية مضبوط حسب حالة العميل: نشط أو متفق يسجل مباشرة، المتردد/الرافض يحتاج سبب تحويل، والخامل يحتاج زيارة مسجلة.':'Order entry follows customer status: Active/Agreed can order directly, Hesitant/Rejected require an activation reason, and Inactive requires a recorded visit.'}</div>
+   <div class="form-grid">
+     <div class="full"><label>${t('customer')}</label>${customerPickerHtml('s',requested?.id||null,false)}</div>
+     <div class="full" id="sWorkflowGate"></div>
+     <input id="sActivationConfirmed" type="hidden" value="">
+     <div class="full hidden" id="sActivationReasonWrap"><label>${lang==='ar'?'سبب تحويل العميل إلى نشط':'Reason for converting customer to Active'} <span class="required-star">*</span></label><textarea id="sActivationReason" rows="4" placeholder="${lang==='ar'?'مثال: وافق العميل على الشراء بعد الزيارة وتم إصدار الطلبية...':'Example: customer agreed to buy after the visit and the order is being issued...'}"></textarea></div>
+     <div class="full hidden" id="sInactiveVisitWrap"></div>
+     <div class="full hidden" id="sSaleFields"><div class="form-grid">
+       <div class="full sale-date-card"><label>${lang==='ar'?'تاريخ الطلبية':'Order date'} <span class="required-star">*</span></label><input id="sDate" class="sale-date-input" type="date" required autocomplete="off"><div class="sale-date-hint">${lang==='ar'?'اضغط لاختيار تاريخ الطلبية. لن يتم وضع تاريخ اليوم تلقائياً.':'Tap to choose the order date. Today is not filled automatically.'}</div></div>
+       <div><label>${t('product')}</label><select id="sProduct"><option value="">${lang==='ar'?'اختر المنتج...':'Choose product...'}</option>${productOptions()}</select></div>
+       <div><label>${t('quantity')}</label><input id="sQty" type="number" min="0.01" step="0.01"></div>
+       <div><label>${t('value')}</label><input id="sAmount" type="number" min="0.01" step="0.01"></div>
+       <div class="full"><label>${t('reference')}</label><input id="sRef"></div>
+       <div class="full"><button class="btn" id="saveSaleBtn">${t('save')}</button></div>
+     </div></div>
+   </div>`);
+ setTimeout(()=>{bindCustomerPicker('s',updateSaleWorkflowFields,false);updateSaleWorkflowFields();},0);
 }
 async function addSale(){
- const customerId=Number($('sCustomerId')?.value||0),businessDate=$('sDate')?.value||'',product=$('sProduct')?.value||'',qty=Number($('sQty').value),amount=Number($('sAmount').value);
+ const customerId=Number($('sCustomerId')?.value||0),businessDate=$('sDate')?.value||'',product=$('sProduct')?.value||'',qty=Number($('sQty')?.value||0),amount=Number($('sAmount')?.value||0);
  if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
  const customer=state.customers.find(c=>Number(c.id)===customerId);
  if(!customer)return flash(lang==='ar'?'العميل غير موجود':'Customer not found',true);
+ let activationReason=null,inactiveVisitNote=null;
+ if(['hesitant','rejected'].includes(customer.status)){
+   if($('sActivationConfirmed')?.value!=='1')return flash(lang==='ar'?'اضغط «تغيير الحالة الآن» أولاً.':'Click “Change status now” first.',true);
+   activationReason=$('sActivationReason')?.value.trim()||'';
+   if(activationReason.length<5)return flash(lang==='ar'?'اكتب سبب تحويل العميل إلى نشط.':'Enter the reason for converting the customer to Active.',true);
+ }else if(customer.status==='inactive'&&!inactiveVisitAlreadyLogged(customer)){
+   inactiveVisitNote=$('sInactiveVisitNote')?.value.trim()||'';
+   if(inactiveVisitNote.length<5)return flash(lang==='ar'?'اكتب تقرير زيارة العميل الخامل قبل حفظ الطلبية.':'Enter the inactive-customer visit report before saving the order.',true);
+ }else if(!['active','agreed_pending','inactive'].includes(customer.status)){
+   return flash(lang==='ar'?'حالة العميل لا تسمح بتسجيل طلبية.':'Customer status does not allow an order.',true);
+ }
  if(!businessDate)return flash(lang==='ar'?'اختر تاريخ الطلبية':'Choose the order date',true);
  if(!product)return flash(lang==='ar'?'اختر المنتج':'Choose the product',true);
  if(!(qty>0)||!(amount>0))return flash(lang==='ar'?'أكمل بيانات السحب':'Complete sale details',true);
- const wasInactive=customer.status!=='active';
- const {error}=await sb.rpc('add_sale',{p_customer_id:customerId,p_product:product,p_quantity:qty,p_amount:amount,p_business_date:businessDate,p_order_ref:$('sRef').value.trim()||null});
- if(error)return flash(error.message,true);
- closeModal();flash(lang==='ar'?(wasInactive?'تم حفظ الطلبية وتحويل العميل إلى نشط':'تم حفظ الطلبية'):(wasInactive?'Order saved and customer activated':'Order saved'));await refreshAll();
+ const before=customer.status;
+ const {error}=await sb.rpc('record_sale_workflow',{
+   p_customer_id:customerId,p_product:product,p_quantity:qty,p_amount:amount,
+   p_business_date:businessDate,p_order_ref:$('sRef')?.value.trim()||null,
+   p_activation_reason:activationReason,p_inactive_visit_note:inactiveVisitNote
+ });
+ if(error){
+   const map={
+     'activation reason required':lang==='ar'?'سبب التحويل إلى نشط مطلوب.':'Activation reason is required.',
+     'inactive visit report required':lang==='ar'?'تقرير زيارة العميل الخامل مطلوب قبل الطلبية.':'Inactive-customer visit report is required before the order.',
+     'customer status not eligible for sale':lang==='ar'?'حالة العميل لا تسمح بتسجيل طلبية.':'Customer status does not allow an order.'
+   };
+   return flash(map[error.message]||error.message,true);
+ }
+ closeModal();
+ const msg=before==='active'?(lang==='ar'?'تم حفظ الطلبية.':'Order saved.'):before==='agreed_pending'?(lang==='ar'?'تم حفظ الطلبية وتحويل العميل إلى نشط.':'Order saved and customer activated.'):before==='inactive'?(lang==='ar'?'تم حفظ الطلبية وإعادة العميل الخامل إلى نشط.':'Order saved and inactive customer reactivated.'):(lang==='ar'?'تم حفظ السبب والطلبية وتحويل العميل إلى نشط.':'Reason and order saved; customer activated.');
+ flash(msg);await refreshAll();
 }
+
 function openSaleEditor(id){if(!canManage())return;const x=state.sales.find(s=>Number(s.id)===Number(id));if(!x)return;openModal(lang==='ar'?'تعديل السحب':'Edit Sale',`<div class="form-grid"><div><label>${t('date')}</label><input id="esDate" type="date" value="${x.business_date}"></div><div><label>${t('product')}</label><select id="esProduct">${productOptions(PRODUCT_KEYS.includes(x.product)?x.product:null)}</select></div><div><label>${t('quantity')}</label><input id="esQty" type="number" min="0.01" step="0.01" value="${Number(x.quantity)}"></div><div><label>${t('value')}</label><input id="esAmount" type="number" min="0.01" step="0.01" value="${Number(x.amount)}"></div><div class="full"><label>${t('reference')}</label><input id="esRef" value="${esc(x.order_ref||'')}"></div><div class="full"><button class="btn" id="saveSaleEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveSaleEdit(id){const {error}=await sb.rpc('admin_update_sale',{p_sale_id:id,p_product:$('esProduct').value,p_quantity:Number($('esQty').value),p_amount:Number($('esAmount').value),p_order_ref:$('esRef').value.trim()||null,p_business_date:$('esDate').value});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 async function deleteSale(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_sale',{p_sale_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
 
-function updateReportStatusFields(){
- const cid=Number($('rCustomerId')?.value||0),c=state.customers.find(x=>Number(x.id)===cid),next=$('rNewStatus'),cur=$('rCurrentStatus'),rule=$('rActiveRule'),action=$('rAction')?.value||'';
- if(!next)return;
- if(!c){next.innerHTML=`<option value="">${lang==='ar'?'اختر العميل أولاً...':'Choose customer first...'}</option>`;next.disabled=true;if(cur)cur.value='';if(rule)rule.classList.add('hidden');return;}
- if(cur)cur.value=statusLabel(c.status);
- const hasSale=!!activityForCustomer(c.id).lastSale;
- if(!action){next.innerHTML=`<option value="">${lang==='ar'?'اختر الإجراء أولاً...':'Choose action first...'}</option>`;next.disabled=true;if(rule)rule.classList.add('hidden');return;}
- if(action==='customer_agreed'){
-   const target=hasSale?'active':'agreed_pending';
-   next.innerHTML=`<option value="${target}">${t(target)}</option>`;
-   next.value=target;
-   next.disabled=true;
-   if(rule){
-     rule.textContent=hasSale
-       ?(lang==='ar'?'العميل لديه طلبية، لذلك الاتفاق يُثبت حالته كنشط.':'This customer already has an order, so the agreement keeps the customer Active.')
-       :(lang==='ar'?'عند الحفظ يصبح العميل «متفق – بانتظار الطلبية» لمدة 24 ساعة. أول سحب يحوله إلى نشط تلقائياً.':'Saving sets the customer to “Agreed – awaiting order” for 24 hours. The first sale activates the customer automatically.');
-     rule.classList.remove('hidden');
-   }
-   return;
- }
- next.disabled=false;
- next.innerHTML=`<option value="">${lang==='ar'?'اختر الحالة...':'Choose status...'}</option><option value="no_change">${t('noChange')}</option>`+CHANGE_STATUS_KEYS.filter(k=>k!==c.status&&(k!=='active'||hasSale)&&(k!=='agreed_pending'||!hasSale)).map(k=>`<option value="${k}">${t(k)}</option>`).join('');
- if(rule){
-   rule.textContent=!hasSale&&c.status!=='active'
-     ?(lang==='ar'?'النشط يتطلب طلبية. إذا تم الاتفاق بدون طلبية اختر إجراء «العميل تم الاتفاق معه» وسيبدأ انتظار الطلبية لمدة 24 ساعة.':'Active requires an order. If an agreement is reached without an order, choose “Agreement reached with customer” to start the 24-hour awaiting-order period.')
-     :'';
-   rule.classList.toggle('hidden',!rule.textContent);
- }
-}
+
 function openReportForm(id=null){
  const selected=state.customers.find(c=>Number(c.id)===Number(id))||null;if(!state.customers.length)return flash(t('noData'),true);
- openModal(lang==='ar'?'إضافة متابعة عميل':'Add Customer Follow-up',`<div class="danger-note">${lang==='ar'?'التقرير/السبب إلزامي. الحالة الجديدة لا تُحفظ بدون تقرير واضح.':'Report/reason is required. A status change cannot be saved without a clear report.'}</div><div class="form-grid"><div class="full"><label>${t('customer')}</label>${customerPickerHtml('r',selected?.id||null)}</div><div><label>${t('action')}</label><select id="rAction"><option value="">${lang==='ar'?'اختر الإجراء...':'Choose action...'}</option>${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div><div><label>${lang==='ar'?'الحالة الحالية':'Current Status'}</label><input id="rCurrentStatus" readonly></div><div><label>${t('newStatus')}</label><select id="rNewStatus"></select></div><div class="full security-warn hidden" id="rActiveRule"></div><div class="full"><label>${t('reason')}</label><textarea id="rNote" rows="4"></textarea></div><div class="full"><button class="btn" id="saveReportBtn">${t('save')}</button></div></div>`);
- setTimeout(()=>{bindCustomerPicker('r',updateReportStatusFields);$('rAction')?.addEventListener('change',updateReportStatusFields);updateReportStatusFields();},0);
+ openModal(lang==='ar'?'تسجيل طلب / شكوى عميل':'Add Customer Request / Complaint',`
+   <div class="notice">${lang==='ar'?'هذه الصفحة لخدمة العميل فقط: شكوى، طلب عينة، طلب تدخل الإدارة أو متابعة خدمة. لا يتم تغيير حالة العميل من هنا.':'This page is for customer service only: complaint, sample request, management intervention, or service follow-up. Customer status is never changed here.'}</div>
+   <div class="form-grid" style="margin-top:12px">
+     <div class="full"><label>${t('customer')}</label>${customerPickerHtml('r',selected?.id||null)}</div>
+     <div><label>${lang==='ar'?'نوع الطلب':'Request type'}</label><select id="rAction"><option value="">${lang==='ar'?'اختر النوع...':'Choose type...'}</option>${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div>
+     <div class="full"><label>${lang==='ar'?'التفاصيل':'Details'}</label><textarea id="rNote" rows="5"></textarea></div>
+     <div class="full"><button class="btn" id="saveReportBtn">${t('save')}</button></div>
+   </div>`);
+ setTimeout(()=>bindCustomerPicker('r',null,false),0);
 }
 async function addReport(){
- const customerId=Number($('rCustomerId')?.value||0),note=$('rNote').value.trim(),action=$('rAction')?.value||'',statusChoice=$('rNewStatus')?.value||'';
+ const customerId=Number($('rCustomerId')?.value||0),note=$('rNote')?.value.trim()||'',action=$('rAction')?.value||'';
  if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
- if(!action)return flash(lang==='ar'?'اختر إجراء المتابعة.':'Choose the follow-up action.',true);
- if(!statusChoice)return flash(lang==='ar'?'اختر الحالة الجديدة أو اختر «بدون تغيير الحالة».':'Choose the new status or select “No status change”.',true);
- const newStatus=statusChoice==='no_change'?null:statusChoice;
- if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً أو سبباً واضحاً':'Enter a clear report or reason',true);
- const customer=state.customers.find(c=>Number(c.id)===customerId),hasSale=customer?!!activityForCustomer(customer.id).lastSale:false;
- const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:action,p_note:note,p_new_status:newStatus});
+ if(!action)return flash(lang==='ar'?'اختر نوع الطلب أو الشكوى.':'Choose the request or complaint type.',true);
+ if(note.length<5)return flash(lang==='ar'?'اكتب تفاصيل واضحة.':'Enter clear details.',true);
+ const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:action,p_note:note,p_new_status:null});
  if(error){
-   const msg=error.message==='active customer requires sale'
-     ?(lang==='ar'?'لا يمكن تحويل العميل إلى نشط بدون طلبية. سجل الطلبية أولاً.':'The customer cannot become Active without an order. Record the order first.')
-     :error.message==='customer already awaiting order'
-       ?(lang==='ar'?'العميل بالفعل متفق وبانتظار الطلبية. سجّل نتيجة المتابعة الجديدة بدل إعادة بدء مهلة الـ24 ساعة.':'The customer is already awaiting the order. Record the new follow-up result instead of restarting the 24-hour period.')
-       :error.message;
+   const msg=error.message==='already waiting for management'
+     ?(lang==='ar'?'يوجد بالفعل طلب تدخل إدارة مفتوح لهذا العميل.':'There is already an open management-intervention request for this customer.')
+     :error.message;
    return flash(msg,true);
  }
- closeModal();
- if(action==='customer_agreed'&&!hasSale)flash(lang==='ar'?'تم الاتفاق. العميل الآن بانتظار الطلبية لمدة 24 ساعة.':'Agreement saved. The customer is now awaiting the order for 24 hours.');
- else flash(lang==='ar'?(newStatus?'تم حفظ المتابعة وتغيير الحالة':'تم حفظ المتابعة'):(newStatus?'Follow-up saved and status updated':'Follow-up saved'));
- await refreshAll();
+ closeModal();flash(lang==='ar'?'تم حفظ الطلب / الشكوى بدون تغيير حالة العميل.':'Request / complaint saved without changing customer status.');await refreshAll();
 }
+
 function openReportEditor(id){if(!canManage())return;const r=state.reports.find(x=>Number(x.id)===Number(id));if(!r)return;openModal(lang==='ar'?'تعديل المتابعة':'Edit Follow-up',`<div class="form-grid"><div><label>${t('action')}</label><select id="erAction">${EDIT_ACTION_KEYS.map(k=>`<option value="${k}" ${r.action_code===k?'selected':''}>${t(k)}</option>`).join('')}</select></div><div class="full"><label>${t('reason')}</label><textarea id="erNote" rows="5">${esc(r.note)}</textarea></div><div class="full"><button class="btn" id="saveReportEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveReportEdit(id){const note=$('erNote').value.trim();if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً واضحاً':'Enter a clear report',true);const {error}=await sb.rpc('admin_update_report',{p_report_id:id,p_action_code:$('erAction').value,p_note:note});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 async function deleteReport(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_report',{p_report_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
@@ -1072,7 +1199,7 @@ $('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});$('mapCustomerList')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-customer]');if(b)focusMapCustomer(Number(b.dataset.mapCustomer));});document.addEventListener('fullscreenchange',()=>{if(state.map&&document.querySelector('#mapPage.section.active'))setTimeout(()=>state.map.invalidateSize(),120);});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});
-$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-attention-customer]'))){openCustomer(Number(el.dataset.attentionCustomer));return;}if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
+$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dormant-customer]'))){openDormantCustomer(Number(el.dataset.dormantCustomer));return;}if((el=e.target.closest('[data-attention-customer]'))){openCustomer(Number(el.dataset.attentionCustomer));return;}if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','inactive','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
    if(kind==='total_sales'){
      $('salePeriodFilter').value='month';$('saleSearch').value=rep?.full_name||'';gotoPage('sales');renderSales();
@@ -1090,10 +1217,10 @@ $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[da
    }
  }});
 
-$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});
+$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#sActivateNowBtn')))enableSaleActivation();else if((b=e.target.closest('#sAgreedPendingBtn')))showPendingAgreementForm();else if((b=e.target.closest('#sSaveAgreedPendingBtn')))markAgreedPendingFromSales();else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-inactive-visit]')))openInactiveVisitForm(Number(b.dataset.inactiveVisit));else if((b=e.target.closest('#saveInactiveVisitBtn')))saveInactiveVisit(Number(b.dataset.id));else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});
 $('securityGateBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gateChangePasswordBtn')))changePassword(true);else if((b=e.target.closest('#verifyMfaEnrollBtn')))verifyMFA($('mfaEnrollCode')?.value||'');else if((b=e.target.closest('#verifyMfaChallengeBtn')))verifyMFA($('mfaChallengeCode')?.value||'');});
 ['pointerdown','keydown','touchstart','scroll'].forEach(evt=>window.addEventListener(evt,()=>{state.lastActivity=Date.now();},{passive:true}));setInterval(()=>{if(state.session&&Date.now()-state.lastActivity>MAX_IDLE_MS)logout(lang==='ar'?'تم تسجيل خروجك تلقائياً بعد ساعة بدون استخدام.':'You were signed out after 1 hour of inactivity.');},30000);
-window.DANA_APP={sb,state,t,esc,fmt,money,dateTime,dateOnly,todayRiyadh,dateKeyRiyadh,monthRiyadh,statusLabel,badgeStatus,actionLabel,productLabel,isAdmin,isManager,canManage,openModal,closeModal,flash,openReportForm,openCustomer,refreshAll,repOptions,gotoPage,getLang:()=>lang};
+window.DANA_APP={sb,state,t,esc,fmt,money,dateTime,dateOnly,todayRiyadh,dateKeyRiyadh,monthRiyadh,statusLabel,badgeStatus,actionLabel,productLabel,isAdmin,isManager,canManage,openModal,closeModal,flash,openReportForm,openCustomer,openDormantCustomer,refreshAll,repOptions,gotoPage,getLang:()=>lang};
 applyLanguage();
 
 if(!configured) showConfigMessage(); else sb.auth.onAuthStateChange((_event,session)=>{if(!session&&!$('login').classList.contains('hidden'))return;if(!session)showLogin();}); if(configured) loadProfile();

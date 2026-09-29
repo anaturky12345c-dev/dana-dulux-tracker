@@ -54,6 +54,14 @@
     </div>
 
     <section id="dashboard" class="section active">
+      <div class="card dashboard-attention management-only dashboard-attention-priority">
+        <div class="dashboard-head attention-head">
+          <div><h3>Management Intervention</h3><div class="small" id="attentionSub"></div></div>
+          <span class="attention-count" id="attentionCount">0</span>
+        </div>
+        <div id="attentionList" class="attention-list"></div>
+      </div>
+
       <div class="grid cards dashboard-cards">
         <div class="card metric-card" data-dashboard-link="customers"><div class="label">Total Customers</div><div class="metric" id="mCustomers">0</div><div class="card-hint">Click to view</div></div>
         <div class="card metric-card" data-dashboard-link="sales-month"><div class="label">Sales This Month</div><div class="metric" id="mSales">0</div><div class="card-hint">Click to view</div></div>
@@ -63,11 +71,10 @@
       </div>
 
       <div class="card dashboard-panels"><h3>Representative Summary</h3><div id="repSummary"></div></div>
-      <div class="card dashboard-attention management-only"><h3>Management Intervention</h3><div id="attentionList"></div></div>
 
-      <div class="card" style="margin-top:14px">
+      <div class="card goals-v2-shell" style="margin-top:14px">
         <div class="dashboard-head">
-          <div><h3 id="goalsTitle">Goals</h3><div class="small">Current month</div></div>
+          <div><h3 id="goalsTitle">Goal Summary</h3><div class="small">Current month</div></div>
           <button class="btn secondary full-admin-only" id="editGoalsBtn">Edit Goals</button>
         </div>
         <div id="goalsDashboard"></div>
@@ -247,7 +254,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js?v=20260927-direct4"></script>
-<script src="./app-20260924b.js?v=20260929-4"></script>
+<script src="./app-20260924b.js?v=20260929-5"></script>
 <script src="./workflows-20260926.js?v=20260929-agreed1"></script>
 <script src="./ai-sources-20260927.js?v=20260927-direct4"></script>
 <script src="./ai-opportunities-20260927.js?v=20260929-deepresearch1"></script>

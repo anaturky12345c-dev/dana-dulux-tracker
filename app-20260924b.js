@@ -47,7 +47,7 @@ const t=k=>I18N[lang][k]??k;
 const statusLabel=k=>t(k);
 const actionLabel=k=>I18N[lang][k]||k||'-';
 const productLabel=k=>I18N[lang][k]||k||'-';
-const STATUS_KEYS=['hesitant','rejected','active'];
+const STATUS_KEYS=['hesitant','agreed_pending','rejected','active'];
 const CHANGE_STATUS_KEYS=['active','agreed_pending','hesitant','rejected'];
 const FOLLOW_ACTION_KEYS=['admin_intervention','review_next_week','sample_request','customer_agreed'];
 const EDIT_ACTION_KEYS=[...FOLLOW_ACTION_KEYS,'management_response'];
@@ -562,6 +562,18 @@ function updateInitialStatusReason(){
    if(label)label.textContent=status==='hesitant'?(lang==='ar'?'سبب تردد العميل':'Reason for hesitation'):(lang==='ar'?'سبب رفض العميل':'Reason for rejection');
  }
  if(saleWrap)saleWrap.classList.toggle('hidden',status!=='active');
+ const oldNotice=$('fAgreedPendingNote');if(oldNotice)oldNotice.remove();
+ if(status==='agreed_pending'){
+   const target=$('fStatus')?.closest('div');
+   if(target){
+     const note=document.createElement('div');
+     note.id='fAgreedPendingNote';
+     note.className='small';
+     note.style.marginTop='6px';
+     note.textContent=lang==='ar'?'إذا لم تُسجل طلبية خلال 24 ساعة سيتحول العميل تلقائياً إلى متردد.':'If no order is recorded within 24 hours, the customer will automatically become Hesitant.';
+     target.appendChild(note);
+   }
+ }
 }
 function setCustomerLocation(lat,lng,zoom=true){const x=Number(lat),y=Number(lng);if(!Number.isFinite(x)||!Number.isFinite(y))return;if($('fLat'))$('fLat').value=x.toFixed(6);if($('fLng'))$('fLng').value=y.toFixed(6);const ll=[x,y];if(!state.pickerMarker){state.pickerMarker=L.marker(ll,{draggable:true}).addTo(state.pickerMap);state.pickerMarker.on('dragend',e=>{const p=e.target.getLatLng();setCustomerLocation(p.lat,p.lng,false);});}else state.pickerMarker.setLatLng(ll);if(zoom)state.pickerMap.setView(ll,16);if($('locationStatus')){$('locationStatus').textContent=lang==='ar'?'تم تحديد الموقع.':'Location selected.';$('locationStatus').classList.add('ok');}}
 function initCustomerPickerMap(){const el=$('customerPickerMap');if(!el||!window.L)return;if(state.pickerMap){try{state.pickerMap.remove()}catch(_){}}state.pickerMap=L.map(el,{zoomControl:true}).setView([24.7136,46.6753],11);addBaseMap(state.pickerMap);state.pickerMap.on('click',e=>setCustomerLocation(e.latlng.lat,e.latlng.lng,false));setTimeout(()=>state.pickerMap?.invalidateSize(),100);}

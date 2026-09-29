@@ -301,3 +301,75 @@ html[dir="ltr"] .flash{left:18px;right:auto}html[dir="rtl"] .flash{right:18px;le
   .sales-total-bar{position:sticky;bottom:8px;z-index:5;padding:12px;box-shadow:0 6px 20px rgba(15,23,42,.10)}
   .sales-total-bar b{font-size:18px}
 }
+
+
+/* Dashboard priority intervention */
+.dashboard-attention-priority{
+  margin-bottom:14px;
+  border:1px solid #fecaca;
+  background:linear-gradient(180deg,#fff7f7 0%,#fff 100%);
+  box-shadow:0 8px 24px rgba(127,29,29,.08);
+}
+.attention-head{margin-bottom:10px}
+.attention-head h3{margin:0 0 3px}
+.attention-count{
+  min-width:42px;height:42px;padding:0 12px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  background:#991b1b;color:#fff;font-size:20px;font-weight:800;
+}
+.attention-list{display:grid;gap:8px}
+.attention-item{
+  width:100%;border:1px solid #fee2e2;background:#fff;border-radius:12px;padding:11px 12px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;
+  text-align:inherit;cursor:pointer;
+}
+.attention-item:hover{border-color:#fca5a5;box-shadow:0 5px 16px rgba(127,29,29,.08)}
+.attention-main{min-width:0}
+.attention-main b{display:block;font-size:14px;margin-bottom:3px}
+.attention-main>span{display:block;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attention-meta{display:grid;gap:2px;font-size:11px;color:#334155}
+.attention-meta small{color:#64748b}
+.attention-open{font-size:11px;font-weight:800;color:#991b1b;background:#fff1f2;border-radius:999px;padding:6px 9px}
+.attention-empty{padding:14px;border:1px dashed #e5e7eb;border-radius:11px;background:#fff;color:#64748b}
+
+/* Goal summary v2 */
+.goals-v2-shell{overflow:hidden}
+.goal-v2-scope{margin-top:12px}
+.goal-v2-scope:first-child{margin-top:0}
+.goal-v2-scope-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.goal-v2-scope-head h4{margin:0;font-size:15px}
+.goal-v2-scope-head span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.goal-v2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.goal-v2-metric{border:1px solid #dbe4ec;border-radius:13px;padding:12px;background:#fff;cursor:pointer}
+.goal-v2-metric:hover{box-shadow:0 6px 18px rgba(15,23,42,.07)}
+.goal-v2-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px}
+.goal-v2-top b{font-size:13px}
+.goal-v2-pct{font-size:12px;font-weight:800;background:#eef2ff;border-radius:999px;padding:4px 7px;white-space:nowrap}
+.goal-v2-values{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.goal-v2-values>div{background:#f8fafc;border-radius:9px;padding:8px}
+.goal-v2-values span{display:block;font-size:10px;color:#64748b;margin-bottom:3px}
+.goal-v2-values strong{font-size:13px;line-height:1.25}
+.goal-v2-track,.goal-mini-track{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:10px}
+.goal-v2-track i,.goal-mini-track i{display:block;height:100%;background:#15803d;border-radius:999px}
+.goal-reps-head{display:flex;justify-content:space-between;align-items:end;gap:10px;margin:18px 0 9px}
+.goal-reps-head h4{margin:0}
+.goal-reps-head span{font-size:11px;color:var(--muted)}
+.goal-reps-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.goal-rep-card{border:1px solid #dbe4ec;border-radius:13px;padding:12px;background:#fbfdff}
+.goal-rep-name{font-weight:800;font-size:14px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #eef2f7}
+.goal-mini-row{display:grid;grid-template-columns:minmax(0,1fr) 90px 45px;gap:8px;align-items:center;padding:6px 0}
+.goal-mini-row>div:first-child{min-width:0}
+.goal-mini-row span{display:block;font-size:10px;color:#64748b}
+.goal-mini-row b{font-size:12px}
+.goal-mini-row b small{font-weight:500;color:#64748b}
+.goal-mini-row em{font-style:normal;font-size:11px;font-weight:800;text-align:end}
+.goal-mini-track{margin:0;height:6px}
+@media(max-width:800px){
+  .attention-item{grid-template-columns:minmax(0,1fr) auto}
+  .attention-meta{grid-column:1}
+  .attention-open{grid-column:2;grid-row:1 / span 2}
+  .goal-v2-grid{grid-template-columns:1fr}
+  .goal-reps-grid{grid-template-columns:1fr}
+  .goal-v2-values{grid-template-columns:1fr 1fr 1fr}
+  .goal-mini-row{grid-template-columns:minmax(0,1fr) 70px 38px}
+}

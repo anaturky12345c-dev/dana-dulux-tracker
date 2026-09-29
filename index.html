@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=20260927-push1" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <link rel="stylesheet" href="./styles-20260924b.css?v=20260929-13" />
+  <link rel="stylesheet" href="./styles-20260924b.css?v=20260929-14" />
 </head>
 <body>
 <div id="login" class="login">
@@ -39,7 +39,7 @@
       <button class="active" data-page="dashboard">Dashboard</button>
       <button data-page="customers">Customers</button>
       <button data-page="sales">Sales / Withdrawals</button>
-      <button data-page="reports">Customer Follow-ups</button>
+      <button data-page="reports">Customer Follow-ups & Complaints</button>
       <button data-page="mapPage" class="management-only">Customer Map</button>
       <button data-page="analytics" class="management-only">Reports</button>
       <button data-page="account">My Account</button>
@@ -135,14 +135,16 @@
 
     <section id="reports" class="section">
       <div class="card service-page-note">
-        <b id="servicePageTitle">Customer Requests & Complaints</b>
-        <div class="small" id="servicePageHint">Complaints, sample requests, management intervention, and service follow-ups. Customer status is not changed here.</div>
+        <b id="servicePageTitle">Customer Follow-ups & Complaints</b>
+        <div class="small" id="servicePageHint">Sales follow-ups are separate from complaints and service requests. Neither changes customer status.</div>
       </div>
-      <div class="toolbar">
-        <button class="btn" id="newReportBtn">+ Add Request / Complaint</button>
+
+      <div class="toolbar followup-main-actions">
+        <button class="btn" id="newSalesFollowupBtn">+ Record Follow-up</button>
+        <button class="btn secondary" id="newComplaintBtn">+ Complaint / Request</button>
         <select id="reportPeriodFilter"><option value="all">All Dates</option><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option></select>
         <select id="reportActionFilter">
-          <option value="">All Types</option>
+          <option value="">All Complaint / Request Types</option>
           <option value="complaint">Customer complaint</option>
           <option value="sample_request">Sample request</option>
           <option value="admin_intervention">Request management intervention</option>
@@ -152,7 +154,40 @@
           <option value="customer_agreed">Legacy customer agreement</option>
         </select>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Type</th><th>Details</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+
+      <div class="card required-followup-card">
+        <div class="dashboard-head">
+          <div>
+            <h3 id="requiredFollowupTitle">Required Sales Follow-ups</h3>
+            <div class="small" id="requiredFollowupHint">Hesitant and rejected customers — due every 3 workdays (Saturday–Thursday).</div>
+          </div>
+          <span class="attention-count followup-required-count" id="requiredFollowupCount">0</span>
+        </div>
+        <div class="toolbar management-only" id="followupRepFilterWrap">
+          <select id="followupRepFilter"><option value="">All Representatives</option></select>
+        </div>
+        <div class="table-wrap followup-desktop-table">
+          <table>
+            <thead><tr><th id="rfCustomer">Customer</th><th id="rfRep">Representative</th><th id="rfStatus">Status</th><th id="rfDue">Due</th><th id="rfTiming">Timing</th><th id="rfAction">Action</th></tr></thead>
+            <tbody id="requiredFollowupBody"></tbody>
+          </table>
+        </div>
+        <div id="requiredFollowupMobile" class="followup-mobile-list"></div>
+      </div>
+
+      <div class="card followup-history-card">
+        <div class="dashboard-head">
+          <div><h3 id="salesFollowupHistoryTitle">Sales Follow-up History</h3><div class="small" id="salesFollowupHistoryHint">Follow-ups do not change customer status.</div></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th id="sfhDate">Recorded At</th><th id="sfhCustomer">Customer</th><th id="sfhRep">Representative</th><th id="sfhStatus">Customer Status</th><th id="sfhNote">Follow-up Result</th><th id="sfhActions">Actions</th></tr></thead><tbody id="salesFollowupsBody"></tbody></table></div>
+      </div>
+
+      <div class="card complaints-history-card">
+        <div class="dashboard-head">
+          <div><h3 id="complaintsHistoryTitle">Complaints & Requests</h3><div class="small" id="complaintsHistoryHint">Complaints, samples, service requests, and management intervention.</div></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Type</th><th>Details</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+      </div>
     </section>
 
     <section id="mapPage" class="section management-only">
@@ -279,8 +314,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js?v=20260927-direct4"></script>
-<script src="./app-20260924b.js?v=20260929-13"></script>
-<script src="./workflows-20260926.js?v=20260929-workflow3"></script>
+<script src="./app-20260924b.js?v=20260929-14"></script>
+<script src="./workflows-20260926.js?v=20260929-workflow4"></script>
 <script src="./ai-sources-20260927.js?v=20260927-direct4"></script>
 <script src="./ai-opportunities-20260927.js?v=20260929-deepresearch1"></script>
 <script src="./urdu-yaqoub-20260927.js?v=20260929-urdu5"></script>

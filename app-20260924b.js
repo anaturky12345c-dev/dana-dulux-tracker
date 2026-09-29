@@ -417,7 +417,7 @@ function renderDashboard(){
  const repDailyRows=reps.map(p=>{
    const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
    const salesToday=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
-   const followupsToday=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
+   const followupsToday=state.reports.filter(x=>x.rep_id===p.id&&x.action_code!=='inactive_visit'&&String(x.business_date||'')===today);
    const activeNewToday=newToday.filter(c=>c.status==='active').length;
    const salesValueToday=salesToday.reduce((z,x)=>z+Number(x.amount||0),0);
    return {p,newToday,salesToday,followupsToday,activeNewToday,salesValueToday};
@@ -437,7 +437,7 @@ function renderDashboard(){
          <div><span>${lang==='ar'?'الطلبيات':'Orders'}</span><b>${x.salesToday.length}</b></div>
          <div><span>${lang==='ar'?'عملاء جدد':'New customers'}</span><b>${x.newToday.length}</b></div>
          <div><span>${lang==='ar'?'جدد نشطون':'New active'}</span><b>${x.activeNewToday}</b></div>
-         <div><span>${lang==='ar'?'المتابعات':'Follow-ups'}</span><b>${x.followupsToday.length}</b></div>
+         <div><span>${lang==='ar'?'طلبات/شكاوى':'Requests'}</span><b>${x.followupsToday.length}</b></div>
        </div>
      </button>`).join('')}</div>`:`<div class="small">${t('noData')}</div>`;
  }else{
@@ -449,7 +449,7 @@ function renderDashboard(){
          <div><span>${lang==='ar'?'الطلبيات':'Orders'}</span><b>${x.salesToday.length}</b></div>
          <div><span>${lang==='ar'?'عملاء جدد':'New customers'}</span><b>${x.newToday.length}</b></div>
          <div><span>${lang==='ar'?'جدد نشطون':'New active'}</span><b>${x.activeNewToday}</b></div>
-         <div><span>${lang==='ar'?'المتابعات':'Follow-ups'}</span><b>${x.followupsToday.length}</b></div>
+         <div><span>${lang==='ar'?'طلبات/شكاوى':'Requests'}</span><b>${x.followupsToday.length}</b></div>
        </div>
      </div>
    </div>`:`<div class="small">${t('noData')}</div>`;
@@ -459,7 +459,7 @@ function renderRepPerformance(){
  const box=$('repPerformance');if(!box||!canManage())return;
  const month=monthRiyadh(),reps=state.profiles.filter(p=>p.role==='rep');
  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>'+t('representative')+'</th><th>'+t('customers')+'</th><th>'+t('newCustomers')+'</th><th>'+t('activeCustomers')+'</th><th>'+t('salesThisMonth')+'</th><th>'+t('followups')+'</th></tr></thead><tbody>'+
- reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;return `<tr class="clickable-row" data-rep-customers="${p.id}"><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${cs.filter(c=>c.status==='active').length}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table></div>';
+ reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&x.action_code!=='inactive_visit'&&String(x.business_date||'').startsWith(month)),nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;return `<tr class="clickable-row" data-rep-customers="${p.id}"><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${cs.filter(c=>c.status==='active').length}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table></div>';
 }
 function qualifiedActiveNewCustomers(customers,sales){
  const totals=new Map();

@@ -531,3 +531,56 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
   .dashboard-cards .metric-card{min-height:108px}
   .dashboard-cards .metric-card .metric{font-size:23px}
 }
+
+
+/* Priority dashboard pair + inactive customer workflow */
+.dashboard-priority-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:14px;
+  align-items:start;
+}
+.dashboard-priority-grid>.card{margin:0}
+.dashboard-dormant-priority{
+  border:1px solid #ddd6fe;
+  background:linear-gradient(180deg,#faf8ff 0%,#fff 100%);
+  box-shadow:0 8px 24px rgba(91,33,182,.07);
+}
+.dormant-count{background:#6d28d9}
+.dormant-list{display:grid;gap:8px}
+.dormant-item{
+  width:100%;
+  border:1px solid #ede9fe;
+  background:#fff;
+  border-radius:12px;
+  padding:11px 12px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:12px;
+  align-items:center;
+  text-align:inherit;
+  cursor:pointer;
+}
+.dormant-item:hover{border-color:#c4b5fd;box-shadow:0 5px 16px rgba(91,33,182,.08)}
+.dormant-main{min-width:0}
+.dormant-main b{display:block;font-size:14px;margin-bottom:3px}
+.dormant-main span{display:block;font-size:11px;color:#64748b}
+.dormant-meta{display:grid;gap:3px;font-size:11px;color:#475569}
+.dormant-visit{font-size:10px;font-weight:800;border-radius:999px;padding:6px 8px;white-space:nowrap}
+.dormant-visit.done{background:#ecfdf5;color:#047857}
+.dormant-visit.pending{background:#f5f3ff;color:#6d28d9}
+.service-page-note{margin-bottom:12px;background:#f8fafc}
+.service-page-note>b{display:block;margin-bottom:4px}
+.legend-dot.purple{background:#7c3aed}
+#sWorkflowGate .toolbar{margin-bottom:0}
+#sActivationReasonWrap,#sInactiveVisitWrap{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}
+#sSaleFields{border-top:1px solid #e2e8f0;padding-top:4px}
+@media(max-width:900px){
+  .dashboard-priority-grid{grid-template-columns:1fr}
+}
+@media(max-width:800px){
+  .dormant-item{grid-template-columns:minmax(0,1fr) auto}
+  .dormant-meta{grid-column:1}
+  .dormant-visit{grid-column:2;grid-row:1 / span 2}
+}

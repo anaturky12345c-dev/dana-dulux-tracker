@@ -17,7 +17,7 @@ const I18N={
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
   customer:'العميل',customerType:'نوع العميل',shop:'محل',factory:'مصنع',project:'مشروع',notSet:'غير محدد',representative:'المندوب',area:'المنطقة',phone:'الجوال',status:'الحالة',action:'الإجراء',reason:'التقرير / السبب',product:'المنتج',quantity:'الكمية',value:'القيمة',reference:'المرجع',date:'التاريخ',
   totalCustomers:'إجمالي العملاء',salesThisMonth:'سحوبات الشهر',activeCustomers:'العملاء النشطون',hesitantCustomers:'العملاء المترددون',rejectedCustomers:'العملاء الرافضون',clickView:'اضغط للعرض',
-  repSummary:'ملخص المناديب اليومي',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
+  repSummary:'ملخص المناديب اليومي',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'ملخص الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
   allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة أو رقم الجوال...',newCustomer:'+ عميل جديد',customerAddedAt:'تاريخ الإضافة',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
   recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',today:'هذا اليوم',thisWeek:'هذا الأسبوع',thisMonth:'هذا الشهر',
   addFollowup:'+ إضافة متابعة',allActions:'كل الإجراءات',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
@@ -34,7 +34,7 @@ const I18N={
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
   customer:'Customer',customerType:'Customer Type',shop:'Shop',factory:'Factory',project:'Project',notSet:'Not set',representative:'Representative',area:'Area',phone:'Phone',status:'Status',action:'Action',reason:'Report / Reason',product:'Product',quantity:'Quantity',value:'Value',reference:'Reference',date:'Date',
   totalCustomers:'Total Customers',salesThisMonth:'Sales This Month',activeCustomers:'Active Customers',hesitantCustomers:'Hesitant Customers',rejectedCustomers:'Rejected Customers',clickView:'Click to view',
-  repSummary:'Daily Representative Summary',managementIntervention:'Management Intervention',goals:'Goals',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
+  repSummary:'Daily Representative Summary',managementIntervention:'Management Intervention',goals:'Goal Summary',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
   allStatuses:'All Statuses',searchCustomer:'Search customer, area or phone...',newCustomer:'+ New Customer',customerAddedAt:'Date Added',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
   recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',today:'Today',thisWeek:'This Week',thisMonth:'This Month',
   addFollowup:'+ Add Follow-up',allActions:'All Actions',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
@@ -350,8 +350,10 @@ function renderDashboard(){
  $('mActive').textContent=visibleCustomers.filter(c=>c.status==='active').length;
  $('mHesitant').textContent=visibleCustomers.filter(c=>c.status==='hesitant').length;
  $('mRejected').textContent=visibleCustomers.filter(c=>c.status==='rejected').length;
- const attention=state.reports.filter(r=>r.action_code==='admin_intervention');
- $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<div class="event"><b>${esc(r.customer?.name||'-')}</b><div>${esc(r.note)}</div><div class="small">${dateTime(r.created_at)} — ${esc(r.rep?.full_name||'-')}</div></div>`).join(''):`<div class="small">${t('noData')}</div>`;
+ const attention=state.reports.filter(r=>r.action_code==='admin_intervention').slice().sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+ if($('attentionCount'))$('attentionCount').textContent=String(attention.length);
+ if($('attentionSub'))$('attentionSub').textContent=lang==='ar'?(attention.length?'راجع الحالات الأحدث أولاً وافتح العميل مباشرة من هنا.':'لا توجد حالات مسجلة تحتاج تدخل الإدارة.'):(attention.length?'Review the newest cases first and open the customer directly from here.':'No management-intervention cases are recorded.');
+ $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<button type="button" class="attention-item" data-attention-customer="${r.customer_id}"><span class="attention-main"><b>${esc(r.customer?.name||'-')}</b><span>${esc(r.note)}</span></span><span class="attention-meta">${esc(r.rep?.full_name||'-')}<small>${dateTime(r.created_at)}</small></span><span class="attention-open">${lang==='ar'?'فتح العميل':'Open'}</span></button>`).join(''):`<div class="attention-empty">${lang==='ar'?'لا توجد حالات تحتاج تدخل الإدارة حالياً.':'No cases need management intervention right now.'}</div>`;
  const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile];
  $('repSummary').innerHTML=reps.map(p=>{
    const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
@@ -379,20 +381,40 @@ function scopeAchievements(scope,repId=null){
    activeNewCustomers:newCustomers.filter(c=>c.status==='active').length
  };
 }
+function goalMetricView(scope,repId,type,achieved,label,isMoney=true){
+ const goal=goalFor(scope,repId,type),target=Number(goal?.monthly_target||0),got=Number(achieved||0),remaining=Math.max(0,target-got),pct=target>0?Math.round(got/target*100):0,bar=Math.min(100,pct);
+ const value=v=>isMoney?money(v):fmt(v);
+ return `<div class="goal-v2-metric clickable-goal" data-goal-kind="${type}" data-goal-scope="${scope==='company'?'company':repId}">
+   <div class="goal-v2-top"><b>${esc(label)}</b><span class="goal-v2-pct">${target>0?pct+'%':(lang==='ar'?'غير محدد':'Not set')}</span></div>
+   <div class="goal-v2-values"><div><span>${lang==='ar'?'المحقق':'Achieved'}</span><strong>${value(got)}</strong></div><div><span>${lang==='ar'?'الهدف':'Target'}</span><strong>${target>0?value(target):'-'}</strong></div><div><span>${lang==='ar'?'المتبقي':'Remaining'}</span><strong>${target>0?value(remaining):'-'}</strong></div></div>
+   <div class="goal-v2-track"><i style="width:${bar}%"></i></div>
+ </div>`;
+}
 function renderGoalScope(scope,repId,label){
- const ac=scopeAchievements(scope,repId),scopeKey=scope==='company'?'company':repId;
- return `<div class="goal-scope"><h4>${esc(label)}</h4><div class="goal-grid">
-   <div class="goal-card clickable-goal" data-goal-kind="total_sales" data-goal-scope="${scopeKey}"><b>${t('totalSalesGoal')}</b>${goalProgress(goalFor(scope,repId,'total_sales'),ac.totalSales,true)}</div>
-   <div class="goal-card clickable-goal" data-goal-kind="new_customers" data-goal-scope="${scopeKey}"><b>${t('newCustomers')}</b>${goalProgress(goalFor(scope,repId,'new_customers'),ac.newCustomers,false)}</div>
-   <div class="goal-card clickable-goal" data-goal-kind="active_new_customers" data-goal-scope="${scopeKey}"><b>${t('activeNewCustomers')}</b>${goalProgress(goalFor(scope,repId,'active_new_customers'),ac.activeNewCustomers,false)}</div>
+ const ac=scopeAchievements(scope,repId);
+ return `<div class="goal-v2-scope ${scope==='company'?'goal-v2-company':''}"><div class="goal-v2-scope-head"><div><h4>${esc(label)}</h4><span>${lang==='ar'?'نتيجة الشهر الحالي حتى الآن':'Current-month result so far'}</span></div></div><div class="goal-v2-grid">
+   ${goalMetricView(scope,repId,'total_sales',ac.totalSales,t('totalSalesGoal'),true)}
+   ${goalMetricView(scope,repId,'new_customers',ac.newCustomers,t('newCustomers'),false)}
+   ${goalMetricView(scope,repId,'active_new_customers',ac.activeNewCustomers,t('activeNewCustomers'),false)}
  </div></div>`;
+}
+function compactGoalRow(scope,repId,type,got,label,isMoney){
+ const target=Number(goalFor(scope,repId,type)?.monthly_target||0),pct=target>0?Math.round(Number(got||0)/target*100):0,show=v=>isMoney?money(v):fmt(v);
+ return `<div class="goal-mini-row"><div><span>${esc(label)}</span><b>${show(got)} <small>/ ${target>0?show(target):'-'}</small></b></div><div class="goal-mini-track"><i style="width:${Math.min(100,pct)}%"></i></div><em>${target>0?pct+'%':'-'}</em></div>`;
+}
+function renderRepGoalCompact(p){
+ const ac=scopeAchievements('rep',p.id);
+ return `<div class="goal-rep-card"><div class="goal-rep-name">${esc(p.full_name)}</div>
+   ${compactGoalRow('rep',p.id,'total_sales',ac.totalSales,t('sales'),true)}
+   ${compactGoalRow('rep',p.id,'new_customers',ac.newCustomers,t('newCustomers'),false)}
+   ${compactGoalRow('rep',p.id,'active_new_customers',ac.activeNewCustomers,t('activeNewCustomers'),false)}
+ </div>`;
 }
 function renderGoalsDashboard(){
  const box=$('goalsDashboard');if(!box)return;
  if(isAdmin()){
-   let html=renderGoalScope('company',null,t('company'));
-   for(const p of state.profiles.filter(x=>x.role==='rep'))html+=renderGoalScope('rep',p.id,p.full_name);
-   box.innerHTML=html;
+   const reps=state.profiles.filter(x=>x.role==='rep');
+   box.innerHTML=renderGoalScope('company',null,lang==='ar'?'هدف الشركة':'Company Goal')+`<div class="goal-reps-head"><h4>${lang==='ar'?'أهداف المناديب':'Representative Goals'}</h4><span>${lang==='ar'?'المحقق / الهدف / نسبة الإنجاز':'Achieved / target / progress'}</span></div><div class="goal-reps-grid">${reps.map(renderRepGoalCompact).join('')}</div>`;
  }else{
    box.innerHTML=renderGoalScope('rep',state.profile.id,state.profile.full_name);
  }
@@ -893,7 +915,7 @@ $('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});$('mapCustomerList')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-customer]');if(b)focusMapCustomer(Number(b.dataset.mapCustomer));});document.addEventListener('fullscreenchange',()=>{if(state.map&&document.querySelector('#mapPage.section.active'))setTimeout(()=>state.map.invalidateSize(),120);});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});
-$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
+$('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-attention-customer]'))){openCustomer(Number(el.dataset.attentionCustomer));return;}if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
    if(kind==='total_sales'){
      $('salePeriodFilter').value='month';$('saleSearch').value=rep?.full_name||'';gotoPage('sales');renderSales();

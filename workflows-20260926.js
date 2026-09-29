@@ -141,7 +141,7 @@ function injectUi(){
     var q=document.createElement('div');
     q.className='card workload-card';
     q.id='followupQueueCard';
-    q.innerHTML='<div class="workload-collapsed-head" id="followupQueueToggle" role="button" tabindex="0" aria-expanded="false"><div><h3 id="followupQueueTitle"></h3><div class="small" id="followupQueueHint"></div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn workload-collapse-count" id="followupQueueCount">0</span><span class="workload-collapse-arrow">⌄</span></div></div><div id="followupQueueContent" class="workload-collapse-body hidden"><div class="table-wrap followup-desktop-table"><table id="followupQueue"><thead><tr><th id="fqCustomer"></th><th id="fqRep"></th><th id="fqStatus"></th><th id="fqOwner"></th><th id="fqDeadline"></th><th id="fqTiming"></th><th id="fqAction"></th></tr></thead><tbody id="followupQueueBody"></tbody></table></div><div id="followupQueueMobile" class="followup-mobile-list"></div></div>';
+    q.innerHTML='<div class="workload-collapsed-head" id="followupQueueToggle" role="button" tabindex="0" aria-expanded="false"><div><h3 id="followupQueueTitle"></h3><div class="small" id="followupQueueHint"></div></div><div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn workload-collapse-count" id="followupQueueCount">0</span><span class="workload-collapse-arrow">⌄</span></div></div><div id="followupQueueContent" class="workload-collapse-body hidden"><div class="toolbar" id="followupRepFilterWrap"><select id="followupRepFilter"><option value=""></option></select></div><div class="table-wrap followup-desktop-table"><table id="followupQueue"><thead><tr><th id="fqCustomer"></th><th id="fqRep"></th><th id="fqStatus"></th><th id="fqOwner"></th><th id="fqDeadline"></th><th id="fqTiming"></th><th id="fqAction"></th></tr></thead><tbody id="followupQueueBody"></tbody></table></div><div id="followupQueueMobile" class="followup-mobile-list"></div></div>';
     reports.insertBefore(q,reports.firstChild);
   }
 
@@ -160,6 +160,16 @@ function injectUi(){
 function setText(id,value){
   var x=byId(id);if(x)x.textContent=value;
 }
+function refreshFollowupRepFilter(){
+  var el=byId('followupRepFilter'),wrap=byId('followupRepFilterWrap');if(!el)return;
+  if(wrap)wrap.classList.toggle('hidden',!isManagement());
+  if(!isManagement())return;
+  var selected=el.value;
+  var reps=app.state.profiles.filter(function(p){return p.role==='rep';});
+  el.innerHTML='<option value="">'+tx('كل المندوبين','All Representatives')+'</option>'+
+    reps.map(function(p){return '<option value="'+e(p.id)+'">'+e(p.full_name)+'</option>';}).join('');
+  if(reps.some(function(p){return p.id===selected;}))el.value=selected;
+}
 function renderLabels(){
   if(TASKS_ENABLED)setText('tasksNavBtn',tx('المهام','Tasks'));
   if(byId('tasks')&&byId('tasks').classList.contains('active'))setText('pageTitle',tx('المهام','Tasks'));
@@ -177,6 +187,7 @@ function renderLabels(){
   setText('taskCompletedLabel',tx('مكتملة هذا الشهر','Completed this month'));
   setText('followupQueueTitle',tx('المتابعات المطلوبة','Required follow-ups'));
   setText('followupQueueHint',tx('اضغط لفتح قائمة العملاء','Tap to open customer list'));
+  refreshFollowupRepFilter();
   setText('fqCustomer',tx('العميل','Customer'));
   setText('fqRep',tx('المندوب','Representative'));
   setText('fqStatus',tx('الحالة','Status'));
@@ -229,7 +240,7 @@ function followupAction(row,mini){
 }
 
 function renderFollowups(){
-  var rows=followupRows(),body=byId('followupQueueBody');
+  var allRows=followupRows(),repFilter=byId('followupRepFilter')?byId('followupRepFilter').value:'',rows=allRows.filter(function(x){return !repFilter||x.customer.assigned_rep===repFilter;}),body=byId('followupQueueBody');
   setText('followupQueueCount',String(rows.length));
   if(body){
     body.innerHTML=rows.length?rows.map(function(x){
@@ -247,14 +258,14 @@ function renderFollowups(){
   }
 
   var n=nowMs(),td=today();
-  var repRows=rows.filter(function(x){return x.fs.owner_mode==='rep';});
+  var repRows=allRows.filter(function(x){return x.fs.owner_mode==='rep';});
   var overdue=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)<n;});
   var dueToday=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)>=n&&dateKey(x.fs.next_due_at)===td;});
-  var waiting=rows.filter(function(x){return x.fs.owner_mode==='management';});
+  var waiting=allRows.filter(function(x){return x.fs.owner_mode==='management';});
   setText('followTodayCount',String(dueToday.length));
   setText('followOverdueCount',String(overdue.length));
   setText('followManagementCount',String(waiting.length));
-  setText('followRequiredCount',String(rows.length));
+  setText('followRequiredCount',String(allRows.length));
 
   var upcoming=repRows.filter(function(x){return deadlineMs(x.fs.next_due_at)>=n&&dateKey(x.fs.next_due_at)!==td;});
   var preview=overdue.concat(waiting).concat(dueToday).concat(upcoming);
@@ -525,6 +536,7 @@ function bindEvents(){
   });
   document.addEventListener('change',function(ev){
     if(ev.target&&ev.target.id==='taskStatusFilter')renderTasks();
+    if(ev.target&&ev.target.id==='followupRepFilter')renderFollowups();
   });
 }
 

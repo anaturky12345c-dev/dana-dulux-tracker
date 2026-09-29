@@ -142,7 +142,7 @@ function applyLanguage(){
 
  const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot blue"></i>${t('agreed_pending')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span class="map-type-legend">🏪 ${t('shop')}</span><span class="map-type-legend">🏭 ${t('factory')}</span><span class="map-type-legend">🏗 ${t('project')}</span>`;
 
- const at=$('analyticsType');if(at){const labs={sales:lang==='ar'?'المبيعات والسحوبات':'Sales / Withdrawals',reps:t('repPerformance'),customers:lang==='ar'?'حركة العملاء':'Customer Activity',followups:t('followups'),goals:lang==='ar'?'أداء الأهداف':'Goal Performance',executive:lang==='ar'?'التقرير الإداري الشامل':'Management Summary'};for(const o of at.options)o.text=labs[o.value]||o.value;}
+ const at=$('analyticsType');if(at){const labs={'':lang==='ar'?'اختر نوع التقرير...':'Choose report type...',executive:lang==='ar'?'لوحة الإدارة التنفيذية':'Executive Management',sales:lang==='ar'?'تحليل المبيعات':'Sales Intelligence',products:lang==='ar'?'أداء المنتجات':'Product Performance',reps:lang==='ar'?'أداء المناديب':'Representative Performance',customers:lang==='ar'?'حركة وتحويل العملاء':'Customer Movement & Conversion',followups:lang==='ar'?'فعالية المتابعات':'Follow-up Effectiveness',goals:lang==='ar'?'أداء الأهداف':'Goal Performance'};for(const o of at.options)o.text=labs[o.value]||o.value;}
  const labels=document.querySelectorAll('#analytics label');const al=[t('reportType'),t('representative'),t('from'),t('to')];al.forEach((x,i)=>{if(labels[i])labels[i].textContent=x;});if($('generateReportBtn'))$('generateReportBtn').textContent=t('generateReport');if($('printReportBtn'))$('printReportBtn').textContent=t('printPdf');
  const empty=$('printableReport')?.querySelector('.empty');if(empty&&!state.profile)empty.textContent=lang==='ar'?'حدد نوع التقرير والفترة ثم اضغط عرض التقرير.':'Select a report type and date range, then generate the report.';
 
@@ -479,25 +479,132 @@ function renderReports(){
 }
 function reportRange(){return {from:$('analyticsFrom').value,to:$('analyticsTo').value,rep:$('analyticsRep').value,type:$('analyticsType').value};}
 function inRange(d,x,y){const v=String(d||'').slice(0,10);return (!x||v>=x)&&(!y||v<=y);}
+function reportCard(label,value,note){
+ return '<div class="report-kpi"><span>'+esc(label)+'</span><strong>'+value+'</strong>'+(note?'<small>'+esc(note)+'</small>':'')+'</div>';
+}
+function reportBars(items,moneyMode){
+ if(!items.length)return '<div class="empty">'+t('noData')+'</div>';
+ const max=Math.max.apply(null,items.map(function(x){return Number(x.value||0)}).concat([0]));
+ return '<div class="report-bars">'+items.map(function(x){const v=Number(x.value||0),pct=max>0?Math.max(3,Math.round(v/max*100)):0;return '<div class="report-bar-row"><div class="report-bar-label"><span>'+esc(x.label)+'</span><b>'+(moneyMode?money(v):fmt(v))+'</b></div><div class="report-bar-track"><i style="width:'+pct+'%"></i></div>'+(x.note?'<small>'+esc(x.note)+'</small>':'')+'</div>'}).join('')+'</div>';
+}
+function reportTable(headers,rows){
+ return '<div class="table-wrap report-table"><table><thead><tr>'+headers.map(function(h){return '<th>'+esc(h)+'</th>'}).join('')+'</tr></thead><tbody>'+(rows.length?rows.map(function(r){return '<tr>'+r.map(function(v){return '<td>'+v+'</td>'}).join('')+'</tr>'}).join(''):'<tr><td colspan="'+headers.length+'" class="empty">'+t('noData')+'</td></tr>')+'</tbody></table></div>';
+}
+function reportSection(title,content){
+ return '<section class="report-section"><div class="report-section-head"><h3>'+esc(title)+'</h3></div>'+content+'</section>';
+}
+function salesSum(rows){return rows.reduce(function(z,x){return z+Number(x.amount||0)},0)}
+function productAnalytics(rows){
+ return PRODUCT_KEYS.map(function(k){const ss=rows.filter(function(x){return x.product===k});return {label:productLabel(k),value:salesSum(ss),orders:ss.length,customers:new Set(ss.map(function(x){return x.customer_id})).size}}).filter(function(x){return x.orders>0}).sort(function(a,b){return b.value-a.value});
+}
+function customerAnalytics(rows){
+ const map=new Map();
+ rows.forEach(function(x){const id=Number(x.customer_id),cur=map.get(id)||{id:id,name:x.customer&&x.customer.name||'-',value:0,orders:0};cur.value+=Number(x.amount||0);cur.orders++;map.set(id,cur)});
+ return Array.from(map.values()).sort(function(a,b){return b.value-a.value});
+}
+function renderManagementReport(title,from,to,repName,kpis,body,headline){
+ $('printableReport').innerHTML='<div class="report-letterhead"><div><span class="report-brand">'+(lang==='ar'?'شركة دانة التاج التجارية':'Dana Al-Taj Trading Company')+'</span><h1>'+esc(title)+'</h1></div><div class="report-period"><b>'+dateOnly(from)+' — '+dateOnly(to)+'</b><span>'+(lang==='ar'?'النطاق':'Scope')+': '+esc(repName)+'</span></div></div>'+(headline?'<div class="report-headline">'+headline+'</div>':'')+'<div class="report-kpi-grid">'+kpis.join('')+'</div><div class="report-body-v2">'+body+'</div><div class="report-footer">'+(lang==='ar'?'تاريخ إعداد التقرير':'Report date')+': '+dateOnly(todayRiyadh())+'</div>';
+}
 function generateAnalytics(){
- const {from,to,rep,type}=reportRange();if(!from||!to)return flash(lang==='ar'?'حدد تاريخ البداية والنهاية':'Select start and end dates',true);if(from>to)return flash(lang==='ar'?'تاريخ البداية يجب أن يكون قبل النهاية':'Start date must be before end date',true);
- const repName=rep?(state.profiles.find(p=>p.id===rep)?.full_name||''):t('allReps'),sales=state.sales.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)),rs=state.reports.filter(x=>inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)),customers=state.customers.filter(c=>!rep||c.assigned_rep===rep),salesTotal=sales.reduce((z,x)=>z+Number(x.amount||0),0);
- let title='',summary='',body='';
- if(type==='sales'){title=lang==='ar'?'تقرير المبيعات والسحوبات':'Sales / Withdrawals Report';summary=`${lang==='ar'?'إجمالي السحوبات':'Total sales'}: <b>${money(salesTotal)}</b> — ${lang==='ar'?'العدد':'Count'}: <b>${sales.length}</b>`;body='<table><thead><tr><th>'+t('date')+'</th><th>'+t('customer')+'</th><th>'+t('product')+'</th><th>'+t('quantity')+'</th><th>'+t('value')+'</th><th>'+t('representative')+'</th></tr></thead><tbody>'+sales.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(productLabel(x.product))}</td><td>${fmt(x.quantity)}</td><td>${money(x.amount)}</td><td>${esc(x.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';}
- else if(type==='followups'){title=lang==='ar'?'تقرير متابعة العملاء':'Customer Follow-up Report';summary=`${lang==='ar'?'عدد المتابعات':'Follow-ups'}: <b>${rs.length}</b>`;body='<table><thead><tr><th>'+t('date')+'</th><th>'+t('customer')+'</th><th>'+t('representative')+'</th><th>'+t('action')+'</th><th>'+t('previousStatus')+'</th><th>'+t('newStatus')+'</th><th>'+t('reason')+'</th></tr></thead><tbody>'+rs.map(x=>`<tr><td>${dateOnly(x.business_date)}</td><td>${esc(x.customer?.name||'-')}</td><td>${esc(x.rep?.full_name||'-')}</td><td>${esc(actionLabel(x.action_code))}</td><td>${x.old_status?esc(statusLabel(x.old_status)):'-'}</td><td>${x.new_status?esc(statusLabel(x.new_status)):'-'}</td><td>${esc(x.note)}</td></tr>`).join('')+'</tbody></table>';}
- else if(type==='customers'){title=lang==='ar'?'تقرير حركة العملاء':'Customer Activity Report';const created=customers.filter(c=>inRange(c.created_at,from,to));summary=`${t('newCustomers')}: <b>${created.length}</b> — ${t('totalCustomers')}: <b>${customers.length}</b>`;body='<table><thead><tr><th>'+t('customer')+'</th><th>'+t('area')+'</th><th>'+t('status')+'</th><th>'+t('representative')+'</th><th>'+t('sales')+'</th></tr></thead><tbody>'+customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return `<tr><td>${esc(c.name)}</td><td>${esc(c.area||'-')}</td><td>${esc(statusLabel(c.status))}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td></tr>`}).join('')+'</tbody></table>';}
- else if(type==='reps'){title=lang==='ar'?'تقرير أداء المندوبين':'Representative Performance Report';const reps=state.profiles.filter(p=>p.role==='rep'&&(!rep||p.id===rep));summary=lang==='ar'?'أداء المندوبين خلال الفترة المحددة.':'Representative performance for the selected period.';body='<table><thead><tr><th>'+t('representative')+'</th><th>'+t('customers')+'</th><th>'+t('newCustomers')+'</th><th>'+t('sales')+'</th><th>'+t('followups')+'</th></tr></thead><tbody>'+reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=sales.filter(x=>x.rep_id===p.id),rr=rs.filter(x=>x.rep_id===p.id),nc=cs.filter(c=>inRange(c.created_at,from,to)).length;return `<tr><td>${esc(p.full_name)}</td><td>${cs.length}</td><td>${nc}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table>';}
- else if(type==='goals'){
-   title=lang==='ar'?'تقرير أداء الأهداف':'Goal Performance Report';
-   const scope=rep?'rep':'company',repId=rep||null;
-   const newCustomers=customers.filter(c=>inRange(c.created_at,from,to));
-   const activeNew=newCustomers.filter(c=>c.status==='active');
-   summary=`${t('sales')}: <b>${money(salesTotal)}</b> — ${t('newCustomers')}: <b>${newCustomers.length}</b> — ${t('activeNewCustomers')}: <b>${activeNew.length}</b>`;
-   body='<table><thead><tr><th>'+t('goal')+'</th><th>'+t('goal')+'</th><th>'+t('achieved')+'</th><th>'+t('remaining')+'</th></tr></thead><tbody>'+
-     [['total_sales',t('totalSalesGoal'),salesTotal,true],['new_customers',t('newCustomers'),newCustomers.length,false],['active_new_customers',t('activeNewCustomers'),activeNew.length,false]].map(([k,label,got,isMoney])=>{const target=Number(goalFor(scope,repId,k)?.monthly_target||0),rem=Math.max(0,target-Number(got));return `<tr><td>${esc(label)}</td><td>${isMoney?money(target):fmt(target)}</td><td>${isMoney?money(got):fmt(got)}</td><td>${isMoney?money(rem):fmt(rem)}</td></tr>`}).join('')+'</tbody></table>';
+ const range=reportRange(),from=range.from,to=range.to,rep=range.rep,type=range.type;
+ if(!type)return flash(lang==='ar'?'اختر نوع التقرير':'Choose a report type',true);
+ if(!from||!to)return flash(lang==='ar'?'حدد تاريخ البداية والنهاية':'Select start and end dates',true);
+ if(from>to)return flash(lang==='ar'?'تاريخ البداية يجب أن يكون قبل النهاية':'Start date must be before end date',true);
+
+ const repName=rep?(state.profiles.find(function(p){return p.id===rep})||{}).full_name||'':t('allReps');
+ const sales=state.sales.filter(function(x){return inRange(x.business_date,from,to)&&(!rep||x.rep_id===rep)});
+ const reports=state.reports.filter(function(x){return inRange(x.business_date||dateKeyRiyadh(x.created_at),from,to)&&(!rep||x.rep_id===rep)});
+ const customers=state.customers.filter(function(c){return !rep||c.assigned_rep===rep});
+ const newCustomers=customers.filter(function(c){return inRange(dateKeyRiyadh(c.created_at),from,to)});
+ const total=salesSum(sales),orders=sales.length,avg=orders?total/orders:0;
+ const productRows=productAnalytics(sales),customerRows=customerAnalytics(sales);
+ const uniqueBuyers=new Set(sales.map(function(x){return Number(x.customer_id)})).size;
+ const repeatBuyers=customerRows.filter(function(x){return x.orders>=2}).length;
+ const activeNew=newCustomers.filter(function(c){return c.status==='active'}).length;
+ const attention=reports.filter(function(r){return r.action_code==='admin_intervention'});
+ const agreements=reports.filter(function(r){return r.action_code==='customer_agreed'});
+ const repRows=state.profiles.filter(function(p){return p.role==='rep'&&(!rep||p.id===rep)}).map(function(p){
+   const ss=sales.filter(function(x){return x.rep_id===p.id}),rr=reports.filter(function(x){return x.rep_id===p.id}),cs=state.customers.filter(function(c){return c.assigned_rep===p.id}),nc=cs.filter(function(c){return inRange(dateKeyRiyadh(c.created_at),from,to)});
+   return {name:p.full_name,value:salesSum(ss),orders:ss.length,followups:rr.length,newCustomers:nc.length,agreements:rr.filter(function(x){return x.action_code==='customer_agreed'}).length,active:cs.filter(function(c){return c.status==='active'}).length};
+ }).sort(function(a,b){return b.value-a.value});
+
+ if(type==='executive'){
+   const kpis=[
+     reportCard(lang==='ar'?'إجمالي السحوبات':'Total Sales',money(total),lang==='ar'?'خلال الفترة المحددة':'Selected period'),
+     reportCard(lang==='ar'?'عدد الطلبيات':'Orders',fmt(orders),(lang==='ar'?'متوسط ':'Average ')+money(avg)),
+     reportCard(lang==='ar'?'عملاء سحبوا':'Buying Customers',fmt(uniqueBuyers),(lang==='ar'?'كرر السحب ':'Repeat buyers ')+repeatBuyers),
+     reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length),(lang==='ar'?'نشط منهم ':'Active ')+activeNew),
+     reportCard(lang==='ar'?'المتابعات':'Follow-ups',fmt(reports.length),(lang==='ar'?'اتفاقات ':'Agreements ')+agreements.length),
+     reportCard(lang==='ar'?'تدخل الإدارة':'Management Cases',fmt(attention.length),lang==='ar'?'تحتاج مراجعة':'Needs review')
+   ];
+   const insights='<div class="report-insight-strip">'+
+     '<div>'+(productRows[0]?(lang==='ar'?'أعلى منتج بالقيمة: ':'Top product: ')+'<b>'+esc(productRows[0].label)+'</b> — '+money(productRows[0].value):(lang==='ar'?'لا توجد سحوبات منتجات.':'No product sales.'))+'</div>'+
+     '<div>'+(customerRows[0]?(lang==='ar'?'أعلى عميل سحباً: ':'Top customer: ')+'<b>'+esc(customerRows[0].name)+'</b> — '+money(customerRows[0].value):(lang==='ar'?'لا توجد سحوبات عملاء.':'No customer sales.'))+'</div>'+
+     '<div>'+(lang==='ar'?'عملاء كرروا السحب: ':'Repeat buyers: ')+'<b>'+repeatBuyers+'</b></div>'+
+     '<div>'+(lang==='ar'?'حالات تدخل الإدارة: ':'Management cases: ')+'<b>'+attention.length+'</b></div></div>';
+   const prod=reportBars(productRows.map(function(x){return {label:x.label,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')}}),true);
+   const reps=reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.followups+' '+(lang==='ar'?'متابعة':'follow-ups')}}),true);
+   const top=reportTable([t('customer'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('representative')],customerRows.slice(0,10).map(function(x){const c=customers.find(function(z){return Number(z.id)===x.id});return [esc(x.name),money(x.value),fmt(x.orders),esc(c&&c.rep&&c.rep.full_name||'-')]}));
+   const att=attention.length?'<div class="report-attention-list">'+attention.slice(0,8).map(function(r){return '<div><b>'+esc(r.customer&&r.customer.name||'-')+'</b><span>'+esc(r.note)+'</span><small>'+esc(r.rep&&r.rep.full_name||'-')+' — '+dateOnly(r.business_date||dateKeyRiyadh(r.created_at))+'</small></div>'}).join('')+'</div>':'<div class="report-good-note">'+(lang==='ar'?'لا توجد حالات تدخل إدارة مسجلة في الفترة.':'No management cases recorded in this period.')+'</div>';
+   renderManagementReport(lang==='ar'?'لوحة الإدارة التنفيذية':'Executive Management Report',from,to,repName,kpis,insights+'<div class="report-two-col">'+reportSection(lang==='ar'?'مزيج المنتجات':'Product Mix',prod)+reportSection(lang==='ar'?'حركة المناديب':'Representative Sales',reps)+'</div>'+reportSection(lang==='ar'?'أعلى العملاء سحباً':'Top Customers',top)+reportSection(lang==='ar'?'حالات تحتاج تدخل الإدارة':'Management Intervention',att),lang==='ar'?'هذا التقرير يجمع أهم الأرقام التي تحتاجها الإدارة لاتخاذ قرار سريع.':'A management view of the numbers that matter for quick decisions.');
+   return;
  }
- else{title=lang==='ar'?'التقرير الإداري الشامل':'Management Summary';summary=`${t('sales')}: <b>${money(salesTotal)}</b> — ${t('newCustomers')}: <b>${customers.filter(c=>inRange(c.created_at,from,to)).length}</b> — ${t('followups')}: <b>${rs.length}</b>`;const top=customers.map(c=>{const ss=sales.filter(x=>Number(x.customer_id)===Number(c.id));return {c,v:ss.reduce((z,x)=>z+Number(x.amount||0),0)};}).filter(x=>x.v>0).sort((x,y)=>y.v-x.v).slice(0,20);body='<table><thead><tr><th>'+t('customer')+'</th><th>'+t('value')+'</th><th>'+t('status')+'</th><th>'+t('representative')+'</th></tr></thead><tbody>'+top.map(x=>`<tr><td>${esc(x.c.name)}</td><td>${money(x.v)}</td><td>${esc(statusLabel(x.c.status))}</td><td>${esc(x.c.rep?.full_name||'-')}</td></tr>`).join('')+'</tbody></table>';}
- $('printableReport').innerHTML=`<div class="report-letterhead"><h2>${lang==='ar'?'شركة دانة التاج التجارية':'Dana Al-Taj Trading Company'}</h2><h1>${title}</h1><div>${t('from')}: ${dateOnly(from)} — ${t('to')}: ${dateOnly(to)} — ${t('representative')}: ${esc(repName)}</div></div><div class="report-summary">${summary}</div><div class="report-body">${body||`<div class="empty">${t('noData')}</div>`}</div><div class="report-footer">${lang==='ar'?'تاريخ إعداد التقرير':'Report date'}: ${dateOnly(todayRiyadh())}</div>`;
+
+ if(type==='sales'){
+   const dayMap=new Map();sales.forEach(function(x){const d=String(x.business_date||'');dayMap.set(d,(dayMap.get(d)||0)+Number(x.amount||0))});
+   const daily=Array.from(dayMap.entries()).sort(function(a,b){return a[0].localeCompare(b[0])}).map(function(x){return {label:dateOnly(x[0]),value:x[1]}});
+   const kpis=[reportCard(lang==='ar'?'إجمالي السحوبات':'Total Sales',money(total)),reportCard(lang==='ar'?'عدد الطلبيات':'Orders',fmt(orders)),reportCard(lang==='ar'?'متوسط الطلبية':'Average Order',money(avg)),reportCard(lang==='ar'?'عملاء سحبوا':'Buying Customers',fmt(uniqueBuyers)),reportCard(lang==='ar'?'كرروا السحب':'Repeat Buyers',fmt(repeatBuyers)),reportCard(lang==='ar'?'أعلى منتج':'Top Product',productRows[0]?esc(productRows[0].label):'-')];
+   const prodTable=reportTable([t('product'),lang==='ar'?'القيمة':'Value',lang==='ar'?'الطلبيات':'Orders',lang==='ar'?'العملاء':'Customers',lang==='ar'?'متوسط الطلبية':'Average'],productRows.map(function(x){return [esc(x.label),money(x.value),fmt(x.orders),fmt(x.customers),money(x.orders?x.value/x.orders:0)]}));
+   const custTable=reportTable([t('customer'),lang==='ar'?'القيمة':'Value',lang==='ar'?'الطلبيات':'Orders'],customerRows.slice(0,12).map(function(x){return [esc(x.name),money(x.value),fmt(x.orders)]}));
+   renderManagementReport(lang==='ar'?'تحليل المبيعات والسحوبات':'Sales Intelligence Report',from,to,repName,kpis,'<div class="report-two-col">'+reportSection(lang==='ar'?'المبيعات حسب اليوم':'Sales by Day',reportBars(daily,true))+reportSection(lang==='ar'?'المبيعات حسب المنتج':'Sales by Product',reportBars(productRows,true))+'</div>'+reportSection(lang==='ar'?'تفصيل المنتجات':'Product Detail',prodTable)+reportSection(lang==='ar'?'أعلى العملاء':'Top Customers',custTable),'');
+   return;
+ }
+
+ if(type==='products'){
+   const kpis=[reportCard(lang==='ar'?'إجمالي المبيعات':'Total Sales',money(total)),reportCard(lang==='ar'?'المنتجات المتحركة':'Products Sold',fmt(productRows.length)),reportCard(lang==='ar'?'عدد الطلبيات':'Orders',fmt(orders)),reportCard(lang==='ar'?'عملاء اشتروا':'Customers',fmt(uniqueBuyers)),reportCard(lang==='ar'?'أعلى منتج':'Top Product',productRows[0]?esc(productRows[0].label):'-'),reportCard(lang==='ar'?'متوسط الطلبية':'Average Order',money(avg))];
+   const table=reportTable([t('product'),lang==='ar'?'القيمة':'Value',lang==='ar'?'الطلبيات':'Orders',lang==='ar'?'العملاء':'Customers',lang==='ar'?'الحصة':'Share'],productRows.map(function(x){return [esc(x.label),money(x.value),fmt(x.orders),fmt(x.customers),total?Math.round(x.value/total*100)+'%':'0%']}));
+   renderManagementReport(lang==='ar'?'تقرير أداء المنتجات':'Product Performance Report',from,to,repName,kpis,reportSection(lang==='ar'?'حصة المنتجات':'Product Share',reportBars(productRows.map(function(x){return {label:x.label,value:x.value,note:total?Math.round(x.value/total*100)+'%':'0%'}}),true))+reportSection(lang==='ar'?'التفصيل':'Detail',table),'');
+   return;
+ }
+
+ if(type==='reps'){
+   const kpis=[reportCard(lang==='ar'?'إجمالي السحوبات':'Total Sales',money(total)),reportCard(lang==='ar'?'عدد المندوبين':'Representatives',fmt(repRows.length)),reportCard(lang==='ar'?'الطلبيات':'Orders',fmt(orders)),reportCard(lang==='ar'?'المتابعات':'Follow-ups',fmt(reports.length)),reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length)),reportCard(lang==='ar'?'متوسط الطلبية':'Average Order',money(avg))];
+   const table=reportTable([t('representative'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('newCustomers'),t('followups'),lang==='ar'?'اتفاقات':'Agreements',t('activeCustomers')],repRows.map(function(x){return [esc(x.name),money(x.value),fmt(x.orders),fmt(x.newCustomers),fmt(x.followups),fmt(x.agreements),fmt(x.active)]}));
+   renderManagementReport(lang==='ar'?'تقرير أداء المناديب':'Representative Performance Report',from,to,repName,kpis,reportSection(lang==='ar'?'المبيعات حسب المندوب':'Sales by Representative',reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.followups+' '+(lang==='ar'?'متابعة':'follow-ups')}}),true))+reportSection(lang==='ar'?'التفاصيل الرقمية':'Detailed Metrics',table),'');
+   return;
+ }
+
+ if(type==='customers'){
+   const statusRows=['active','agreed_pending','hesitant','rejected'].map(function(k){return {label:statusLabel(k),value:customers.filter(function(c){return c.status===k}).length}}).filter(function(x){return x.value>0});
+   const conversion=newCustomers.length?Math.round(activeNew/newCustomers.length*100):0;
+   const kpis=[reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length)),reportCard(lang==='ar'?'الجدد النشطون':'New Active',fmt(activeNew),conversion+'%'),reportCard(lang==='ar'?'عملاء سحبوا':'Buying Customers',fmt(uniqueBuyers)),reportCard(lang==='ar'?'كرروا السحب':'Repeat Buyers',fmt(repeatBuyers)),reportCard(lang==='ar'?'إجمالي العملاء':'Customers in Scope',fmt(customers.length)),reportCard(lang==='ar'?'قيمة سحوباتهم':'Customer Sales',money(total))];
+   const table=reportTable([t('customer'),t('area'),t('status'),t('representative'),lang==='ar'?'سحوبات الفترة':'Period Sales'],newCustomers.map(function(c){const x=customerRows.find(function(r){return r.id===Number(c.id)});return [esc(c.name),esc(c.area||'-'),esc(statusLabel(c.status)),esc(c.rep&&c.rep.full_name||'-'),x?money(x.value):money(0)]}));
+   renderManagementReport(lang==='ar'?'تقرير حركة وتحويل العملاء':'Customer Movement & Conversion',from,to,repName,kpis,'<div class="report-two-col">'+reportSection(lang==='ar'?'توزيع الحالات الحالية':'Current Status Mix',reportBars(statusRows,false))+reportSection(lang==='ar'?'أعلى العملاء سحباً':'Top Buying Customers',reportBars(customerRows.slice(0,8),true))+'</div>'+reportSection(lang==='ar'?'العملاء المضافون خلال الفترة':'Customers Added in Period',table),'');
+   return;
+ }
+
+ if(type==='followups'){
+   const actionKeys=Array.from(new Set(reports.map(function(x){return x.action_code}).filter(Boolean)));
+   const actionRows=actionKeys.map(function(k){return {label:actionLabel(k),value:reports.filter(function(x){return x.action_code===k}).length}}).sort(function(a,b){return b.value-a.value});
+   const uniqueFollowed=new Set(reports.map(function(x){return Number(x.customer_id)})).size;
+   const statusChanges=reports.filter(function(x){return x.new_status&&x.new_status!==x.old_status}).length;
+   const kpis=[reportCard(lang==='ar'?'إجمالي المتابعات':'Follow-ups',fmt(reports.length)),reportCard(lang==='ar'?'عملاء تمت متابعتهم':'Customers Followed',fmt(uniqueFollowed)),reportCard(lang==='ar'?'اتفاقات':'Agreements',fmt(agreements.length)),reportCard(lang==='ar'?'تغييرات حالة':'Status Changes',fmt(statusChanges)),reportCard(lang==='ar'?'تدخل الإدارة':'Management Cases',fmt(attention.length)),reportCard(lang==='ar'?'متوسط المتابعات/عميل':'Avg Follow-ups/Customer',uniqueFollowed?fmt(reports.length/uniqueFollowed):'0')];
+   const latest=reports.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)}).slice(0,20).map(function(x){return [dateOnly(x.business_date||dateKeyRiyadh(x.created_at)),esc(x.customer&&x.customer.name||'-'),esc(x.rep&&x.rep.full_name||'-'),esc(actionLabel(x.action_code)||'-'),x.new_status?esc(statusLabel(x.new_status)):'-',esc(x.note)]});
+   renderManagementReport(lang==='ar'?'تقرير فعالية المتابعات':'Follow-up Effectiveness Report',from,to,repName,kpis,reportSection(lang==='ar'?'أنواع إجراءات المتابعة':'Follow-up Actions',reportBars(actionRows,false))+reportSection(lang==='ar'?'أحدث المتابعات':'Latest Follow-ups',reportTable([t('date'),t('customer'),t('representative'),t('action'),t('newStatus'),t('reason')],latest)),'');
+   return;
+ }
+
+ if(type==='goals'){
+   const scope=rep?'rep':'company',repId=rep||null;
+   const data=[
+    {key:'total_sales',label:t('totalSalesGoal'),got:total,m:true},
+    {key:'new_customers',label:t('newCustomers'),got:newCustomers.length,m:false},
+    {key:'active_new_customers',label:t('activeNewCustomers'),got:activeNew,m:false}
+   ].map(function(x){const target=Number(goalFor(scope,repId,x.key)&&goalFor(scope,repId,x.key).monthly_target||0),pct=target?Math.round(x.got/target*100):0;return {label:x.label,got:x.got,target:target,pct:pct,m:x.m}});
+   const kpis=data.map(function(x){return reportCard(x.label,x.m?money(x.got):fmt(x.got),x.target?x.pct+'% '+(lang==='ar'?'من الهدف':'of target'):(lang==='ar'?'الهدف غير محدد':'Target not set'))});
+   const bars=data.map(function(x){return {label:x.label,value:x.pct,note:(lang==='ar'?'المحقق ':'Achieved ')+(x.m?money(x.got):fmt(x.got))+' / '+(x.target?(x.m?money(x.target):fmt(x.target)):'-')}});
+   renderManagementReport(lang==='ar'?'تقرير أداء الأهداف':'Goal Performance Report',from,to,repName,kpis,reportSection(lang==='ar'?'نسبة إنجاز الأهداف':'Goal Progress',reportBars(bars,false)),lang==='ar'?'الأهداف شهرية، والإنجاز المعروض محسوب من الفترة المختارة.':'Targets are monthly; displayed achievement uses the selected period.');
+ }
 }
 function setupAnalytics(){const r=$('analyticsRep');if(r)r.innerHTML=`<option value="">${t('allReps')}</option>`+state.profiles.filter(p=>p.role==='rep').map(p=>`<option value="${p.id}">${esc(p.full_name)}</option>`).join('');const to=todayRiyadh(),from=to.slice(0,8)+'01';if($('analyticsFrom')&&!$('analyticsFrom').value)$('analyticsFrom').value=from;if($('analyticsTo')&&!$('analyticsTo').value)$('analyticsTo').value=to;}
 
@@ -910,7 +1017,7 @@ $('loginBtn')?.addEventListener('click',login);$('loginPass')?.addEventListener(
 $('langBtn')?.addEventListener('click',toggleLanguage);$('langBtnLogin')?.addEventListener('click',toggleLanguage);
 document.querySelectorAll('.nav-grid button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='customers'){state.customerMonthOnly=false;$('customerSearch').value='';$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';}if(b.dataset.page==='sales'){$('saleSearch').value='';$('salePeriodFilter').value='all';if($('saleProductFilter'))$('saleProductFilter').value='';if($('saleRepFilter'))$('saleRepFilter').value='';}if(b.dataset.page==='reports'){if($('reportActionFilter'))$('reportActionFilter').value='';if($('reportPeriodFilter'))$('reportPeriodFilter').value='all';}if(b.dataset.page==='audit'){if($('auditPeriodFilter'))$('auditPeriodFilter').value='all';}gotoPage(b.dataset.page);}));
 $('customerSearch')?.addEventListener('input',renderCustomers);$('customerStatusFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerRepFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerPeriodFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('saleSearch')?.addEventListener('input',renderSales);$('salePeriodFilter')?.addEventListener('change',renderSales);$('saleProductFilter')?.addEventListener('change',renderSales);$('saleRepFilter')?.addEventListener('change',renderSales);$('reportActionFilter')?.addEventListener('change',renderReports);$('reportPeriodFilter')?.addEventListener('change',renderReports);$('auditPeriodFilter')?.addEventListener('change',renderAudit);$('mapSearch')?.addEventListener('input',()=>drawMapMarkers(true));$('mapFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapRepFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapTypeFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapFitBtn')?.addEventListener('click',()=>fitMapRows(mapFilteredRows()));$('mapClearBtn')?.addEventListener('click',()=>{if($('mapSearch'))$('mapSearch').value='';if($('mapFilter'))$('mapFilter').value='';if($('mapRepFilter'))$('mapRepFilter').value='';if($('mapTypeFilter'))$('mapTypeFilter').value='';drawMapMarkers(true);});$('mapFullscreenBtn')?.addEventListener('click',async()=>{const el=$('mapExperience');if(!el)return;try{if(!document.fullscreenElement)await el.requestFullscreen();else await document.exitFullscreen();}catch(_){}});
-$('editGoalsBtn')?.addEventListener('click',openGoalsEditor);$('generateReportBtn')?.addEventListener('click',generateAnalytics);$('printReportBtn')?.addEventListener('click',()=>{generateAnalytics();setTimeout(()=>window.print(),50);});
+$('editGoalsBtn')?.addEventListener('click',openGoalsEditor);$('generateReportBtn')?.addEventListener('click',generateAnalytics);$('printReportBtn')?.addEventListener('click',()=>{generateAnalytics();setTimeout(()=>window.print(),50);});$('analytics')?.addEventListener('click',e=>{const b=e.target.closest('[data-report-preset]');if(!b)return;const today=todayRiyadh(),mode=b.dataset.reportPreset;if(mode==='month'){$('analyticsFrom').value=today.slice(0,8)+'01';$('analyticsTo').value=today;}else if(mode==='week'){$('analyticsFrom').value=weekStartRiyadh();$('analyticsTo').value=today;}else if(mode==='30'){const d=new Date(today+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-29);$('analyticsFrom').value=d.toISOString().slice(0,10);$('analyticsTo').value=today;}generateAnalytics();});
 $('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?.addEventListener('click',()=>openSaleForm());$('newReportBtn')?.addEventListener('click',()=>openReportForm());$('changePasswordBtn')?.addEventListener('click',()=>changePassword(false));$('repPasswordAdminBtn')?.addEventListener('click',resetRepresentativePassword);
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});$('mapCustomerList')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-customer]');if(b)focusMapCustomer(Number(b.dataset.mapCustomer));});document.addEventListener('fullscreenchange',()=>{if(state.map&&document.querySelector('#mapPage.section.active'))setTimeout(()=>state.map.invalidateSize(),120);});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});

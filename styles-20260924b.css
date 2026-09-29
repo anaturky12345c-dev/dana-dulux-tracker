@@ -254,3 +254,30 @@ html[dir="ltr"] .flash{left:18px;right:auto}html[dir="rtl"] .flash{right:18px;le
  .map-experience .map-toolbar select{width:100%}
  .map-experience .map-toolbar .search{min-width:100%}
 }
+
+
+/* Manual order date - mobile friendly */
+.sale-date-card{
+  background:#f8fafc;
+  border:1px solid #dbe4ec;
+  border-radius:12px;
+  padding:12px;
+}
+.sale-date-card label{display:block;font-weight:700;margin-bottom:7px}
+.required-star{color:#dc2626}
+.sale-date-input{
+  width:100%;
+  min-height:50px;
+  font-size:17px;
+  font-weight:700;
+  background:#fff;
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  padding:10px 12px;
+}
+.sale-date-hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.55}
+@media(max-width:768px){
+  .sale-date-card{padding:12px 10px}
+  .sale-date-input{min-height:56px;font-size:18px;padding:12px}
+  .sale-date-hint{font-size:12px}
+}

@@ -108,9 +108,11 @@
         <button class="btn" id="newSaleBtn">+ Record Sale / Withdrawal</button>
         <input id="saleSearch" class="search" placeholder="Search customer, product or reference..." />
         <select id="salePeriodFilter"><option value="">All Dates</option><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option></select>
+        <select id="saleProductFilter"><option value="">All Products</option><option value="dulux_emulsion">Dulux Emulsion</option><option value="dulux_oil">Dulux Oil-Based</option><option value="leafs_tinting">Leafs Tinting</option><option value="dulux_polyurethane">Dulux Polyurethane</option></select>
         <select id="saleRepFilter" class="management-only"><option value="">All Representatives</option></select>
       </div>
       <div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Value</th><th>Reference</th><th>Representative</th><th>Actions</th></tr></thead><tbody id="salesBody"></tbody></table></div>
+      <div class="sales-total-bar"><span id="salesTotalLabel">Total displayed sales</span><b id="salesTotalValue">SAR 0</b></div>
     </section>
 
     <section id="reports" class="section">

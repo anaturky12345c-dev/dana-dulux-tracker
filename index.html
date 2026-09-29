@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=20260927-push1" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <link rel="stylesheet" href="./styles-20260924b.css?v=20260929-9" />
+  <link rel="stylesheet" href="./styles-20260924b.css?v=20260929-12" />
 </head>
 <body>
 <div id="login" class="login">
@@ -54,12 +54,22 @@
     </div>
 
     <section id="dashboard" class="section active">
-      <div class="card dashboard-attention management-only dashboard-attention-priority">
-        <div class="dashboard-head attention-head">
-          <div><h3>Management Intervention</h3><div class="small" id="attentionSub"></div></div>
-          <span class="attention-count" id="attentionCount">0</span>
+      <div class="dashboard-priority-grid">
+        <div class="card dashboard-attention management-only dashboard-attention-priority">
+          <div class="dashboard-head attention-head">
+            <div><h3>Management Intervention</h3><div class="small" id="attentionSub"></div></div>
+            <span class="attention-count" id="attentionCount">0</span>
+          </div>
+          <div id="attentionList" class="attention-list"></div>
         </div>
-        <div id="attentionList" class="attention-list"></div>
+
+        <div class="card dashboard-dormant dashboard-dormant-priority">
+          <div class="dashboard-head attention-head">
+            <div><h3 id="dormantTitle">Inactive Customers – Visit Required</h3><div class="small" id="dormantSub"></div></div>
+            <span class="attention-count dormant-count" id="dormantCount">0</span>
+          </div>
+          <div id="dormantList" class="dormant-list"></div>
+        </div>
       </div>
 
       <div class="grid cards dashboard-cards">
@@ -93,6 +103,7 @@
         <select id="customerStatusFilter">
           <option value="">All Statuses</option>
           <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
           <option value="agreed_pending">Agreed – awaiting order</option>
           <option value="hesitant">Hesitant</option>
           <option value="rejected">Rejected</option>
@@ -123,18 +134,25 @@
     </section>
 
     <section id="reports" class="section">
+      <div class="card service-page-note">
+        <b id="servicePageTitle">Customer Requests & Complaints</b>
+        <div class="small" id="servicePageHint">Complaints, sample requests, management intervention, and service follow-ups. Customer status is not changed here.</div>
+      </div>
       <div class="toolbar">
-        <button class="btn" id="newReportBtn">+ Add Follow-up</button>
+        <button class="btn" id="newReportBtn">+ Add Request / Complaint</button>
         <select id="reportPeriodFilter"><option value="all">All Dates</option><option value="day">Today</option><option value="week">This Week</option><option value="month">This Month</option></select>
         <select id="reportActionFilter">
-          <option value="">All Actions</option>
-          <option value="admin_intervention">Management intervention</option>
-          <option value="review_next_week">Review customer next week</option>
-          <option value="sample_request">Customer requests product sample</option>
-          <option value="customer_agreed">Agreement reached with customer</option>
+          <option value="">All Types</option>
+          <option value="complaint">Customer complaint</option>
+          <option value="sample_request">Sample request</option>
+          <option value="admin_intervention">Request management intervention</option>
+          <option value="service_followup">Service follow-up request</option>
+          <option value="management_response">Management response / follow-up</option>
+          <option value="review_next_week">Legacy follow-up</option>
+          <option value="customer_agreed">Legacy customer agreement</option>
         </select>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Action</th><th>Previous Status</th><th>New Status</th><th>Report / Reason</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Recorded At</th><th>Customer</th><th>Representative</th><th>Type</th><th>Details</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
     </section>
 
     <section id="mapPage" class="section management-only">
@@ -152,6 +170,7 @@
             <option value="">All Statuses</option>
             <option value="frequent">Repeated sale this month</option>
             <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
             <option value="agreed_pending">Agreed – awaiting order</option>
             <option value="hesitant">Hesitant</option>
             <option value="rejected">Rejected</option>
@@ -206,7 +225,7 @@
             <option value="products">Product Performance</option>
             <option value="reps">Representative Performance</option>
             <option value="customers">Customer Movement & Conversion</option>
-            <option value="followups">Follow-up Effectiveness</option>
+            <option value="followups">Customer Requests & Complaints</option>
             <option value="goals">Goal Performance</option>
           </select></div>
           <div><label>Representative</label><select id="analyticsRep"><option value="">All Representatives</option></select></div>
@@ -260,8 +279,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js?v=20260927-direct4"></script>
-<script src="./app-20260924b.js?v=20260929-11"></script>
-<script src="./workflows-20260926.js?v=20260929-agreed2"></script>
+<script src="./app-20260924b.js?v=20260929-12"></script>
+<script src="./workflows-20260926.js?v=20260929-workflow2"></script>
 <script src="./ai-sources-20260927.js?v=20260927-direct4"></script>
 <script src="./ai-opportunities-20260927.js?v=20260929-deepresearch1"></script>
 <script src="./urdu-yaqoub-20260927.js?v=20260929-urdu5"></script>

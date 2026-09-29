@@ -11,7 +11,7 @@ const I18N={
  ar:{
   signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعات وشكاوى العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
   new:'جديد',active:'نشط',inactive:'خامل',agreed_pending:'متفق – بانتظار الطلبية',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
-  sales_followup:'متابعة بيعية',admin_intervention:'طلب تدخل الإدارة',complaint:'شكوى عميل',service_followup:'طلب متابعة لاحقة',inactive_visit:'زيارة عميل خامل',review_next_week:'متابعة قديمة',sample_request:'طلب عينة',customer_agreed:'اتفاق عميل - سجل قديم',management_response:'رد / متابعة الإدارة',
+  sales_followup:'متابعة بيعية',admin_intervention:'طلب تدخل الإدارة',complaint:'شكوى عميل',service_followup:'طلب خدمة / مراجعة شكوى',inactive_visit:'زيارة عميل خامل',review_next_week:'متابعة قديمة',sample_request:'طلب عينة',customer_agreed:'اتفاق عميل - سجل قديم',management_response:'رد / متابعة الإدارة',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
   company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين (سحب 5,000+)',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
@@ -28,7 +28,7 @@ const I18N={
  en:{
   signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups & Complaints',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
   new:'New',active:'Active',inactive:'Inactive',agreed_pending:'Agreed – awaiting order',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
-  sales_followup:'Sales follow-up',admin_intervention:'Request management intervention',complaint:'Customer complaint',service_followup:'Service follow-up request',inactive_visit:'Inactive customer visit',review_next_week:'Legacy follow-up',sample_request:'Sample request',customer_agreed:'Legacy customer agreement',management_response:'Management response / follow-up',
+  sales_followup:'Sales follow-up',admin_intervention:'Request management intervention',complaint:'Customer complaint',service_followup:'Service request / complaint review',inactive_visit:'Inactive customer visit',review_next_week:'Legacy follow-up',sample_request:'Sample request',customer_agreed:'Legacy customer agreement',management_response:'Management response / follow-up',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
   company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers (SAR 5,000+)',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
@@ -353,11 +353,12 @@ function renderDormantDashboard(){
    ?(rows.length?'عملاء نشطون سابقاً لم يسجلوا طلبية في أسبوع العمل السابق. مطلوب زيارة وتقرير.':'لا يوجد عملاء خاملون حالياً.')
    :(rows.length?'Previously active customers with no order in the last Sat–Thu workweek. Visit and report required.':'No inactive customers right now.');
  box.innerHTML=rows.length?rows.slice(0,10).map(c=>{
-   const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c);
+   const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=c.inactive_visit_due_at?new Date(c.inactive_visit_due_at).getTime():0,overdue=!!due&&due<Date.now();
+   const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
    return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
      <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
-     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'مهلة الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
-     <span class="dormant-visit ${visit?'done':'pending'}">${visit?(lang==='ar'?'تم تسجيل زيارة':'Visit logged'):(lang==='ar'?'مطلوب زيارة':'Visit required')}</span>
+     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'موعد الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
+     <span class="dormant-visit ${overdue?'overdue':(visit?'done':'pending')}">${badgeText}</span>
    </button>`;
  }).join(''):`<div class="attention-empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`;
 }
@@ -373,7 +374,7 @@ function openDormantCustomer(id){
      <div><b>${lang==='ar'?'خامل منذ':'Inactive since'}</b>${dateTime(c.inactive_since||c.updated_at||c.created_at)}</div><div><b>${lang==='ar'?'مهلة الزيارة':'Visit due'}</b>${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</div>
    </div>
    <div class="${visit?'security-good':'security-warn'}" style="margin-top:10px">
-     ${visit?(lang==='ar'?'تم تسجيل زيارة بعد تحوله إلى خامل: ':'A visit was logged after inactivity: ')+esc(visit.note):(lang==='ar'?'زيارة العميل وتسجيل تقرير إلزامي. ويمكن تسجيل التقرير داخل شاشة الطلبية إذا نتجت الزيارة عن طلبية.':'A customer visit and report are required. The report can also be entered inside the order screen if the visit results in an order.')}
+     ${visit?(lang==='ar'?'تم تسجيل زيارة بعد تحوله إلى خامل: ':'A visit was logged after inactivity: ')+esc(visit.note):(lang==='ar'?'زيارة العميل وتسجيل تقرير إلزامي كل 3 أيام عمل ما دام خاملًا. وإذا نتجت الزيارة عن طلبية يمكن تسجيل التقرير داخل شاشة الطلبية.':'A customer visit and report are required. The report can also be entered inside the order screen if the visit results in an order.')}
    </div>
    <div class="toolbar" style="margin-top:12px">
      <button class="btn secondary" data-inactive-visit="${c.id}">${lang==='ar'?'تسجيل زيارة':'Record Visit'}</button>
@@ -631,12 +632,13 @@ function generateAnalytics(){
  const uniqueBuyers=new Set(sales.map(function(x){return Number(x.customer_id)})).size;
  const repeatBuyers=customerRows.filter(function(x){return x.orders>=2}).length;
  const activeNew=newCustomers.filter(function(c){return c.status==='active'}).length;
- const serviceReports=reports.filter(function(r){return r.action_code!=='inactive_visit'});
+ const salesFollowupReports=reports.filter(function(r){return r.action_code==='sales_followup'});
+ const serviceReports=reports.filter(function(r){return r.action_code!=='inactive_visit'&&r.action_code!=='sales_followup'});
  const attention=serviceReports.filter(function(r){return r.action_code==='admin_intervention'});
  const complaints=serviceReports.filter(function(r){return r.action_code==='complaint'});
  const repRows=state.profiles.filter(function(p){return p.role==='rep'&&(!rep||p.id===rep)}).map(function(p){
-   const ss=sales.filter(function(x){return x.rep_id===p.id}),rr=serviceReports.filter(function(x){return x.rep_id===p.id}),cs=state.customers.filter(function(c){return c.assigned_rep===p.id}),nc=cs.filter(function(c){return inRange(dateKeyRiyadh(c.created_at),from,to)});
-   return {name:p.full_name,value:salesSum(ss),orders:ss.length,serviceRequests:rr.length,newCustomers:nc.length,managementRequests:rr.filter(function(x){return x.action_code==='admin_intervention'}).length,active:cs.filter(function(c){return c.status==='active'}).length};
+   const ss=sales.filter(function(x){return x.rep_id===p.id}),rr=serviceReports.filter(function(x){return x.rep_id===p.id}),ff=salesFollowupReports.filter(function(x){return x.rep_id===p.id}),cs=state.customers.filter(function(c){return c.assigned_rep===p.id}),nc=cs.filter(function(c){return inRange(dateKeyRiyadh(c.created_at),from,to)});
+   return {name:p.full_name,value:salesSum(ss),orders:ss.length,serviceRequests:rr.length,salesFollowups:ff.length,newCustomers:nc.length,managementRequests:rr.filter(function(x){return x.action_code==='admin_intervention'}).length,active:cs.filter(function(c){return c.status==='active'}).length};
  }).sort(function(a,b){return b.value-a.value});
 
  if(type==='executive'){
@@ -645,6 +647,7 @@ function generateAnalytics(){
      reportCard(lang==='ar'?'عدد الطلبيات':'Orders',fmt(orders),(lang==='ar'?'متوسط ':'Average ')+money(avg)),
      reportCard(lang==='ar'?'عملاء سحبوا':'Buying Customers',fmt(uniqueBuyers),(lang==='ar'?'كرر السحب ':'Repeat buyers ')+repeatBuyers),
      reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length),(lang==='ar'?'نشط منهم ':'Active ')+activeNew),
+     reportCard(lang==='ar'?'المتابعات البيعية':'Sales Follow-ups',fmt(salesFollowupReports.length)),
      reportCard(lang==='ar'?'طلبات وشكاوى':'Requests & Complaints',fmt(serviceReports.length),(lang==='ar'?'شكاوى ':'Complaints ')+complaints.length),
      reportCard(lang==='ar'?'طلبات تدخل الإدارة':'Management Requests',fmt(attention.length),lang==='ar'?'مسجلة خلال الفترة':'Recorded in period')
    ];
@@ -654,7 +657,7 @@ function generateAnalytics(){
      '<div>'+(lang==='ar'?'عملاء كرروا السحب: ':'Repeat buyers: ')+'<b>'+repeatBuyers+'</b></div>'+
      '<div>'+(lang==='ar'?'طلبات تدخل الإدارة: ':'Management requests: ')+'<b>'+attention.length+'</b></div></div>';
    const prod=reportBars(productRows.map(function(x){return {label:x.label,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')}}),true);
-   const reps=reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.serviceRequests+' '+(lang==='ar'?'طلب/شكوى':'requests')}}),true);
+   const reps=reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.salesFollowups+' '+(lang==='ar'?'متابعة':'follow-ups')}}),true);
    const top=reportTable([t('customer'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('representative')],customerRows.slice(0,10).map(function(x){const c=customers.find(function(z){return Number(z.id)===x.id});return [esc(x.name),money(x.value),fmt(x.orders),esc(c&&c.rep&&c.rep.full_name||'-')]}));
    const att=attention.length?'<div class="report-attention-list">'+attention.slice(0,8).map(function(r){return '<div><b>'+esc(r.customer&&r.customer.name||'-')+'</b><span>'+esc(r.note)+'</span><small>'+esc(r.rep&&r.rep.full_name||'-')+' — '+dateOnly(r.business_date||dateKeyRiyadh(r.created_at))+'</small></div>'}).join('')+'</div>':'<div class="report-good-note">'+(lang==='ar'?'لا توجد حالات تدخل إدارة مسجلة في الفترة.':'No management cases recorded in this period.')+'</div>';
    renderManagementReport(lang==='ar'?'لوحة الإدارة التنفيذية':'Executive Management Report',from,to,repName,kpis,insights+'<div class="report-two-col">'+reportSection(lang==='ar'?'مزيج المنتجات':'Product Mix',prod)+reportSection(lang==='ar'?'حركة المناديب':'Representative Sales',reps)+'</div>'+reportSection(lang==='ar'?'أعلى العملاء سحباً':'Top Customers',top)+reportSection(lang==='ar'?'طلبات تدخل الإدارة خلال الفترة':'Management Requests in Period',att),lang==='ar'?'هذا التقرير يجمع أهم الأرقام التي تحتاجها الإدارة لاتخاذ قرار سريع.':'A management view of the numbers that matter for quick decisions.');
@@ -679,8 +682,8 @@ function generateAnalytics(){
  }
 
  if(type==='reps'){
-   const kpis=[reportCard(lang==='ar'?'إجمالي السحوبات':'Total Sales',money(total)),reportCard(lang==='ar'?'عدد المندوبين':'Representatives',fmt(repRows.length)),reportCard(lang==='ar'?'الطلبيات':'Orders',fmt(orders)),reportCard(lang==='ar'?'طلبات وشكاوى':'Requests & Complaints',fmt(serviceReports.length)),reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length)),reportCard(lang==='ar'?'متوسط الطلبية':'Average Order',money(avg))];
-   const table=reportTable([t('representative'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('newCustomers'),lang==='ar'?'طلبات/شكاوى':'Requests',lang==='ar'?'طلبات إدارة':'Management Requests',t('activeCustomers')],repRows.map(function(x){return [esc(x.name),money(x.value),fmt(x.orders),fmt(x.newCustomers),fmt(x.serviceRequests),fmt(x.managementRequests),fmt(x.active)]}));
+   const kpis=[reportCard(lang==='ar'?'إجمالي السحوبات':'Total Sales',money(total)),reportCard(lang==='ar'?'عدد المندوبين':'Representatives',fmt(repRows.length)),reportCard(lang==='ar'?'الطلبيات':'Orders',fmt(orders)),reportCard(lang==='ar'?'المتابعات البيعية':'Sales Follow-ups',fmt(salesFollowupReports.length)),reportCard(lang==='ar'?'عملاء جدد':'New Customers',fmt(newCustomers.length)),reportCard(lang==='ar'?'متوسط الطلبية':'Average Order',money(avg))];
+   const table=reportTable([t('representative'),lang==='ar'?'السحوبات':'Sales',lang==='ar'?'الطلبيات':'Orders',t('newCustomers'),lang==='ar'?'متابعات':'Follow-ups',lang==='ar'?'طلبات إدارة':'Management Requests',t('activeCustomers')],repRows.map(function(x){return [esc(x.name),money(x.value),fmt(x.orders),fmt(x.newCustomers),fmt(x.salesFollowups),fmt(x.managementRequests),fmt(x.active)]}));
    renderManagementReport(lang==='ar'?'تقرير أداء المناديب':'Representative Performance Report',from,to,repName,kpis,reportSection(lang==='ar'?'المبيعات حسب المندوب':'Sales by Representative',reportBars(repRows.map(function(x){return {label:x.name,value:x.value,note:x.orders+' '+(lang==='ar'?'طلبية':'orders')+' • '+x.followups+' '+(lang==='ar'?'متابعة':'follow-ups')}}),true))+reportSection(lang==='ar'?'التفاصيل الرقمية':'Detailed Metrics',table),'');
    return;
  }
@@ -695,24 +698,29 @@ function generateAnalytics(){
  }
 
  if(type==='followups'){
-   const serviceReports=reports.filter(function(x){return x.action_code!=='inactive_visit'});
    const actionKeys=Array.from(new Set(serviceReports.map(function(x){return x.action_code}).filter(Boolean)));
    const actionRows=actionKeys.map(function(k){return {label:actionLabel(k),value:serviceReports.filter(function(x){return x.action_code===k}).length}}).sort(function(a,b){return b.value-a.value});
-   const uniqueCustomers=new Set(serviceReports.map(function(x){return Number(x.customer_id)})).size;
-   const complaints=serviceReports.filter(function(x){return x.action_code==='complaint'}).length;
+   const followedCustomers=new Set(salesFollowupReports.map(function(x){return Number(x.customer_id)})).size;
+   const serviceCustomers=new Set(serviceReports.map(function(x){return Number(x.customer_id)})).size;
+   const complaintsCount=serviceReports.filter(function(x){return x.action_code==='complaint'}).length;
    const samples=serviceReports.filter(function(x){return x.action_code==='sample_request'}).length;
    const managementCases=serviceReports.filter(function(x){return x.action_code==='admin_intervention'}).length;
    const managementResponses=serviceReports.filter(function(x){return x.action_code==='management_response'}).length;
    const kpis=[
-     reportCard(lang==='ar'?'إجمالي الطلبات والشكاوى':'Requests & complaints',fmt(serviceReports.length)),
-     reportCard(lang==='ar'?'عملاء لديهم طلبات':'Customers with requests',fmt(uniqueCustomers)),
-     reportCard(lang==='ar'?'شكاوى':'Complaints',fmt(complaints)),
-     reportCard(lang==='ar'?'طلبات عينة':'Sample requests',fmt(samples)),
-     reportCard(lang==='ar'?'طلبات تدخل الإدارة':'Management requests',fmt(managementCases)),
-     reportCard(lang==='ar'?'ردود الإدارة':'Management responses',fmt(managementResponses))
+     reportCard(lang==='ar'?'المتابعات البيعية':'Sales Follow-ups',fmt(salesFollowupReports.length)),
+     reportCard(lang==='ar'?'عملاء تمت متابعتهم':'Customers Followed',fmt(followedCustomers)),
+     reportCard(lang==='ar'?'الشكاوى والطلبات':'Complaints & Requests',fmt(serviceReports.length)),
+     reportCard(lang==='ar'?'عملاء لديهم شكوى/طلب':'Customers with Requests',fmt(serviceCustomers)),
+     reportCard(lang==='ar'?'طلبات تدخل الإدارة':'Management Requests',fmt(managementCases)),
+     reportCard(lang==='ar'?'ردود الإدارة':'Management Responses',fmt(managementResponses))
    ];
-   const latest=serviceReports.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)}).slice(0,20).map(function(x){return [dateOnly(x.business_date||dateKeyRiyadh(x.created_at)),esc(x.customer&&x.customer.name||'-'),esc(x.rep&&x.rep.full_name||'-'),esc(actionLabel(x.action_code)||'-'),esc(x.note)]});
-   renderManagementReport(lang==='ar'?'تقرير طلبات وشكاوى العملاء':'Customer Requests & Complaints Report',from,to,repName,kpis,reportSection(lang==='ar'?'أنواع الطلبات والشكاوى':'Request & Complaint Types',reportBars(actionRows,false))+reportSection(lang==='ar'?'أحدث السجلات':'Latest Records',reportTable([t('date'),t('customer'),t('representative'),t('action'),lang==='ar'?'التفاصيل':'Details'],latest)),'');
+   const latestFollowups=salesFollowupReports.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)}).slice(0,20).map(function(x){return [dateOnly(x.business_date||dateKeyRiyadh(x.created_at)),esc(x.customer&&x.customer.name||'-'),esc(x.rep&&x.rep.full_name||'-'),esc(x.note)]});
+   const latestService=serviceReports.slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)}).slice(0,20).map(function(x){return [dateOnly(x.business_date||dateKeyRiyadh(x.created_at)),esc(x.customer&&x.customer.name||'-'),esc(x.rep&&x.rep.full_name||'-'),esc(actionLabel(x.action_code)||'-'),esc(x.note)]});
+   const body=
+     reportSection(lang==='ar'?'أحدث المتابعات البيعية':'Latest Sales Follow-ups',reportTable([t('date'),t('customer'),t('representative'),lang==='ar'?'النتيجة':'Result'],latestFollowups))
+     +reportSection(lang==='ar'?'أنواع الشكاوى والطلبات':'Complaint & Request Types',reportBars(actionRows,false))
+     +reportSection(lang==='ar'?'أحدث الشكاوى والطلبات':'Latest Complaints & Requests',reportTable([t('date'),t('customer'),t('representative'),t('action'),lang==='ar'?'التفاصيل':'Details'],latestService));
+   renderManagementReport(lang==='ar'?'تقرير متابعات وشكاوى العملاء':'Customer Follow-ups & Complaints Report',from,to,repName,kpis,body,'');
    return;
  }
  if(type==='goals'){

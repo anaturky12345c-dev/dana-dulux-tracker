@@ -9,9 +9,9 @@ const USERS = {admin:'admin@dana.local',management:'management@dana.local',mohse
 let lang=localStorage.getItem('dana_lang')||'ar';
 const I18N={
  ar:{
-  signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'طلبات وشكاوى العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
+  signIn:'دخول',signOut:'تسجيل خروج',dashboard:'لوحة المتابعة',customers:'العملاء',sales:'السحوبات / الفواتير',followups:'متابعات وشكاوى العملاء',map:'الخريطة',reports:'التقارير',audit:'سجل العمليات',account:'حسابي',
   new:'جديد',active:'نشط',inactive:'خامل',agreed_pending:'متفق – بانتظار الطلبية',hesitant:'متردد',rejected:'رافض',noChange:'بدون تغيير الحالة',
-  admin_intervention:'طلب تدخل الإدارة',complaint:'شكوى عميل',service_followup:'طلب متابعة لاحقة',inactive_visit:'زيارة عميل خامل',review_next_week:'متابعة قديمة',sample_request:'طلب عينة',customer_agreed:'اتفاق عميل - سجل قديم',management_response:'رد / متابعة الإدارة',
+  sales_followup:'متابعة بيعية',admin_intervention:'طلب تدخل الإدارة',complaint:'شكوى عميل',service_followup:'طلب متابعة لاحقة',inactive_visit:'زيارة عميل خامل',review_next_week:'متابعة قديمة',sample_request:'طلب عينة',customer_agreed:'اتفاق عميل - سجل قديم',management_response:'رد / متابعة الإدارة',
   dulux_emulsion:'اميلشن ديلوكس',dulux_oil:'زياتي ديلوكس',leafs_tinting:'تلوينة ليفز',dulux_polyurethane:'بلوريثان ديلوكس',
   company:'الشركة',newCustomers:'عملاء جدد',activeNewCustomers:'عملاء جدد نشطين (سحب 5,000+)',totalSalesGoal:'إجمالي المبيعات',goal:'الهدف',achieved:'المحقق',remaining:'المتبقي',progress:'النسبة',
   edit:'تعديل',del:'حذف',save:'حفظ',cancel:'إلغاء',view:'عرض',close:'إغلاق',add:'إضافة',
@@ -20,15 +20,15 @@ const I18N={
   repSummary:'ملخص المناديب اليومي',managementIntervention:'حالات تحتاج تدخل الإدارة',goals:'ملخص الأهداف',currentMonth:'الشهر الحالي',editGoals:'تعديل الأهداف',repPerformance:'أداء المندوبين',
   allStatuses:'كل الحالات',searchCustomer:'ابحث باسم العميل أو المنطقة أو رقم الجوال...',newCustomer:'+ عميل جديد',customerAddedAt:'تاريخ الإضافة',salesCountMonth:'عدد سحوبات الشهر',salesValueMonth:'قيمة سحوبات الشهر',
   recordSale:'+ تسجيل سحب / فاتورة',searchSale:'ابحث بالعميل أو المنتج أو المرجع...',allDates:'كل التواريخ',today:'هذا اليوم',thisWeek:'هذا الأسبوع',thisMonth:'هذا الشهر',
-  addFollowup:'+ تسجيل طلب / شكوى',allActions:'كل الأنواع',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
+  addFollowup:'+ تسجيل شكوى / طلب',allActions:'كل الأنواع',recordedAt:'وقت التسجيل',previousStatus:'الحالة السابقة',newStatus:'الحالة الجديدة',
   reportType:'نوع التقرير',allReps:'كل المندوبين',from:'من تاريخ',to:'إلى تاريخ',generateReport:'عرض التقرير',printPdf:'تصدير PDF / طباعة',
   username:'اسم المستخدم',password:'كلمة المرور',language:'English',accountSecurity:'أمان الحساب',
   noData:'لا توجد بيانات.',confirmDelete:'هل أنت متأكد من الحذف؟',saved:'تم الحفظ',deleted:'تم الحذف',updated:'تم التعديل'
  },
  en:{
-  signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Requests & Complaints',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
+  signIn:'Sign in',signOut:'Sign out',dashboard:'Dashboard',customers:'Customers',sales:'Sales / Withdrawals',followups:'Customer Follow-ups & Complaints',map:'Customer Map',reports:'Reports',audit:'Activity Log',account:'My Account',
   new:'New',active:'Active',inactive:'Inactive',agreed_pending:'Agreed – awaiting order',hesitant:'Hesitant',rejected:'Rejected',noChange:'No status change',
-  admin_intervention:'Request management intervention',complaint:'Customer complaint',service_followup:'Service follow-up request',inactive_visit:'Inactive customer visit',review_next_week:'Legacy follow-up',sample_request:'Sample request',customer_agreed:'Legacy customer agreement',management_response:'Management response / follow-up',
+  sales_followup:'Sales follow-up',admin_intervention:'Request management intervention',complaint:'Customer complaint',service_followup:'Service follow-up request',inactive_visit:'Inactive customer visit',review_next_week:'Legacy follow-up',sample_request:'Sample request',customer_agreed:'Legacy customer agreement',management_response:'Management response / follow-up',
   dulux_emulsion:'Dulux Emulsion',dulux_oil:'Dulux Oil-Based',leafs_tinting:'Leafs Tinting',dulux_polyurethane:'Dulux Polyurethane',
   company:'Company',newCustomers:'New customers',activeNewCustomers:'Active new customers (SAR 5,000+)',totalSalesGoal:'Total sales',goal:'Goal',achieved:'Achieved',remaining:'Remaining',progress:'Progress',
   edit:'Edit',del:'Delete',save:'Save',cancel:'Cancel',view:'View',close:'Close',add:'Add',
@@ -37,7 +37,7 @@ const I18N={
   repSummary:'Daily Representative Summary',managementIntervention:'Management Intervention',goals:'Goal Summary',currentMonth:'Current month',editGoals:'Edit Goals',repPerformance:'Representative Performance',
   allStatuses:'All Statuses',searchCustomer:'Search customer, area or phone...',newCustomer:'+ New Customer',customerAddedAt:'Date Added',salesCountMonth:'Sales Count This Month',salesValueMonth:'Sales Value This Month',
   recordSale:'+ Record Sale / Withdrawal',searchSale:'Search customer, product or reference...',allDates:'All Dates',today:'Today',thisWeek:'This Week',thisMonth:'This Month',
-  addFollowup:'+ Add Request / Complaint',allActions:'All Types',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
+  addFollowup:'+ Complaint / Request',allActions:'All Types',recordedAt:'Recorded At',previousStatus:'Previous Status',newStatus:'New Status',
   reportType:'Report Type',allReps:'All Representatives',from:'From',to:'To',generateReport:'Generate Report',printPdf:'Export PDF / Print',
   username:'Username',password:'Password',language:'العربية',accountSecurity:'Account Security',
   noData:'No data.',confirmDelete:'Are you sure you want to delete this record?',saved:'Saved',deleted:'Deleted',updated:'Updated'
@@ -114,7 +114,7 @@ function applyLanguage(){
  const nav={dashboard:'dashboard',customers:'customers',sales:'sales',reports:'followups',mapPage:'map',analytics:'reports',audit:'audit',account:'account'};
  for(const [p,k] of Object.entries(nav)){const e=document.querySelector('[data-page="'+p+'"]');if(e)e.textContent=t(k);}
 
- if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newReportBtn'))$('newReportBtn').textContent=t('addFollowup');if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');set('#servicePageTitle',lang==='ar'?'طلبات وشكاوى العملاء':'Customer Requests & Complaints');set('#servicePageHint',lang==='ar'?'هذه الصفحة للشكاوى وطلبات العينات وطلبات تدخل الإدارة ومتابعة الخدمة فقط. لا يتم تغيير حالة العميل من هنا.':'This page is only for complaints, sample requests, management intervention, and service follow-up. Customer status is not changed here.');
+ if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newSalesFollowupBtn'))$('newSalesFollowupBtn').textContent=lang==='ar'?'+ تسجيل متابعة':'+ Record Follow-up';if($('newComplaintBtn'))$('newComplaintBtn').textContent=lang==='ar'?'+ شكوى / طلب':'+ Complaint / Request';if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');set('#servicePageTitle',lang==='ar'?'متابعات وشكاوى العملاء':'Customer Follow-ups & Complaints');set('#servicePageHint',lang==='ar'?'المتابعات البيعية منفصلة عن الشكاوى والطلبات. لا يتم تغيير حالة العميل من هذه الصفحة.':'Sales follow-ups are separate from complaints and requests. Customer status is not changed from this page.');set('#requiredFollowupTitle',lang==='ar'?'المتابعات المطلوبة':'Required Sales Follow-ups');set('#requiredFollowupHint',lang==='ar'?'للعملاء المترددين والرافضين — كل 3 أيام عمل، من السبت إلى الخميس.':'For hesitant and rejected customers — every 3 workdays, Saturday through Thursday.');set('#salesFollowupHistoryTitle',lang==='ar'?'سجل المتابعات':'Sales Follow-up History');set('#salesFollowupHistoryHint',lang==='ar'?'تسجيل المتابعة لا يغيّر حالة العميل.':'Recording a follow-up does not change customer status.');set('#complaintsHistoryTitle',lang==='ar'?'الشكاوى والطلبات':'Complaints & Requests');set('#complaintsHistoryHint',lang==='ar'?'الشكاوى وطلبات العينات وطلبات الخدمة وتدخل الإدارة.':'Complaints, sample requests, service requests, and management intervention.');
  ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
 
  set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#dormantTitle',lang==='ar'?'عملاء خاملون – مطلوب زيارة':'Inactive Customers – Visit Required');set('#goalsTitle',t('goals'));
@@ -132,13 +132,13 @@ function applyLanguage(){
  const rpf=$('reportPeriodFilter');if(rpf){for(const o of rpf.options)o.text=dateLabels[o.value]||o.value;}
  const apf=$('auditPeriodFilter');if(apf){for(const o of apf.options)o.text=dateLabels[o.value]||o.value;}
  const spp=$('saleProductFilter');if(spp){if(spp.options.length)spp.options[0].text=lang==='ar'?'كل المنتجات':'All Products';for(let i=1;i<spp.options.length;i++)spp.options[i].text=productLabel(spp.options[i].value);} const srf=$('saleRepFilter');if(srf&&srf.options.length)srf.options[0].text=t('allReps');
- const rf=$('reportActionFilter');if(rf){rf.options[0].text=t('allActions');for(let i=1;i<rf.options.length;i++)rf.options[i].text=t(rf.options[i].value);}
+ const rf=$('reportActionFilter');if(rf){rf.options[0].text=lang==='ar'?'كل أنواع الشكاوى والطلبات':'All Complaint / Request Types';for(let i=1;i<rf.options.length;i++)rf.options[i].text=t(rf.options[i].value);}
  const mf=$('mapFilter');if(mf){mf.options[0].text=lang==='ar'?'كل الحالات':'All Statuses';for(let i=1;i<mf.options.length;i++){const v=mf.options[i].value;mf.options[i].text=v==='frequent'?(lang==='ar'?'سحب متكرر هذا الشهر':'Repeated sale this month'):t(v);}} const mrf=$('mapRepFilter');if(mrf&&mrf.options.length)mrf.options[0].text=t('allReps');const mtf=$('mapTypeFilter');if(mtf){const labs={'':lang==='ar'?'كل أنواع العملاء':'All Customer Types',shop:t('shop'),factory:t('factory'),project:t('project')};for(const o of mtf.options)o.text=labs[o.value]||o.value;}if(typeof setMapText==='function')setMapText();
  const ar=$('analyticsRep');if(ar&&ar.options.length)ar.options[0].text=t('allReps');
 
  heads('customers',[t('customer'),t('customerType'),t('customerAddedAt'),t('area'),t('representative'),t('status'),t('salesCountMonth'),t('salesValueMonth'),'']);
  heads('sales',[t('date'),t('customer'),t('product'),t('quantity'),t('value'),t('reference'),t('representative'),lang==='ar'?'الإجراءات':'Actions']);
- heads('reports',[t('recordedAt'),t('customer'),t('representative'),lang==='ar'?'النوع':'Type',lang==='ar'?'التفاصيل':'Details',lang==='ar'?'الإجراءات':'Actions']);
+ heads('reports',[t('recordedAt'),t('customer'),t('representative'),lang==='ar'?'النوع':'Type',lang==='ar'?'التفاصيل':'Details',lang==='ar'?'الإجراءات':'Actions']);set('#sfhDate',t('recordedAt'));set('#sfhCustomer',t('customer'));set('#sfhRep',t('representative'));set('#sfhStatus',t('status'));set('#sfhNote',lang==='ar'?'نتيجة المتابعة':'Follow-up Result');set('#sfhActions',lang==='ar'?'الإجراءات':'Actions');
  heads('audit',[lang==='ar'?'الوقت':'Time',lang==='ar'?'المستخدم':'User',t('action'),lang==='ar'?'الكيان':'Entity',lang==='ar'?'التفاصيل':'Details']);
 
  const legend=$('mapPage')?.querySelector('.map-legend');if(legend)legend.innerHTML=`<span><i class="legend-dot green star">★</i>${lang==='ar'?'سحب متكرر':'Repeated sale'}</span><span><i class="legend-dot green"></i>${t('active')}</span><span><i class="legend-dot purple"></i>${t('inactive')}</span><span><i class="legend-dot blue"></i>${t('agreed_pending')}</span><span><i class="legend-dot yellow"></i>${t('hesitant')}</span><span><i class="legend-dot red"></i>${t('rejected')}</span><span class="map-type-legend">🏪 ${t('shop')}</span><span class="map-type-legend">🏭 ${t('factory')}</span><span class="map-type-legend">🏗 ${t('project')}</span>`;
@@ -312,11 +312,11 @@ async function refreshAll(){
 }
 async function loadProfiles(){const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name');state.profiles=error?[]:(data||[]);}
 async function loadCustomers(){
-  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,customer_type,created_at,updated_at,inactive_since,assigned_rep,created_by,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('customers').select('id,name,area,phone,status,customer_type,created_at,updated_at,inactive_since,inactive_visit_due_at,assigned_rep,created_by,rep:profiles!customers_assigned_rep_fkey(full_name)').order('created_at',{ascending:false});
   if(error){console.error(error);flash(lang==='ar'?'تعذر تحميل العملاء':'Could not load customers',true);return;}state.customers=data||[];
 }
 async function loadSales(){state.sales=await loadPaged((x,y)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('business_date',{ascending:false}).order('created_at',{ascending:false}).range(x,y),lang==='ar'?'السحوبات':'sales');}
-async function loadReports(){state.reports=await loadPaged((x,y)=>sb.from('reports').select('id,customer_id,report_type,action_code,note,old_status,new_status,created_at,business_date,rep_id,customer:customers(name),rep:profiles!reports_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(x,y),lang==='ar'?'المتابعات':'follow-ups');}
+async function loadReports(){state.reports=await loadPaged((x,y)=>sb.from('reports').select('id,customer_id,report_type,action_code,note,old_status,new_status,created_at,business_date,rep_id,customer:customers(name,status),rep:profiles!reports_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(x,y),lang==='ar'?'المتابعات':'follow-ups');}
 async function loadGoals(){const {data,error}=await sb.from('performance_goals').select('id,scope_type,rep_id,goal_type,product_code,monthly_target,updated_at').order('scope_type').order('rep_id').order('goal_type').order('product_code');state.goals=error?[]:(data||[]);}
 
 function activityForCustomer(cid){
@@ -356,7 +356,7 @@ function renderDormantDashboard(){
    const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c);
    return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
      <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
-     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small></span>
+     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'مهلة الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
      <span class="dormant-visit ${visit?'done':'pending'}">${visit?(lang==='ar'?'تم تسجيل زيارة':'Visit logged'):(lang==='ar'?'مطلوب زيارة':'Visit required')}</span>
    </button>`;
  }).join(''):`<div class="attention-empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`;
@@ -370,7 +370,7 @@ function openDormantCustomer(id){
      <div><b>${t('representative')}</b>${esc(c.rep?.full_name||'-')}</div>
      <div><b>${t('status')}</b>${badgeStatus(c.status)}</div>
      <div><b>${lang==='ar'?'آخر طلبية':'Last order'}</b>${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</div>
-     <div><b>${lang==='ar'?'خامل منذ':'Inactive since'}</b>${dateTime(c.inactive_since||c.updated_at||c.created_at)}</div>
+     <div><b>${lang==='ar'?'خامل منذ':'Inactive since'}</b>${dateTime(c.inactive_since||c.updated_at||c.created_at)}</div><div><b>${lang==='ar'?'مهلة الزيارة':'Visit due'}</b>${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</div>
    </div>
    <div class="${visit?'security-good':'security-warn'}" style="margin-top:10px">
      ${visit?(lang==='ar'?'تم تسجيل زيارة بعد تحوله إلى خامل: ':'A visit was logged after inactivity: ')+esc(visit.note):(lang==='ar'?'زيارة العميل وتسجيل تقرير إلزامي. ويمكن تسجيل التقرير داخل شاشة الطلبية إذا نتجت الزيارة عن طلبية.':'A customer visit and report are required. The report can also be entered inside the order screen if the visit results in an order.')}
@@ -417,7 +417,7 @@ function renderDashboard(){
  const repDailyRows=reps.map(p=>{
    const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
    const salesToday=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'')===today);
-   const followupsToday=state.reports.filter(x=>x.rep_id===p.id&&x.action_code!=='inactive_visit'&&String(x.business_date||'')===today);
+   const followupsToday=state.reports.filter(x=>x.rep_id===p.id&&x.action_code==='sales_followup'&&String(x.business_date||'')===today);
    const activeNewToday=newToday.filter(c=>c.status==='active').length;
    const salesValueToday=salesToday.reduce((z,x)=>z+Number(x.amount||0),0);
    return {p,newToday,salesToday,followupsToday,activeNewToday,salesValueToday};
@@ -437,7 +437,7 @@ function renderDashboard(){
          <div><span>${lang==='ar'?'الطلبيات':'Orders'}</span><b>${x.salesToday.length}</b></div>
          <div><span>${lang==='ar'?'عملاء جدد':'New customers'}</span><b>${x.newToday.length}</b></div>
          <div><span>${lang==='ar'?'جدد نشطون':'New active'}</span><b>${x.activeNewToday}</b></div>
-         <div><span>${lang==='ar'?'طلبات/شكاوى':'Requests'}</span><b>${x.followupsToday.length}</b></div>
+         <div><span>${lang==='ar'?'المتابعات':'Follow-ups'}</span><b>${x.followupsToday.length}</b></div>
        </div>
      </button>`).join('')}</div>`:`<div class="small">${t('noData')}</div>`;
  }else{
@@ -449,7 +449,7 @@ function renderDashboard(){
          <div><span>${lang==='ar'?'الطلبيات':'Orders'}</span><b>${x.salesToday.length}</b></div>
          <div><span>${lang==='ar'?'عملاء جدد':'New customers'}</span><b>${x.newToday.length}</b></div>
          <div><span>${lang==='ar'?'جدد نشطون':'New active'}</span><b>${x.activeNewToday}</b></div>
-         <div><span>${lang==='ar'?'طلبات/شكاوى':'Requests'}</span><b>${x.followupsToday.length}</b></div>
+         <div><span>${lang==='ar'?'المتابعات':'Follow-ups'}</span><b>${x.followupsToday.length}</b></div>
        </div>
      </div>
    </div>`:`<div class="small">${t('noData')}</div>`;
@@ -459,7 +459,7 @@ function renderRepPerformance(){
  const box=$('repPerformance');if(!box||!canManage())return;
  const month=monthRiyadh(),reps=state.profiles.filter(p=>p.role==='rep');
  box.innerHTML='<div class="table-wrap"><table><thead><tr><th>'+t('representative')+'</th><th>'+t('customers')+'</th><th>'+t('newCustomers')+'</th><th>'+t('activeCustomers')+'</th><th>'+t('salesThisMonth')+'</th><th>'+t('followups')+'</th></tr></thead><tbody>'+
- reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&x.action_code!=='inactive_visit'&&String(x.business_date||'').startsWith(month)),nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;return `<tr class="clickable-row" data-rep-customers="${p.id}"><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${cs.filter(c=>c.status==='active').length}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table></div>';
+ reps.map(p=>{const cs=state.customers.filter(c=>c.assigned_rep===p.id),ss=state.sales.filter(x=>x.rep_id===p.id&&String(x.business_date||'').startsWith(month)),rr=state.reports.filter(x=>x.rep_id===p.id&&x.action_code==='sales_followup'&&String(x.business_date||'').startsWith(month)),nc=cs.filter(c=>String(c.created_at).slice(0,7)===month).length;return `<tr class="clickable-row" data-rep-customers="${p.id}"><td><b>${esc(p.full_name)}</b></td><td>${cs.length}</td><td>${nc}</td><td>${cs.filter(c=>c.status==='active').length}</td><td>${money(ss.reduce((z,x)=>z+Number(x.amount||0),0))}</td><td>${rr.length}</td></tr>`}).join('')+'</tbody></table></div>';
 }
 function qualifiedActiveNewCustomers(customers,sales){
  const totals=new Map();
@@ -580,8 +580,11 @@ function renderSales(){
 
 function renderReports(){
  const f=$('reportActionFilter')?.value||'',period=$('reportPeriodFilter')?.value||'all';
- const rows=state.reports.filter(r=>r.action_code!=='inactive_visit'&&(!f||r.action_code===f)&&periodMatchesDate(r.business_date||dateKeyRiyadh(r.created_at),period));
- $('reportsBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${esc(actionLabel(r.action_code)||'-')}</td><td>${esc(r.note)}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="6" class="empty">${t('noData')}</td></tr>`;
+ const inPeriod=r=>periodMatchesDate(r.business_date||dateKeyRiyadh(r.created_at),period);
+ const salesRows=state.reports.filter(r=>r.action_code==='sales_followup'&&inPeriod(r));
+ const serviceRows=state.reports.filter(r=>r.action_code!=='sales_followup'&&r.action_code!=='inactive_visit'&&(!f||r.action_code===f)&&inPeriod(r));
+ if($('salesFollowupsBody'))$('salesFollowupsBody').innerHTML=salesRows.length?salesRows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${r.customer?.status?badgeStatus(r.customer.status):'-'}</td><td>${esc(r.note)}</td><td>${isAdmin()?`<button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:'-'}</td></tr>`).join(''):`<tr><td colspan="6" class="empty">${t('noData')}</td></tr>`;
+ if($('reportsBody'))$('reportsBody').innerHTML=serviceRows.length?serviceRows.map(r=>`<tr><td>${dateTime(r.created_at)}</td><td>${esc(r.customer?.name||'-')}</td><td>${esc(r.rep?.full_name||'-')}</td><td>${esc(actionLabel(r.action_code)||'-')}</td><td>${esc(r.note)}</td><td>${canManage()?`<button class="btn secondary mini" data-edit-report="${r.id}">${t('edit')}</button>${isAdmin()?` <button class="btn bad mini" data-delete-report="${r.id}">${t('del')}</button>`:''}`:'-'}</td></tr>`).join(''):`<tr><td colspan="6" class="empty">${t('noData')}</td></tr>`;
 }
 
 function reportRange(){return {from:$('analyticsFrom').value,to:$('analyticsTo').value,rep:$('analyticsRep').value,type:$('analyticsType').value};}
@@ -995,10 +998,71 @@ async function saveSaleEdit(id){const {error}=await sb.rpc('admin_update_sale',{
 async function deleteSale(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_sale',{p_sale_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}
 
 
+
+function salesFollowupPickerHtml(selected=null){
+ const eligible=state.customers.filter(c=>['hesitant','rejected'].includes(c.status));
+ const c=eligible.find(x=>Number(x.id)===Number(selected))||null;
+ return `<div class="customer-combo"><input id="sfCustomer" autocomplete="off" value="${c?esc(c.name):''}" placeholder="${lang==='ar'?'اكتب اسم العميل المتردد أو الرافض...':'Type a hesitant or rejected customer...'}"><input id="sfCustomerId" type="hidden" value="${c?.id||''}"><div id="sfCustomerResults" class="customer-combo-results hidden"></div></div>`;
+}
+function bindSalesFollowupPicker(){
+ const input=$('sfCustomer'),hidden=$('sfCustomerId'),results=$('sfCustomerResults');if(!input||!hidden||!results)return;
+ const eligible=()=>state.customers.filter(c=>['hesitant','rejected'].includes(c.status));
+ const updateInfo=()=>{
+   const c=state.customers.find(x=>Number(x.id)===Number(hidden.value||0));
+   if($('sfCurrentStatus'))$('sfCurrentStatus').value=c?statusLabel(c.status):'';
+ };
+ const render=()=>{
+   const q=input.value.trim().toLowerCase();
+   const matches=eligible().filter(c=>!q||`${c.name} ${c.area||''} ${c.phone||''}`.toLowerCase().includes(q)).slice(0,12);
+   results.innerHTML=matches.length?matches.map(c=>`<button type="button" class="customer-combo-option" data-sf-pick="${c.id}"><b>${esc(c.name)}</b><span>${esc(statusLabel(c.status))}${c.area?' — '+esc(c.area):''}</span></button>`).join(''):`<div class="customer-combo-empty">${lang==='ar'?'لا يوجد عميل متردد أو رافض مطابق.':'No matching hesitant or rejected customer.'}</div>`;
+   results.classList.remove('hidden');
+ };
+ input.addEventListener('focus',render);
+ input.addEventListener('input',()=>{hidden.value='';updateInfo();render();});
+ input.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=results.querySelector('[data-sf-pick]');if(first){e.preventDefault();first.click();}}});
+ results.addEventListener('mousedown',e=>e.preventDefault());
+ results.addEventListener('click',e=>{
+   const btn=e.target.closest('[data-sf-pick]');if(!btn)return;
+   const c=eligible().find(x=>Number(x.id)===Number(btn.dataset.sfPick));if(!c)return;
+   hidden.value=String(c.id);input.value=c.name;results.classList.add('hidden');updateInfo();
+ });
+ input.addEventListener('blur',()=>setTimeout(()=>results.classList.add('hidden'),120));
+ updateInfo();
+}
+function openSalesFollowupForm(id=null){
+ const selected=state.customers.find(c=>Number(c.id)===Number(id)&&['hesitant','rejected'].includes(c.status))||null;
+ const eligible=state.customers.filter(c=>['hesitant','rejected'].includes(c.status));
+ if(!eligible.length)return flash(lang==='ar'?'لا يوجد عميل متردد أو رافض يحتاج متابعة حالياً.':'No hesitant or rejected customer currently needs a follow-up.',true);
+ openModal(lang==='ar'?'تسجيل متابعة بيعية':'Record Sales Follow-up',`
+   <div class="notice">${lang==='ar'?'المتابعة لا تغيّر حالة العميل. بعد الحفظ يبدأ موعد المتابعة التالية بعد 3 أيام عمل، وأيام العمل من السبت إلى الخميس.':'A follow-up does not change customer status. After saving, the next follow-up is due in 3 workdays; workdays are Saturday through Thursday.'}</div>
+   <div class="form-grid" style="margin-top:12px">
+     <div class="full"><label>${t('customer')}</label>${salesFollowupPickerHtml(selected?.id||null)}</div>
+     <div><label>${lang==='ar'?'الحالة الحالية':'Current status'}</label><input id="sfCurrentStatus" readonly></div>
+     <div class="full"><label>${lang==='ar'?'نتيجة المتابعة':'Follow-up result'} <span class="required-star">*</span></label><textarea id="sfNote" rows="5" placeholder="${lang==='ar'?'اكتب نتيجة الزيارة أو الاتصال وما تم مع العميل...':'Enter the result of the visit or call and what happened with the customer...'}"></textarea></div>
+     <div class="full"><button class="btn" id="saveSalesFollowupBtn">${t('save')}</button></div>
+   </div>`);
+ setTimeout(bindSalesFollowupPicker,0);
+}
+async function saveSalesFollowup(){
+ const customerId=Number($('sfCustomerId')?.value||0),note=$('sfNote')?.value.trim()||'';
+ if(!customerId)return flash(lang==='ar'?'اختر عميلاً متردداً أو رافضاً.':'Choose a hesitant or rejected customer.',true);
+ const c=state.customers.find(x=>Number(x.id)===customerId);
+ if(!c||!['hesitant','rejected'].includes(c.status))return flash(lang==='ar'?'هذا العميل لم يعد متردداً أو رافضاً.':'This customer is no longer hesitant or rejected.',true);
+ if(note.length<5)return flash(lang==='ar'?'اكتب نتيجة متابعة واضحة.':'Enter a clear follow-up result.',true);
+ const {error}=await sb.rpc('record_sales_followup',{p_customer_id:customerId,p_note:note});
+ if(error){
+   const msg=error.message==='waiting for management'
+    ?(lang==='ar'?'العميل بانتظار تدخل الإدارة حالياً. أكمل تدخل الإدارة أولاً.':'This customer is currently waiting for management intervention.')
+    :error.message;
+   return flash(msg,true);
+ }
+ closeModal();flash(lang==='ar'?'تم حفظ المتابعة. المتابعة التالية بعد 3 أيام عمل.':'Follow-up saved. The next follow-up is due in 3 workdays.');await refreshAll();
+}
+
 function openReportForm(id=null){
  const selected=state.customers.find(c=>Number(c.id)===Number(id))||null;if(!state.customers.length)return flash(t('noData'),true);
- openModal(lang==='ar'?'تسجيل طلب / شكوى عميل':'Add Customer Request / Complaint',`
-   <div class="notice">${lang==='ar'?'هذه الصفحة لخدمة العميل فقط: شكوى، طلب عينة، طلب تدخل الإدارة أو متابعة خدمة. لا يتم تغيير حالة العميل من هنا.':'This page is for customer service only: complaint, sample request, management intervention, or service follow-up. Customer status is never changed here.'}</div>
+ openModal(lang==='ar'?'تسجيل شكوى / طلب عميل':'Add Customer Complaint / Request',`
+   <div class="notice">${lang==='ar'?'هذه الشاشة للشكاوى والطلبات فقط: شكوى، طلب عينة، طلب تدخل الإدارة أو متابعة خدمة. لا يتم تغيير حالة العميل من هنا.':'This page is for customer service only: complaint, sample request, management intervention, or service follow-up. Customer status is never changed here.'}</div>
    <div class="form-grid" style="margin-top:12px">
      <div class="full"><label>${t('customer')}</label>${customerPickerHtml('r',selected?.id||null)}</div>
      <div><label>${lang==='ar'?'نوع الطلب':'Request type'}</label><select id="rAction"><option value="">${lang==='ar'?'اختر النوع...':'Choose type...'}</option>${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div>
@@ -1196,10 +1260,10 @@ $('langBtn')?.addEventListener('click',toggleLanguage);$('langBtnLogin')?.addEve
 document.querySelectorAll('.nav-grid button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='customers'){state.customerMonthOnly=false;$('customerSearch').value='';$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';}if(b.dataset.page==='sales'){$('saleSearch').value='';$('salePeriodFilter').value='all';if($('saleProductFilter'))$('saleProductFilter').value='';if($('saleRepFilter'))$('saleRepFilter').value='';}if(b.dataset.page==='reports'){if($('reportActionFilter'))$('reportActionFilter').value='';if($('reportPeriodFilter'))$('reportPeriodFilter').value='all';}if(b.dataset.page==='audit'){if($('auditPeriodFilter'))$('auditPeriodFilter').value='all';}gotoPage(b.dataset.page);}));
 $('customerSearch')?.addEventListener('input',renderCustomers);$('customerStatusFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerRepFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerPeriodFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('saleSearch')?.addEventListener('input',renderSales);$('salePeriodFilter')?.addEventListener('change',renderSales);$('saleProductFilter')?.addEventListener('change',renderSales);$('saleRepFilter')?.addEventListener('change',renderSales);$('reportActionFilter')?.addEventListener('change',renderReports);$('reportPeriodFilter')?.addEventListener('change',renderReports);$('auditPeriodFilter')?.addEventListener('change',renderAudit);$('mapSearch')?.addEventListener('input',()=>drawMapMarkers(true));$('mapFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapRepFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapTypeFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapFitBtn')?.addEventListener('click',()=>fitMapRows(mapFilteredRows()));$('mapClearBtn')?.addEventListener('click',()=>{if($('mapSearch'))$('mapSearch').value='';if($('mapFilter'))$('mapFilter').value='';if($('mapRepFilter'))$('mapRepFilter').value='';if($('mapTypeFilter'))$('mapTypeFilter').value='';drawMapMarkers(true);});$('mapFullscreenBtn')?.addEventListener('click',async()=>{const el=$('mapExperience');if(!el)return;try{if(!document.fullscreenElement)await el.requestFullscreen();else await document.exitFullscreen();}catch(_){}});
 $('editGoalsBtn')?.addEventListener('click',openGoalsEditor);$('generateReportBtn')?.addEventListener('click',generateAnalytics);$('printReportBtn')?.addEventListener('click',()=>{generateAnalytics();setTimeout(()=>window.print(),50);});$('analytics')?.addEventListener('click',e=>{const b=e.target.closest('[data-report-preset]');if(!b)return;const today=todayRiyadh(),mode=b.dataset.reportPreset;if(mode==='month'){$('analyticsFrom').value=today.slice(0,8)+'01';$('analyticsTo').value=today;}else if(mode==='week'){$('analyticsFrom').value=weekStartRiyadh();$('analyticsTo').value=today;}else if(mode==='30'){const d=new Date(today+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-29);$('analyticsFrom').value=d.toISOString().slice(0,10);$('analyticsTo').value=today;}generateAnalytics();});
-$('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?.addEventListener('click',()=>openSaleForm());$('newReportBtn')?.addEventListener('click',()=>openReportForm());$('changePasswordBtn')?.addEventListener('click',()=>changePassword(false));$('repPasswordAdminBtn')?.addEventListener('click',resetRepresentativePassword);
+$('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?.addEventListener('click',()=>openSaleForm());$('newSalesFollowupBtn')?.addEventListener('click',()=>openSalesFollowupForm());$('newComplaintBtn')?.addEventListener('click',()=>openReportForm());$('changePasswordBtn')?.addEventListener('click',()=>changePassword(false));$('repPasswordAdminBtn')?.addEventListener('click',resetRepresentativePassword);
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});$('mapCustomerList')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-customer]');if(b)focusMapCustomer(Number(b.dataset.mapCustomer));});document.addEventListener('fullscreenchange',()=>{if(state.map&&document.querySelector('#mapPage.section.active'))setTimeout(()=>state.map.invalidateSize(),120);});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
-$('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});
+$('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});$('salesFollowupsBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-delete-report]');if(b)deleteReport(Number(b.dataset.deleteReport));});
 $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[data-dormant-customer]'))){openDormantCustomer(Number(el.dataset.dormantCustomer));return;}if((el=e.target.closest('[data-attention-customer]'))){openCustomer(Number(el.dataset.attentionCustomer));return;}if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','inactive','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
    if(kind==='total_sales'){
@@ -1218,10 +1282,10 @@ $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[da
    }
  }});
 
-$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#sActivateNowBtn')))enableSaleActivation();else if((b=e.target.closest('#sAgreedPendingBtn')))showPendingAgreementForm();else if((b=e.target.closest('#sSaveAgreedPendingBtn')))markAgreedPendingFromSales();else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-inactive-visit]')))openInactiveVisitForm(Number(b.dataset.inactiveVisit));else if((b=e.target.closest('#saveInactiveVisitBtn')))saveInactiveVisit(Number(b.dataset.id));else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});
+$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#sActivateNowBtn')))enableSaleActivation();else if((b=e.target.closest('#sAgreedPendingBtn')))showPendingAgreementForm();else if((b=e.target.closest('#sSaveAgreedPendingBtn')))markAgreedPendingFromSales();else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-inactive-visit]')))openInactiveVisitForm(Number(b.dataset.inactiveVisit));else if((b=e.target.closest('#saveInactiveVisitBtn')))saveInactiveVisit(Number(b.dataset.id));else if((b=e.target.closest('#saveSalesFollowupBtn')))saveSalesFollowup();else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});
 $('securityGateBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gateChangePasswordBtn')))changePassword(true);else if((b=e.target.closest('#verifyMfaEnrollBtn')))verifyMFA($('mfaEnrollCode')?.value||'');else if((b=e.target.closest('#verifyMfaChallengeBtn')))verifyMFA($('mfaChallengeCode')?.value||'');});
 ['pointerdown','keydown','touchstart','scroll'].forEach(evt=>window.addEventListener(evt,()=>{state.lastActivity=Date.now();},{passive:true}));setInterval(()=>{if(state.session&&Date.now()-state.lastActivity>MAX_IDLE_MS)logout(lang==='ar'?'تم تسجيل خروجك تلقائياً بعد ساعة بدون استخدام.':'You were signed out after 1 hour of inactivity.');},30000);
-window.DANA_APP={sb,state,t,esc,fmt,money,dateTime,dateOnly,todayRiyadh,dateKeyRiyadh,monthRiyadh,statusLabel,badgeStatus,actionLabel,productLabel,isAdmin,isManager,canManage,openModal,closeModal,flash,openReportForm,openCustomer,openDormantCustomer,refreshAll,repOptions,gotoPage,getLang:()=>lang};
+window.DANA_APP={sb,state,t,esc,fmt,money,dateTime,dateOnly,todayRiyadh,dateKeyRiyadh,monthRiyadh,statusLabel,badgeStatus,actionLabel,productLabel,isAdmin,isManager,canManage,openModal,closeModal,flash,openReportForm,openSalesFollowupForm,openCustomer,openDormantCustomer,refreshAll,repOptions,gotoPage,getLang:()=>lang};
 applyLanguage();
 
 if(!configured) showConfigMessage(); else sb.auth.onAuthStateChange((_event,session)=>{if(!session&&!$('login').classList.contains('hidden'))return;if(!session)showLogin();}); if(configured) loadProfile();

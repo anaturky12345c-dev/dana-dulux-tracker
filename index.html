@@ -194,23 +194,29 @@
     </section>
 
     <section id="analytics" class="section management-only">
-      <div class="card report-controls">
+      <div class="report-page-head">
+        <div><span class="report-eyebrow">Management Intelligence</span><h2>Reports</h2><p>Choose a report and period to get a management view, not just a raw table.</p></div>
+      </div>
+      <div class="card report-controls report-controls-v2">
         <div class="form-grid">
           <div><label>Report Type</label><select id="analyticsType">
-            <option value="sales">Sales / Withdrawals</option>
+            <option value="">Choose report type...</option>
+            <option value="executive">Executive Management</option>
+            <option value="sales">Sales Intelligence</option>
+            <option value="products">Product Performance</option>
             <option value="reps">Representative Performance</option>
-            <option value="customers">Customer Activity</option>
-            <option value="followups">Customer Follow-ups</option>
+            <option value="customers">Customer Movement & Conversion</option>
+            <option value="followups">Follow-up Effectiveness</option>
             <option value="goals">Goal Performance</option>
-            <option value="executive">Management Summary</option>
           </select></div>
           <div><label>Representative</label><select id="analyticsRep"><option value="">All Representatives</option></select></div>
           <div><label>From</label><input type="date" id="analyticsFrom"></div>
           <div><label>To</label><input type="date" id="analyticsTo"></div>
+          <div class="full report-preset-row"><span>Quick period:</span><button type="button" class="btn secondary mini" data-report-preset="week">This Week</button><button type="button" class="btn secondary mini" data-report-preset="month">This Month</button><button type="button" class="btn secondary mini" data-report-preset="30">Last 30 Days</button></div>
           <div class="full"><button class="btn" id="generateReportBtn">Generate Report</button> <button class="btn secondary" id="printReportBtn">Export PDF / Print</button></div>
         </div>
       </div>
-      <div id="printableReport" class="print-report"><div class="empty">Select a report type and date range, then click “Generate Report”.</div></div>
+      <div id="printableReport" class="print-report print-report-v2"><div class="empty">Select a report type and date range, then click “Generate Report”.</div></div>
     </section>
 
     <section id="audit" class="section full-admin-only">
@@ -254,7 +260,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js?v=20260927-direct4"></script>
-<script src="./app-20260924b.js?v=20260929-5"></script>
+<script src="./app-20260924b.js?v=20260929-6"></script>
 <script src="./workflows-20260926.js?v=20260929-agreed1"></script>
 <script src="./ai-sources-20260927.js?v=20260927-direct4"></script>
 <script src="./ai-opportunities-20260927.js?v=20260929-deepresearch1"></script>

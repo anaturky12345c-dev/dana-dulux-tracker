@@ -1090,23 +1090,97 @@ async function uploadVoiceDraft(id,purpose,customerId){
  d.uploadedPath=path;
  return {path,duration:d.duration};
 }
+let activeSavedVoice=null;
+
+function stopSavedVoicePlayback(){
+ const p=activeSavedVoice;
+ if(!p)return;
+ try{p.source?.stop?.();}catch(_){}
+ try{p.source?.disconnect?.();}catch(_){}
+ try{p.ctx?.close?.();}catch(_){}
+ if(p.button){
+   const icon=p.button.querySelector('[data-saved-voice-icon]');
+   const label=p.button.querySelector('[data-saved-voice-label]');
+   if(icon)icon.textContent='▶';
+   if(label)label.textContent=lang==='ar'?'تشغيل التقرير الصوتي':'Play voice report';
+   p.button.disabled=false;
+   p.button.classList.remove('playing','loading');
+ }
+ activeSavedVoice=null;
+}
+
 function savedVoiceHtml(path,duration){
  if(!path)return '';
- return `<span class="saved-voice"><button type="button" class="voice-play-btn" data-play-voice="${esc(path)}"><span>▶</span> ${lang==='ar'?'تشغيل التقرير الصوتي':'Play voice report'} <b>${voiceTime(duration||0)}</b></button><audio class="saved-voice-audio hidden" controls preload="none"></audio></span>`;
+ return `<span class="saved-voice"><button type="button" class="voice-play-btn" data-play-voice="${esc(path)}"><span data-saved-voice-icon>▶</span><span data-saved-voice-label>${lang==='ar'?'تشغيل التقرير الصوتي':'Play voice report'}</span><b>${voiceTime(duration||0)}</b></button></span>`;
 }
+
 async function playSavedVoice(button){
- const wrap=button.closest('.saved-voice');if(!wrap)return;
- const audio=wrap.querySelector('audio');if(!audio)return;
- if(audio.src){
-   if(audio.paused)audio.play();else audio.pause();
+ if(!button)return;
+ if(activeSavedVoice?.button===button){
+   stopSavedVoicePlayback();
    return;
  }
+ stopSavedVoicePlayback();
+
+ const AudioCtx=window.AudioContext||window.webkitAudioContext;
+ if(!AudioCtx)return flash(lang==='ar'?'تشغيل الصوت غير مدعوم في هذا المتصفح.':'Audio playback is not supported in this browser.',true);
+
+ const icon=button.querySelector('[data-saved-voice-icon]');
+ const label=button.querySelector('[data-saved-voice-label]');
+ const ctx=new AudioCtx();
+
+ // Unlock audio immediately inside the user's tap. This is important on iPhone/Safari.
+ try{
+   if(ctx.state==='suspended')ctx.resume();
+   const unlockBuffer=ctx.createBuffer(1,1,22050);
+   const unlockSource=ctx.createBufferSource();
+   unlockSource.buffer=unlockBuffer;
+   unlockSource.connect(ctx.destination);
+   unlockSource.start(0);
+ }catch(_){}
+
+ activeSavedVoice={button,ctx,source:null};
  button.disabled=true;
- const {data,error}=await sb.storage.from(VOICE_BUCKET).createSignedUrl(button.dataset.playVoice,900);
- button.disabled=false;
- if(error||!data?.signedUrl)return flash(lang==='ar'?'تعذر فتح التسجيل الصوتي.':'Could not open the voice recording.',true);
- audio.src=data.signedUrl;audio.classList.remove('hidden');button.classList.add('hidden');
- try{await audio.play();}catch(_){}
+ button.classList.add('loading');
+ if(icon)icon.textContent='…';
+ if(label)label.textContent=lang==='ar'?'جاري تحميل التسجيل...':'Loading voice report...';
+
+ try{
+   const {data:blob,error}=await sb.storage.from(VOICE_BUCKET).download(button.dataset.playVoice);
+   if(error||!blob)throw new Error(error?.message||'voice download failed');
+
+   const arrayBuffer=await blob.arrayBuffer();
+   const audioBuffer=await new Promise((resolve,reject)=>{
+     const copy=arrayBuffer.slice(0);
+     const result=ctx.decodeAudioData(copy,resolve,reject);
+     if(result&&typeof result.then==='function')result.then(resolve).catch(reject);
+   });
+
+   if(activeSavedVoice?.button!==button){
+     try{ctx.close();}catch(_){}
+     return;
+   }
+
+   const source=ctx.createBufferSource();
+   source.buffer=audioBuffer;
+   source.connect(ctx.destination);
+   activeSavedVoice.source=source;
+
+   button.disabled=false;
+   button.classList.remove('loading');
+   button.classList.add('playing');
+   if(icon)icon.textContent='■';
+   if(label)label.textContent=lang==='ar'?'إيقاف التقرير الصوتي':'Stop voice report';
+
+   source.onended=()=>{
+     if(activeSavedVoice?.source===source)stopSavedVoicePlayback();
+   };
+   source.start(0);
+ }catch(err){
+   console.error('saved voice playback failed',err);
+   if(activeSavedVoice?.button===button)stopSavedVoicePlayback();
+   flash(lang==='ar'?'تعذر تشغيل التسجيل المحفوظ.':'Could not play the saved voice recording.',true);
+ }
 }
 function customerOptions(selected=null){return state.customers.map(c=>`<option value="${c.id}" ${Number(selected)===Number(c.id)?'selected':''}>${esc(c.name)}</option>`).join('');}
 function customerPickerHtml(prefix,selected=null,activeOnly=false){

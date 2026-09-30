@@ -816,14 +816,10 @@ function voiceRecorderHtml(id,label){
      <div class="voice-record-status"><span class="voice-pulse" data-voice-pulse="${esc(id)}"></span><b data-voice-timer="${esc(id)}">00:00</b><small data-voice-status="${esc(id)}">${lang==='ar'?'اضغط المايك وابدأ التقرير':'Tap the mic to start the report'}</small></div>
      <button type="button" class="btn secondary mini hidden" data-voice-reset="${esc(id)}">${lang==='ar'?'حذف وإعادة':'Delete & re-record'}</button>
    </div>
-   <div class="voice-preview-actions hidden" data-voice-preview-actions="${esc(id)}">
-     <button type="button" class="voice-preview-play" data-voice-preview-play="${esc(id)}">
-       <span data-voice-preview-icon="${esc(id)}">▶</span>
-       <span data-voice-preview-text="${esc(id)}">${lang==='ar'?'سماع التسجيل قبل الحفظ':'Listen before saving'}</span>
-       <b data-voice-preview-duration="${esc(id)}">00:00</b>
-     </button>
+   <div class="voice-native-preview hidden" data-voice-native-preview="${esc(id)}">
+     <div class="voice-native-preview-label">${lang==='ar'?'اسمع التسجيل قبل الحفظ':'Listen before saving'}</div>
+     <audio class="voice-local-preview" data-voice-preview="${esc(id)}" controls preload="auto" playsinline></audio>
    </div>
-   <audio class="voice-local-preview hidden" data-voice-preview="${esc(id)}" preload="metadata" playsinline></audio>
  </div>`;
 }
 function voiceDraft(id){return voiceDrafts.get(id)||null;}
@@ -836,113 +832,30 @@ function updateVoiceUi(id,mode,seconds=0){
  const pulse=widget.querySelector('[data-voice-pulse="'+id+'"]');
  const reset=widget.querySelector('[data-voice-reset="'+id+'"]');
  const preview=widget.querySelector('[data-voice-preview="'+id+'"]');
- const previewActions=widget.querySelector('[data-voice-preview-actions="'+id+'"]');
- const previewDuration=widget.querySelector('[data-voice-preview-duration="'+id+'"]');
- const previewText=widget.querySelector('[data-voice-preview-text="'+id+'"]');
- const previewIcon=widget.querySelector('[data-voice-preview-icon="'+id+'"]');
+ const nativeWrap=widget.querySelector('[data-voice-native-preview="'+id+'"]');
  if(timer)timer.textContent=voiceTime(seconds);
- if(previewDuration)previewDuration.textContent=voiceTime(seconds);
  widget.classList.toggle('recording',mode==='recording');
  if(pulse)pulse.classList.toggle('active',mode==='recording');
+
  if(mode==='recording'){
    if(txt)txt.textContent=lang==='ar'?'إيقاف التسجيل':'Stop recording';
    if(status)status.textContent=lang==='ar'?'جاري التسجيل...':'Recording...';
    if(reset)reset.classList.remove('hidden');
-   if(previewActions)previewActions.classList.add('hidden');
-   if(preview){preview.pause();preview.classList.add('hidden');}
+   if(nativeWrap)nativeWrap.classList.add('hidden');
+   if(preview)preview.pause();
  }else if(mode==='ready'){
    if(txt)txt.textContent=lang==='ar'?'إعادة التسجيل':'Record again';
-   if(status)status.textContent=lang==='ar'?'تم التسجيل — اسمعه قبل الحفظ':'Recorded — listen before saving';
+   if(status)status.textContent=lang==='ar'?'تم التسجيل — جرّب تشغيله قبل الحفظ':'Recorded — play it before saving';
    if(reset)reset.classList.remove('hidden');
-   if(previewActions)previewActions.classList.remove('hidden');
-   if(previewText)previewText.textContent=lang==='ar'?'سماع التسجيل قبل الحفظ':'Listen before saving';
-   if(previewIcon)previewIcon.textContent='▶';
+   if(nativeWrap)nativeWrap.classList.remove('hidden');
  }else{
    if(txt)txt.textContent=lang==='ar'?'تسجيل صوتي':'Record voice';
    if(status)status.textContent=lang==='ar'?'اضغط المايك وابدأ التقرير':'Tap the mic to start the report';
    if(reset)reset.classList.add('hidden');
-   if(previewActions)previewActions.classList.add('hidden');
-   if(preview){preview.pause();preview.classList.add('hidden');preview.removeAttribute('src');}
-   if(previewText)previewText.textContent=lang==='ar'?'سماع التسجيل قبل الحفظ':'Listen before saving';
-   if(previewIcon)previewIcon.textContent='▶';
+   if(nativeWrap)nativeWrap.classList.add('hidden');
+   if(preview){preview.pause();preview.removeAttribute('src');preview.load();}
  }
  if(btn)btn.setAttribute('aria-pressed',mode==='recording'?'true':'false');
-}
-function waitForVoicePreviewReady(audio,timeoutMs=3500){
- if(!audio)return Promise.resolve(false);
- if(audio.readyState>=2&&!audio.error)return Promise.resolve(true);
- return new Promise(resolve=>{
-   let done=false;
-   const finish=ok=>{
-     if(done)return;
-     done=true;
-     clearTimeout(timer);
-     audio.removeEventListener('canplay',onReady);
-     audio.removeEventListener('loadeddata',onReady);
-     audio.removeEventListener('error',onError);
-     resolve(ok);
-   };
-   const onReady=()=>finish(true);
-   const onError=()=>finish(false);
-   const timer=setTimeout(()=>finish(audio.readyState>=2&&!audio.error),timeoutMs);
-   audio.addEventListener('canplay',onReady,{once:true});
-   audio.addEventListener('loadeddata',onReady,{once:true});
-   audio.addEventListener('error',onError,{once:true});
- });
-}
-function toggleLocalVoicePreview(id){
- const d=voiceDrafts.get(id);
- const widget=document.querySelector('[data-voice-widget="'+id+'"]');
- const audio=widget?.querySelector('[data-voice-preview="'+id+'"]');
- const textEl=widget?.querySelector('[data-voice-preview-text="'+id+'"]');
- const iconEl=widget?.querySelector('[data-voice-preview-icon="'+id+'"]');
- if(!d?.blob||!d.blob.size||!audio)return flash(lang==='ar'?'لا يوجد تسجيل صالح للتشغيل. أعد التسجيل.':'There is no valid recording to play. Re-record it.',true);
-
- if(!audio.getAttribute('src')){
-   if(!d.localUrl)d.localUrl=URL.createObjectURL(d.blob);
-   audio.src=d.localUrl;
-   audio.load();
- }
-
- if(!audio.paused){
-   audio.pause();
-   if(textEl)textEl.textContent=lang==='ar'?'متابعة الاستماع':'Resume listening';
-   if(iconEl)iconEl.textContent='▶';
-   return;
- }
-
- // Important: call play() immediately inside the user's click.
- // Waiting before play() can make browsers drop the user gesture and reject playback.
- try{
-   const p=audio.play();
-   if(textEl)textEl.textContent=lang==='ar'?'إيقاف مؤقت':'Pause';
-   if(iconEl)iconEl.textContent='⏸';
-   if(p&&typeof p.catch==='function'){
-     p.catch(err=>{
-       console.error('voice preview failed',err,{mime:d.mime,size:d.blob?.size,duration:d.duration,readyState:audio?.readyState,error:audio?.error});
-       audio.controls=true;
-       audio.classList.remove('hidden');
-       if(textEl)textEl.textContent=lang==='ar'?'استخدم مشغل الصوت بالأسفل':'Use the audio player below';
-       if(iconEl)iconEl.textContent='▶';
-       flash(lang==='ar'?'لم يعمل زر المعاينة؛ ظهر لك مشغل الصوت المباشر بالأسفل.':'The preview button could not start playback; use the audio player shown below.',true);
-     });
-   }
-   audio.onended=()=>{
-     if(textEl)textEl.textContent=lang==='ar'?'سماع التسجيل مرة أخرى':'Listen again';
-     if(iconEl)iconEl.textContent='▶';
-     try{audio.currentTime=0;}catch(_){}
-   };
-   audio.onpause=()=>{
-     if(audio.ended)return;
-     if(textEl)textEl.textContent=lang==='ar'?'متابعة الاستماع':'Resume listening';
-     if(iconEl)iconEl.textContent='▶';
-   };
- }catch(err){
-   console.error('voice preview failed',err);
-   audio.controls=true;
-   audio.classList.remove('hidden');
-   flash(lang==='ar'?'استخدم مشغل الصوت الذي ظهر بالأسفل لسماع التسجيل قبل الحفظ.':'Use the audio player shown below to listen before saving.',true);
- }
 }
 function stopVoiceTracks(d){
  try{d?.stream?.getTracks?.().forEach(t=>t.stop());}catch(_){}
@@ -1623,7 +1536,6 @@ $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[da
 document.addEventListener('click',e=>{
  const toggle=e.target.closest('[data-voice-toggle]');if(toggle){e.preventDefault();toggleVoiceRecording(toggle.dataset.voiceToggle);return;}
  const reset=e.target.closest('[data-voice-reset]');if(reset){e.preventDefault();resetVoiceDraft(reset.dataset.voiceReset);return;}
- const previewPlay=e.target.closest('[data-voice-preview-play]');if(previewPlay){e.preventDefault();toggleLocalVoicePreview(previewPlay.dataset.voicePreviewPlay);return;}
  const play=e.target.closest('[data-play-voice]');if(play){e.preventDefault();playSavedVoice(play);return;}
 });
 $('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#sActivateNowBtn')))enableSaleActivation();else if((b=e.target.closest('#sAgreedPendingBtn')))showPendingAgreementForm();else if((b=e.target.closest('#sSaveAgreedPendingBtn')))markAgreedPendingFromSales();else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-inactive-visit]')))openInactiveVisitForm(Number(b.dataset.inactiveVisit));else if((b=e.target.closest('#saveInactiveVisitBtn')))saveInactiveVisit(Number(b.dataset.id));else if((b=e.target.closest('#saveSalesFollowupBtn')))saveSalesFollowup();else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});

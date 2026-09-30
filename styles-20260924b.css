@@ -1087,3 +1087,24 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
     font-size:18px;
   }
 }
+
+
+/* Native details priority cards: browser handles open/close reliably */
+.priority-collapsible>summary{
+  list-style:none;
+}
+.priority-collapsible>summary::-webkit-details-marker{
+  display:none;
+}
+.priority-collapsible[open] .attention-head{
+  margin-bottom:10px;
+}
+.priority-collapsible[open] .priority-chevron{
+  transform:rotate(180deg);
+}
+.priority-collapsible:not([open]) .priority-list{
+  display:none!important;
+}
+.priority-collapsible[open] .priority-list{
+  display:grid!important;
+}

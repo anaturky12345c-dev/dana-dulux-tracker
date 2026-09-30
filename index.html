@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=20260927-push1" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <link rel="stylesheet" href="./styles-20260924b.css?v=20260929-15" />
+  <link rel="stylesheet" href="./styles-20260924b.css?v=20260930-maprep1" />
 </head>
 <body>
 <div id="login" class="login">
@@ -40,7 +40,7 @@
       <button data-page="customers">Customers</button>
       <button data-page="sales">Sales / Withdrawals</button>
       <button data-page="reports">Customer Follow-ups & Complaints</button>
-      <button data-page="mapPage" class="management-only">Customer Map</button>
+      <button data-page="mapPage">Customer Map</button>
       <button data-page="analytics" class="management-only">Reports</button>
       <button data-page="account">My Account</button>
       <button data-page="audit" class="full-admin-only">Activity Log</button>
@@ -190,7 +190,7 @@
       </div>
     </section>
 
-    <section id="mapPage" class="section management-only">
+    <section id="mapPage" class="section">
       <div id="mapExperience" class="map-experience">
         <div class="map-summary">
           <div class="map-summary-card"><span id="mapStatVisibleLabel">Visible Customers</span><b id="mapStatVisible">0</b></div>
@@ -211,7 +211,7 @@
             <option value="rejected">Rejected</option>
             <option value="new">New</option>
           </select>
-          <select id="mapRepFilter">
+          <select id="mapRepFilter" class="management-only">
             <option value="">All Representatives</option>
           </select>
           <select id="mapTypeFilter">
@@ -314,7 +314,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js?v=20260927-direct4"></script>
-<script src="./app-20260924b.js?v=20260929-16"></script>
+<script src="./app-20260924b.js?v=20260930-maprep1"></script>
 <script src="./workflows-20260926.js?v=20260929-workflow6"></script>
 <script src="./ai-sources-20260927.js?v=20260927-direct4"></script>
 <script src="./ai-opportunities-20260927.js?v=20260929-deepresearch1"></script>

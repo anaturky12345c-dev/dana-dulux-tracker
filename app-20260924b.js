@@ -384,16 +384,27 @@ function openDormantCustomer(id){
 function openInactiveVisitForm(id){
  const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c||c.status!=='inactive')return flash(lang==='ar'?'العميل لم يعد خاملًا.':'Customer is no longer inactive.',true);
  openModal(lang==='ar'?'تقرير زيارة عميل خامل':'Inactive Customer Visit Report',`
-   <div class="notice"><b>${esc(c.name)}</b><br>${lang==='ar'?'اكتب نتيجة الزيارة. تسجيل التقرير لا يغيّر حالة العميل؛ يبقى خاملًا إلى أن تسجل له طلبية.':'Write the visit result. Saving this report does not change the customer status; the customer stays Inactive until an order is recorded.'}</div>
-   <div class="form-grid" style="margin-top:12px"><div class="full"><label>${lang==='ar'?'نتيجة الزيارة':'Visit result'}</label><textarea id="inactiveVisitNote" rows="5"></textarea></div><div class="full"><button class="btn" id="saveInactiveVisitBtn" data-id="${c.id}">${t('save')}</button></div></div>`);
+   <div class="notice"><b>${esc(c.name)}</b><br>${lang==='ar'?'سجّل نتيجة الزيارة بالصوت. يبقى العميل خاملًا إلى أن تسجل له طلبية.':'Record the visit result by voice. The customer stays Inactive until an order is recorded.'}</div>
+   <div class="form-grid" style="margin-top:12px">
+     <div class="full">${voiceRecorderHtml('inactiveVisitVoice',lang==='ar'?'تقرير الزيارة الصوتي':'Voice visit report')}</div>
+     <div class="full"><label>${lang==='ar'?'تفاصيل إضافية بالكتابة — اختياري':'Additional written details — optional'}</label><textarea id="inactiveVisitNote" rows="3" placeholder="${lang==='ar'?'اكتب فقط إذا فيه معلومة تحتاج توضيح...':'Write only if something needs extra clarification...'}"></textarea></div>
+     <div class="full"><button class="btn" id="saveInactiveVisitBtn" data-id="${c.id}">${t('save')}</button></div>
+   </div>`);
 }
 async function saveInactiveVisit(id){
- const note=$('inactiveVisitNote')?.value.trim()||'';if(note.length<5)return flash(lang==='ar'?'اكتب تقرير زيارة واضح.':'Enter a clear visit report.',true);
- const {error}=await sb.rpc('record_inactive_visit',{p_customer_id:id,p_note:note});
- if(error)return flash(error.message,true);
- closeModal();flash(lang==='ar'?'تم تسجيل زيارة العميل الخامل.':'Inactive-customer visit recorded.');await refreshAll();
+ const note=$('inactiveVisitNote')?.value.trim()||'',btn=$('saveInactiveVisitBtn');
+ if(!voiceDraft('inactiveVisitVoice')?.blob)return flash(lang==='ar'?'سجّل تقرير الزيارة الصوتي أولاً.':'Record the voice visit report first.',true);
+ try{
+   if(btn){btn.disabled=true;btn.textContent=lang==='ar'?'جاري الحفظ...':'Saving...';}
+   const audio=await uploadVoiceDraft('inactiveVisitVoice','inactive-visit',id);
+   const {error}=await sb.rpc('record_inactive_visit',{p_customer_id:id,p_note:note,p_audio_path:audio.path,p_audio_duration_seconds:audio.duration});
+   if(error)throw new Error(error.message);
+   closeModal();flash(lang==='ar'?'تم تسجيل زيارة العميل الخامل.':'Inactive-customer visit recorded.');await refreshAll();
+ }catch(err){
+   flash(err.message||String(err),true);
+   if(btn){btn.disabled=false;btn.textContent=t('save');}
+ }
 }
-
 function renderDashboard(){
  const dashboardConfig=canManage()?[['customers',t('totalCustomers')],['sales-month',t('salesThisMonth')],['active',t('activeCustomers')],['hesitant',t('hesitantCustomers')],['rejected',t('rejectedCustomers')]]:[['sales-day',lang==='ar'?'سحوبات اليوم':'Sales Today'],['sales-month',t('salesThisMonth')],['active',t('activeCustomers')],['hesitant',t('hesitantCustomers')],['rejected',t('rejectedCustomers')]];
  [...document.querySelectorAll('#dashboard .dashboard-cards [data-dashboard-link]')].forEach((el,i)=>{const cfg=dashboardConfig[i];if(!cfg)return;el.dataset.dashboardLink=cfg[0];const label=el.querySelector('.label'),hint=el.querySelector('.card-hint');if(label)label.textContent=cfg[1];if(hint)hint.textContent=t('clickView');});
@@ -1196,59 +1207,68 @@ function openSalesFollowupForm(id=null){
  const eligible=state.customers.filter(c=>['hesitant','rejected'].includes(c.status));
  if(!eligible.length)return flash(lang==='ar'?'لا يوجد عميل متردد أو رافض يحتاج متابعة حالياً.':'No hesitant or rejected customer currently needs a follow-up.',true);
  openModal(lang==='ar'?'تسجيل متابعة بيعية':'Record Sales Follow-up',`
-   <div class="notice">${lang==='ar'?'المتابعة لا تغيّر حالة العميل. المتردد تكون متابعته التالية بعد 3 أيام عمل، والرافض بعد 7 أيام عمل. الجمعة لا تُحسب.':'A follow-up does not change customer status. Hesitant customers are due again in 3 workdays; Rejected customers in 7 workdays. Friday is not counted.'}</div>
+   <div class="notice">${lang==='ar'?'المتابعة لا تغيّر حالة العميل. المتردد بعد 3 أيام عمل، والرافض بعد 7 أيام عمل. الجمعة لا تُحسب.':'A follow-up does not change status. Hesitant customers are due in 3 workdays and Rejected customers in 7; Friday is not counted.'}</div>
    <div class="form-grid" style="margin-top:12px">
      <div class="full"><label>${t('customer')}</label>${salesFollowupPickerHtml(selected?.id||null)}</div>
      <div><label>${lang==='ar'?'الحالة الحالية':'Current status'}</label><input id="sfCurrentStatus" readonly></div>
-     <div class="full"><label>${lang==='ar'?'نتيجة المتابعة':'Follow-up result'} <span class="required-star">*</span></label><textarea id="sfNote" rows="5" placeholder="${lang==='ar'?'اكتب نتيجة الزيارة أو الاتصال وما تم مع العميل...':'Enter the result of the visit or call and what happened with the customer...'}"></textarea></div>
+     <div class="full">${voiceRecorderHtml('salesFollowupVoice',lang==='ar'?'تقرير المتابعة الصوتي':'Voice follow-up report')}</div>
+     <div class="full"><label>${lang==='ar'?'تفاصيل إضافية بالكتابة — اختياري':'Additional written details — optional'}</label><textarea id="sfNote" rows="3" placeholder="${lang==='ar'?'مثلاً رقم عرض سعر أو معلومة قصيرة تحتاج توضيح...':'For example, a quotation number or short detail that needs clarification...'}"></textarea></div>
      <div class="full"><button class="btn" id="saveSalesFollowupBtn">${t('save')}</button></div>
    </div>`);
  setTimeout(bindSalesFollowupPicker,0);
 }
 async function saveSalesFollowup(){
- const customerId=Number($('sfCustomerId')?.value||0),note=$('sfNote')?.value.trim()||'';
+ const customerId=Number($('sfCustomerId')?.value||0),note=$('sfNote')?.value.trim()||'',btn=$('saveSalesFollowupBtn');
  if(!customerId)return flash(lang==='ar'?'اختر عميلاً متردداً أو رافضاً.':'Choose a hesitant or rejected customer.',true);
  const c=state.customers.find(x=>Number(x.id)===customerId);
  if(!c||!['hesitant','rejected'].includes(c.status))return flash(lang==='ar'?'هذا العميل لم يعد متردداً أو رافضاً.':'This customer is no longer hesitant or rejected.',true);
- if(note.length<5)return flash(lang==='ar'?'اكتب نتيجة متابعة واضحة.':'Enter a clear follow-up result.',true);
- const {error}=await sb.rpc('record_sales_followup',{p_customer_id:customerId,p_note:note});
- if(error){
-   const msg=error.message==='waiting for management'
-    ?(lang==='ar'?'العميل بانتظار تدخل الإدارة حالياً. أكمل تدخل الإدارة أولاً.':'This customer is currently waiting for management intervention.')
-    :error.message;
-   return flash(msg,true);
+ if(!voiceDraft('salesFollowupVoice')?.blob)return flash(lang==='ar'?'سجّل تقرير المتابعة الصوتي أولاً.':'Record the voice follow-up report first.',true);
+ try{
+   if(btn){btn.disabled=true;btn.textContent=lang==='ar'?'جاري الحفظ...':'Saving...';}
+   const audio=await uploadVoiceDraft('salesFollowupVoice','sales-followup',customerId);
+   const {error}=await sb.rpc('record_sales_followup',{p_customer_id:customerId,p_note:note,p_audio_path:audio.path,p_audio_duration_seconds:audio.duration});
+   if(error)throw new Error(error.message);
+   const days=c.status==='rejected'?7:3;
+   closeModal();flash(lang==='ar'?('تم حفظ المتابعة الصوتية. المتابعة التالية بعد '+days+' أيام عمل.'):('Voice follow-up saved. The next follow-up is due in '+days+' workdays.'));await refreshAll();
+ }catch(err){
+   flash(err.message||String(err),true);
+   if(btn){btn.disabled=false;btn.textContent=t('save');}
  }
- const days=c.status==='rejected'?7:3;
- closeModal();flash(lang==='ar'?('تم حفظ المتابعة. المتابعة التالية بعد '+days+' أيام عمل.'):('Follow-up saved. The next follow-up is due in '+days+' workdays.'));await refreshAll();
 }
-
 function openReportForm(id=null){
  const selected=state.customers.find(c=>Number(c.id)===Number(id))||null;if(!state.customers.length)return flash(t('noData'),true);
  openModal(lang==='ar'?'تسجيل شكوى / طلب عميل':'Add Customer Complaint / Request',`
-   <div class="notice">${lang==='ar'?'هذه الشاشة للشكاوى والطلبات فقط: شكوى، طلب عينة، طلب تدخل الإدارة أو متابعة خدمة. لا يتم تغيير حالة العميل من هنا.':'This page is for customer service only: complaint, sample request, management intervention, or service follow-up. Customer status is never changed here.'}</div>
+   <div class="notice">${lang==='ar'?'اختر النوع ثم سجّل التقرير بالصوت. هذه الشاشة لا تغيّر حالة العميل.':'Choose the type, then record the report by voice. This screen does not change customer status.'}</div>
    <div class="form-grid" style="margin-top:12px">
      <div class="full"><label>${t('customer')}</label>${customerPickerHtml('r',selected?.id||null)}</div>
      <div><label>${lang==='ar'?'نوع الطلب':'Request type'}</label><select id="rAction"><option value="">${lang==='ar'?'اختر النوع...':'Choose type...'}</option>${FOLLOW_ACTION_KEYS.map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div>
-     <div class="full"><label>${lang==='ar'?'التفاصيل':'Details'}</label><textarea id="rNote" rows="5"></textarea></div>
+     <div class="full">${voiceRecorderHtml('serviceReportVoice',lang==='ar'?'التقرير الصوتي':'Voice report')}</div>
+     <div class="full"><label>${lang==='ar'?'تفاصيل إضافية بالكتابة — اختياري':'Additional written details — optional'}</label><textarea id="rNote" rows="3" placeholder="${lang==='ar'?'مثلاً رقم الصنف أو معلومة تحتاج كتابة...':'For example, a product code or detail that needs to be written...'}"></textarea></div>
      <div class="full"><button class="btn" id="saveReportBtn">${t('save')}</button></div>
    </div>`);
  setTimeout(()=>bindCustomerPicker('r',null,false),0);
 }
 async function addReport(){
- const customerId=Number($('rCustomerId')?.value||0),note=$('rNote')?.value.trim()||'',action=$('rAction')?.value||'';
+ const customerId=Number($('rCustomerId')?.value||0),note=$('rNote')?.value.trim()||'',action=$('rAction')?.value||'',btn=$('saveReportBtn');
  if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
  if(!action)return flash(lang==='ar'?'اختر نوع الطلب أو الشكوى.':'Choose the request or complaint type.',true);
- if(note.length<5)return flash(lang==='ar'?'اكتب تفاصيل واضحة.':'Enter clear details.',true);
- const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:action,p_note:note,p_new_status:null});
- if(error){
-   const msg=error.message==='already waiting for management'
-     ?(lang==='ar'?'يوجد بالفعل طلب تدخل إدارة مفتوح لهذا العميل.':'There is already an open management-intervention request for this customer.')
-     :error.message;
-   return flash(msg,true);
+ if(!voiceDraft('serviceReportVoice')?.blob)return flash(lang==='ar'?'سجّل التقرير الصوتي أولاً.':'Record the voice report first.',true);
+ try{
+   if(btn){btn.disabled=true;btn.textContent=lang==='ar'?'جاري الحفظ...':'Saving...';}
+   const audio=await uploadVoiceDraft('serviceReportVoice','service-report',customerId);
+   const {error}=await sb.rpc('add_report',{p_customer_id:customerId,p_action_code:action,p_note:note,p_new_status:null,p_audio_path:audio.path,p_audio_duration_seconds:audio.duration});
+   if(error){
+     const msg=error.message==='already waiting for management'
+       ?(lang==='ar'?'يوجد بالفعل طلب تدخل إدارة مفتوح لهذا العميل.':'There is already an open management-intervention request for this customer.')
+       :error.message;
+     throw new Error(msg);
+   }
+   closeModal();flash(lang==='ar'?'تم حفظ التقرير الصوتي.':'Voice report saved.');await refreshAll();
+ }catch(err){
+   flash(err.message||String(err),true);
+   if(btn){btn.disabled=false;btn.textContent=t('save');}
  }
- closeModal();flash(lang==='ar'?'تم حفظ الطلب / الشكوى بدون تغيير حالة العميل.':'Request / complaint saved without changing customer status.');await refreshAll();
 }
-
 function openReportEditor(id){if(!canManage())return;const r=state.reports.find(x=>Number(x.id)===Number(id));if(!r)return;openModal(lang==='ar'?'تعديل المتابعة':'Edit Follow-up',`<div class="form-grid"><div><label>${t('action')}</label><select id="erAction">${EDIT_ACTION_KEYS.map(k=>`<option value="${k}" ${r.action_code===k?'selected':''}>${t(k)}</option>`).join('')}</select></div><div class="full"><label>${t('reason')}</label><textarea id="erNote" rows="5">${esc(r.note)}</textarea></div><div class="full"><button class="btn" id="saveReportEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}
 async function saveReportEdit(id){const note=$('erNote').value.trim();if(note.length<5)return flash(lang==='ar'?'اكتب تقريراً واضحاً':'Enter a clear report',true);const {error}=await sb.rpc('admin_update_report',{p_report_id:id,p_action_code:$('erAction').value,p_note:note});if(error)return flash(error.message,true);closeModal();flash(t('updated'));await refreshAll();}
 async function deleteReport(id){if(!isAdmin()||!confirm(t('confirmDelete')))return;const {error}=await sb.rpc('admin_delete_report',{p_report_id:id});if(error)return flash(error.message,true);closeModal();flash(t('deleted'));await refreshAll();}

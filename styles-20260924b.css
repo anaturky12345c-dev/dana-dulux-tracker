@@ -645,3 +645,32 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
 }
 
 .dormant-visit.overdue{background:#fff1f2;color:#b91c1c}
+
+
+/* Stronger map marker contrast */
+.map-marker{
+  width:44px;
+  height:44px;
+  border:4px solid #fff;
+  box-shadow:0 0 0 2px rgba(15,23,42,.32),0 6px 18px rgba(15,23,42,.42);
+}
+.map-marker-core{
+  width:27px;
+  height:27px;
+  border-radius:50%;
+  background:rgba(255,255,255,.96);
+  font-size:17px;
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,.12);
+}
+.marker-active,.marker-frequent{background:#047857}
+.marker-hesitant{background:#ca8a04}
+.marker-rejected{background:#b91c1c}
+.marker-agreed_pending{background:#1d4ed8}
+.marker-inactive{background:#6d28d9}
+.marker-new{background:#0e7490}
+.map-legend .green{background:#047857;box-shadow:0 0 0 1px #065f46}
+.map-legend .yellow{background:#ca8a04;box-shadow:0 0 0 1px #92400e}
+.map-legend .red{background:#b91c1c;box-shadow:0 0 0 1px #7f1d1d}
+.map-legend .blue{background:#1d4ed8;box-shadow:0 0 0 1px #1e3a8a}
+.map-legend .purple{background:#6d28d9;box-shadow:0 0 0 1px #4c1d95}
+.map-legend .cyan{background:#0e7490;box-shadow:0 0 0 1px #164e63}

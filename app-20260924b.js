@@ -1066,7 +1066,11 @@ async function saveLocation(id){const reason=$('locReason').value.trim();if(reas
 function inactiveVisitAlreadyLogged(customer){
  return !!inactiveVisitForCustomer(customer);
 }
+function resetSaleVoiceDrafts(){
+ ['sActivationVoice','sPendingVoice','sInactiveVoice'].forEach(id=>{if(voiceDraft(id))resetVoiceDraft(id);});
+}
 function updateSaleWorkflowFields(){
+ resetSaleVoiceDrafts();
  const customerId=Number($('sCustomerId')?.value||0),c=state.customers.find(x=>Number(x.id)===customerId);
  const gate=$('sWorkflowGate'),saleFields=$('sSaleFields'),activationWrap=$('sActivationReasonWrap'),inactiveWrap=$('sInactiveVisitWrap'),confirmed=$('sActivationConfirmed');
  if(!gate||!saleFields)return;
@@ -1081,41 +1085,60 @@ function updateSaleWorkflowFields(){
  if(c.status==='inactive'){
    const hasVisit=inactiveVisitAlreadyLogged(c);
    gate.innerHTML=`<div class="security-warn"><b>${t('inactive')}</b> — ${lang==='ar'?'هذا العميل كان نشطاً ثم توقف عن السحب أسبوعياً. تسجيل الطلبية يعيده إلى نشط تلقائياً.':'This customer was Active and then missed the weekly-order requirement. Saving an order reactivates the customer automatically.'}</div>`;
-   if(inactiveWrap){inactiveWrap.classList.toggle('hidden',hasVisit);inactiveWrap.innerHTML=hasVisit?`<div class="security-good">${lang==='ar'?'تم تسجيل زيارة للعميل بعد تحوله إلى خامل.':'A visit has already been recorded since the customer became inactive.'}</div>`:`<label>${lang==='ar'?'تقرير زيارة العميل الخامل':'Inactive customer visit report'} <span class="required-star">*</span></label><textarea id="sInactiveVisitNote" rows="4" placeholder="${lang==='ar'?'اكتب نتيجة الزيارة قبل حفظ الطلبية...':'Enter the visit result before saving the order...'}"></textarea><div class="small">${lang==='ar'?'لن تُحفظ الطلبية بدون تقرير زيارة، إلا إذا كانت زيارة مسجلة مسبقاً بعد تحوله إلى خامل.':'The order cannot be saved without a visit report unless a visit was already logged after the customer became inactive.'}</div>`;}
+   if(inactiveWrap){
+     inactiveWrap.classList.toggle('hidden',hasVisit);
+     inactiveWrap.innerHTML=hasVisit
+       ?`<div class="security-good">${lang==='ar'?'تم تسجيل زيارة للعميل بعد تحوله إلى خامل، لذلك لا يحتاج تقرير زيارة جديد مع هذه الطلبية.':'A visit was already recorded after the customer became inactive, so no new visit report is required for this order.'}</div>`
+       :`${voiceRecorderHtml('sInactiveVoice',lang==='ar'?'تقرير زيارة العميل الخامل — صوتي':'Inactive customer visit report — voice')}<div style="margin-top:10px"><label>${lang==='ar'?'تفاصيل إضافية بالكتابة — اختياري':'Additional written details — optional'}</label><textarea id="sInactiveVisitNote" rows="3"></textarea></div><div class="small" style="margin-top:6px">${lang==='ar'?'لن تُحفظ الطلبية بدون التقرير الصوتي للزيارة.':'The order cannot be saved without the voice visit report.'}</div>`;
+   }
    saleFields.classList.remove('hidden');return;
  }
  if(c.status==='hesitant'||c.status==='rejected'){
-   gate.innerHTML=`<div class="security-warn"><b>${badgeStatus(c.status)}</b><br>${lang==='ar'?'تسجيل طلبية يتطلب تحويل العميل إلى نشط مع كتابة سبب التحويل. لن تتغير الحالة إلا بعد نجاح حفظ الطلبية.':'Recording an order requires converting the customer to Active with a reason. The status will not change until the order is saved successfully.'}<div class="toolbar" style="margin-top:10px"><button type="button" class="btn" id="sActivateNowBtn">${lang==='ar'?'تغيير الحالة الآن':'Change status now'}</button><button type="button" class="btn secondary" id="sAgreedPendingBtn">${lang==='ar'?'متفق – بانتظار الطلبية':'Agreed – awaiting order'}</button></div><div id="sPendingAgreementWrap" class="hidden" style="margin-top:10px"><label>${lang==='ar'?'سبب الاتفاق':'Agreement reason'} <span class="required-star">*</span></label><textarea id="sPendingReason" rows="3"></textarea><button type="button" class="btn secondary" id="sSaveAgreedPendingBtn" style="margin-top:8px">${lang==='ar'?'حفظ كمتفق – بانتظار الطلبية':'Save as agreed – awaiting order'}</button></div></div>`;return;
+   gate.innerHTML=`<div class="security-warn"><b>${badgeStatus(c.status)}</b><br>${lang==='ar'?'تسجيل طلبية يتطلب تحويل العميل إلى نشط وتسجيل تقرير صوتي يوضح لماذا تغيّر موقفه. الحالة لا تتغير إلا بعد نجاح حفظ الطلبية.':'Recording an order requires converting the customer to Active and recording a voice report explaining why the customer changed their decision. Status changes only after the order saves successfully.'}<div class="toolbar" style="margin-top:10px"><button type="button" class="btn" id="sActivateNowBtn">${lang==='ar'?'تغيير الحالة الآن':'Change status now'}</button><button type="button" class="btn secondary" id="sAgreedPendingBtn">${lang==='ar'?'متفق – بانتظار الطلبية':'Agreed – awaiting order'}</button></div><div id="sPendingAgreementWrap" class="hidden sale-status-voice-box" style="margin-top:10px">${voiceRecorderHtml('sPendingVoice',lang==='ar'?'تقرير الاتفاق الصوتي':'Voice agreement report')}<div style="margin-top:10px"><label>${lang==='ar'?'تفاصيل إضافية بالكتابة — اختياري':'Additional written details — optional'}</label><textarea id="sPendingReason" rows="3"></textarea></div><button type="button" class="btn secondary" id="sSaveAgreedPendingBtn" style="margin-top:8px">${lang==='ar'?'حفظ كمتفق – بانتظار الطلبية':'Save as agreed – awaiting order'}</button></div></div>`;return;
  }
  gate.innerHTML=`<div class="danger-note">${lang==='ar'?'حالة العميل الحالية لا تسمح بتسجيل طلبية.':'The current customer status does not allow order entry.'}</div>`;
 }
 function enableSaleActivation(){
  const c=state.customers.find(x=>Number(x.id)===Number($('sCustomerId')?.value||0));if(!c||!['hesitant','rejected'].includes(c.status))return;
+ resetVoiceDraft('sPendingVoice');
  $('sActivationConfirmed').value='1';$('sActivationReasonWrap').classList.remove('hidden');$('sSaleFields').classList.remove('hidden');
- $('sPendingAgreementWrap')?.classList.add('hidden');$('sActivationReason')?.focus();
+ $('sPendingAgreementWrap')?.classList.add('hidden');
 }
 function showPendingAgreementForm(){
  const c=state.customers.find(x=>Number(x.id)===Number($('sCustomerId')?.value||0));if(!c||!['hesitant','rejected'].includes(c.status))return;
- $('sPendingAgreementWrap')?.classList.remove('hidden');$('sPendingReason')?.focus();
+ resetVoiceDraft('sActivationVoice');
+ $('sActivationConfirmed').value='';
+ $('sActivationReasonWrap')?.classList.add('hidden');$('sSaleFields')?.classList.add('hidden');
+ $('sPendingAgreementWrap')?.classList.remove('hidden');
 }
 async function markAgreedPendingFromSales(){
- const customerId=Number($('sCustomerId')?.value||0),reason=$('sPendingReason')?.value.trim()||'',c=state.customers.find(x=>Number(x.id)===customerId);
+ const customerId=Number($('sCustomerId')?.value||0),reason=$('sPendingReason')?.value.trim()||'',c=state.customers.find(x=>Number(x.id)===customerId),btn=$('sSaveAgreedPendingBtn');
  if(!c||!['hesitant','rejected'].includes(c.status))return flash(lang==='ar'?'حالة العميل تغيرت. أعد فتح العملية.':'Customer status changed. Reopen the workflow.',true);
- if(reason.length<5)return flash(lang==='ar'?'اكتب سبب الاتفاق بشكل واضح.':'Enter a clear agreement reason.',true);
- const {error}=await sb.rpc('mark_customer_agreed_pending',{p_customer_id:customerId,p_reason:reason});
- if(error)return flash(error.message,true);
- closeModal();flash(lang==='ar'?'تم تحويل العميل إلى «متفق – بانتظار الطلبية».':'Customer marked Agreed – awaiting order.');await refreshAll();
+ if(!voiceDraft('sPendingVoice')?.blob)return flash(lang==='ar'?'سجّل تقرير الاتفاق الصوتي أولاً.':'Record the voice agreement report first.',true);
+ try{
+   if(btn){btn.disabled=true;btn.textContent=lang==='ar'?'جاري الحفظ...':'Saving...';}
+   const audio=await uploadVoiceDraft('sPendingVoice','agreement',customerId);
+   const {error}=await sb.rpc('mark_customer_agreed_pending',{p_customer_id:customerId,p_reason:reason,p_audio_path:audio.path,p_audio_duration_seconds:audio.duration});
+   if(error)throw new Error(error.message);
+   closeModal();flash(lang==='ar'?'تم حفظ التقرير الصوتي وتحويل العميل إلى «متفق – بانتظار الطلبية».':'Voice report saved and customer marked Agreed – awaiting order.');await refreshAll();
+ }catch(err){
+   flash(err.message||String(err),true);
+   if(btn){btn.disabled=false;btn.textContent=lang==='ar'?'حفظ كمتفق – بانتظار الطلبية':'Save as agreed – awaiting order';}
+ }
 }
 function openSaleForm(customerId=null){
  const requested=state.customers.find(c=>Number(c.id)===Number(customerId))||null;
  if(!state.customers.length)return flash(lang==='ar'?'لا يوجد عميل متاح لتسجيل طلبية.':'There is no customer available for an order.',true);
  openModal(lang==='ar'?'تسجيل سحب / فاتورة':'Record Sale / Withdrawal',`
-   <div class="notice" style="margin-bottom:10px">${lang==='ar'?'مسار الطلبية مضبوط حسب حالة العميل: نشط أو متفق يسجل مباشرة، المتردد/الرافض يحتاج سبب تحويل، والخامل يحتاج زيارة مسجلة.':'Order entry follows customer status: Active/Agreed can order directly, Hesitant/Rejected require an activation reason, and Inactive requires a recorded visit.'}</div>
+   <div class="notice" style="margin-bottom:10px">${lang==='ar'?'نشط أو متفق يسجل مباشرة. المتردد/الرافض يحتاج تقرير صوتي عند تغيير الحالة، والخامل يحتاج تقرير زيارة صوتي إذا لم تكن له زيارة مسجلة.':'Active or Agreed customers can order directly. Hesitant/Rejected customers require a voice report when changing status, and Inactive customers need a voice visit report if no visit is already recorded.'}</div>
    <div class="form-grid">
      <div class="full"><label>${t('customer')}</label>${customerPickerHtml('s',requested?.id||null,false)}</div>
      <div class="full" id="sWorkflowGate"></div>
      <input id="sActivationConfirmed" type="hidden" value="">
-     <div class="full hidden" id="sActivationReasonWrap"><label>${lang==='ar'?'سبب تحويل العميل إلى نشط':'Reason for converting customer to Active'} <span class="required-star">*</span></label><textarea id="sActivationReason" rows="4" placeholder="${lang==='ar'?'مثال: وافق العميل على الشراء بعد الزيارة وتم إصدار الطلبية...':'Example: customer agreed to buy after the visit and the order is being issued...'}"></textarea></div>
+     <div class="full hidden sale-status-voice-box" id="sActivationReasonWrap">
+       ${voiceRecorderHtml('sActivationVoice',lang==='ar'?'تقرير سبب تغيّر موقف العميل — صوتي':'Why the customer changed their decision — voice report')}
+       <div style="margin-top:10px"><label>${lang==='ar'?'تفاصيل إضافية بالكتابة — اختياري':'Additional written details — optional'}</label><textarea id="sActivationReason" rows="3" placeholder="${lang==='ar'?'اكتب فقط إذا فيه معلومة تحتاج كتابة...':'Write only if something needs to be written...'}"></textarea></div>
+     </div>
      <div class="full hidden" id="sInactiveVisitWrap"></div>
      <div class="full hidden" id="sSaleFields"><div class="form-grid">
        <div class="full sale-date-card"><label>${lang==='ar'?'تاريخ الطلبية':'Order date'} <span class="required-star">*</span></label><input id="sDate" class="sale-date-input" type="date" required autocomplete="off"><div class="sale-date-hint">${lang==='ar'?'اضغط لاختيار تاريخ الطلبية. لن يتم وضع تاريخ اليوم تلقائياً.':'Tap to choose the order date. Today is not filled automatically.'}</div></div>
@@ -1129,18 +1152,20 @@ function openSaleForm(customerId=null){
  setTimeout(()=>{bindCustomerPicker('s',updateSaleWorkflowFields,false);updateSaleWorkflowFields();},0);
 }
 async function addSale(){
- const customerId=Number($('sCustomerId')?.value||0),businessDate=$('sDate')?.value||'',product=$('sProduct')?.value||'',qty=Number($('sQty')?.value||0),amount=Number($('sAmount')?.value||0);
+ const customerId=Number($('sCustomerId')?.value||0),businessDate=$('sDate')?.value||'',product=$('sProduct')?.value||'',qty=Number($('sQty')?.value||0),amount=Number($('sAmount')?.value||0),btn=$('saveSaleBtn');
  if(!customerId)return flash(lang==='ar'?'اختر العميل من نتائج البحث':'Select a customer from the search results',true);
  const customer=state.customers.find(c=>Number(c.id)===customerId);
  if(!customer)return flash(lang==='ar'?'العميل غير موجود':'Customer not found',true);
- let activationReason=null,inactiveVisitNote=null;
+ let activationReason=null,inactiveVisitNote=null,voiceId=null,voicePurpose=null;
  if(['hesitant','rejected'].includes(customer.status)){
    if($('sActivationConfirmed')?.value!=='1')return flash(lang==='ar'?'اضغط «تغيير الحالة الآن» أولاً.':'Click “Change status now” first.',true);
+   if(!voiceDraft('sActivationVoice')?.blob)return flash(lang==='ar'?'سجّل التقرير الصوتي الذي يوضح سبب تغيّر موقف العميل.':'Record the voice report explaining why the customer changed their decision.',true);
    activationReason=$('sActivationReason')?.value.trim()||'';
-   if(activationReason.length<5)return flash(lang==='ar'?'اكتب سبب تحويل العميل إلى نشط.':'Enter the reason for converting the customer to Active.',true);
+   voiceId='sActivationVoice';voicePurpose='sale-activation';
  }else if(customer.status==='inactive'&&!inactiveVisitAlreadyLogged(customer)){
+   if(!voiceDraft('sInactiveVoice')?.blob)return flash(lang==='ar'?'سجّل تقرير زيارة العميل الخامل صوتياً قبل حفظ الطلبية.':'Record the inactive-customer visit report by voice before saving the order.',true);
    inactiveVisitNote=$('sInactiveVisitNote')?.value.trim()||'';
-   if(inactiveVisitNote.length<5)return flash(lang==='ar'?'اكتب تقرير زيارة العميل الخامل قبل حفظ الطلبية.':'Enter the inactive-customer visit report before saving the order.',true);
+   voiceId='sInactiveVoice';voicePurpose='inactive-sale-visit';
  }else if(!['active','agreed_pending','inactive'].includes(customer.status)){
    return flash(lang==='ar'?'حالة العميل لا تسمح بتسجيل طلبية.':'Customer status does not allow an order.',true);
  }
@@ -1148,22 +1173,29 @@ async function addSale(){
  if(!product)return flash(lang==='ar'?'اختر المنتج':'Choose the product',true);
  if(!(qty>0)||!(amount>0))return flash(lang==='ar'?'أكمل بيانات السحب':'Complete sale details',true);
  const before=customer.status;
- const {error}=await sb.rpc('record_sale_workflow',{
-   p_customer_id:customerId,p_product:product,p_quantity:qty,p_amount:amount,
-   p_business_date:businessDate,p_order_ref:$('sRef')?.value.trim()||null,
-   p_activation_reason:activationReason,p_inactive_visit_note:inactiveVisitNote
- });
- if(error){
+ try{
+   if(btn){btn.disabled=true;btn.textContent=lang==='ar'?'جاري الحفظ...':'Saving...';}
+   let audio={path:null,duration:null};
+   if(voiceId)audio=await uploadVoiceDraft(voiceId,voicePurpose,customerId);
+   const {error}=await sb.rpc('record_sale_workflow',{
+     p_customer_id:customerId,p_product:product,p_quantity:qty,p_amount:amount,
+     p_business_date:businessDate,p_order_ref:$('sRef')?.value.trim()||null,
+     p_activation_reason:activationReason,p_inactive_visit_note:inactiveVisitNote,
+     p_report_audio_path:audio.path,p_report_audio_duration_seconds:audio.duration
+   });
+   if(error)throw new Error(error.message);
+   closeModal();
+   const msg=before==='active'?(lang==='ar'?'تم حفظ الطلبية.':'Order saved.'):before==='agreed_pending'?(lang==='ar'?'تم حفظ الطلبية وتحويل العميل إلى نشط.':'Order saved and customer activated.'):before==='inactive'?(lang==='ar'?'تم حفظ الطلبية وإعادة العميل الخامل إلى نشط.':'Order saved and inactive customer reactivated.'):(lang==='ar'?'تم حفظ التقرير الصوتي والطلبية وتحويل العميل إلى نشط.':'Voice report and order saved; customer activated.');
+   flash(msg);await refreshAll();
+ }catch(err){
    const map={
-     'activation reason required':lang==='ar'?'سبب التحويل إلى نشط مطلوب.':'Activation reason is required.',
-     'inactive visit report required':lang==='ar'?'تقرير زيارة العميل الخامل مطلوب قبل الطلبية.':'Inactive-customer visit report is required before the order.',
+     'voice report required':lang==='ar'?'التقرير الصوتي مطلوب.':'Voice report is required.',
+     'invalid voice duration':lang==='ar'?'مدة التقرير الصوتي غير صحيحة.':'Invalid voice report duration.',
      'customer status not eligible for sale':lang==='ar'?'حالة العميل لا تسمح بتسجيل طلبية.':'Customer status does not allow an order.'
    };
-   return flash(map[error.message]||error.message,true);
+   flash(map[err.message]||err.message||String(err),true);
+   if(btn){btn.disabled=false;btn.textContent=t('save');}
  }
- closeModal();
- const msg=before==='active'?(lang==='ar'?'تم حفظ الطلبية.':'Order saved.'):before==='agreed_pending'?(lang==='ar'?'تم حفظ الطلبية وتحويل العميل إلى نشط.':'Order saved and customer activated.'):before==='inactive'?(lang==='ar'?'تم حفظ الطلبية وإعادة العميل الخامل إلى نشط.':'Order saved and inactive customer reactivated.'):(lang==='ar'?'تم حفظ السبب والطلبية وتحويل العميل إلى نشط.':'Reason and order saved; customer activated.');
- flash(msg);await refreshAll();
 }
 
 function openSaleEditor(id){if(!canManage())return;const x=state.sales.find(s=>Number(s.id)===Number(id));if(!x)return;openModal(lang==='ar'?'تعديل السحب':'Edit Sale',`<div class="form-grid"><div><label>${t('date')}</label><input id="esDate" type="date" value="${x.business_date}"></div><div><label>${t('product')}</label><select id="esProduct">${productOptions(PRODUCT_KEYS.includes(x.product)?x.product:null)}</select></div><div><label>${t('quantity')}</label><input id="esQty" type="number" min="0.01" step="0.01" value="${Number(x.quantity)}"></div><div><label>${t('value')}</label><input id="esAmount" type="number" min="0.01" step="0.01" value="${Number(x.amount)}"></div><div class="full"><label>${t('reference')}</label><input id="esRef" value="${esc(x.order_ref||'')}"></div><div class="full"><button class="btn" id="saveSaleEditBtn" data-id="${id}">${t('save')}</button></div></div>`);}

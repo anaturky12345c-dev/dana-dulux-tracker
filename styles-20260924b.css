@@ -934,3 +934,10 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
   .today-followup-meta{grid-column:1}
   .today-followup-action{grid-column:2;grid-row:1 / span 2}
 }
+
+
+/* Representative mobile dashboard priority */
+@media(max-width:900px){
+  #dashboard.rep-dashboard .dashboard-followup-today{order:-2}
+  #dashboard.rep-dashboard .dashboard-dormant{order:-1}
+}

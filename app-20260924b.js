@@ -785,24 +785,9 @@ function voiceTime(seconds){
  const s=Math.max(0,Math.min(VOICE_MAX_SECONDS,Math.round(Number(seconds)||0)));
  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 }
-function voiceMimeType(){
- if(!window.MediaRecorder)return '';
- const audio=document.createElement('audio');
- const candidates=[
-   ['audio/webm;codecs=opus','audio/webm; codecs="opus"'],
-   ['audio/mp4;codecs=mp4a.40.2','audio/mp4; codecs="mp4a.40.2"'],
-   ['audio/mp4','audio/mp4'],
-   ['audio/webm','audio/webm'],
-   ['audio/ogg;codecs=opus','audio/ogg; codecs="opus"'],
-   ['audio/ogg','audio/ogg']
- ];
- const both=candidates.find(([recordType,playType])=>MediaRecorder.isTypeSupported?.(recordType)&&audio.canPlayType(playType)!=='');
- if(both)return both[0];
- const recordOnly=candidates.find(([recordType])=>MediaRecorder.isTypeSupported?.(recordType));
- return recordOnly?.[0]||'';
-}
 function voiceExt(mime){
  const m=String(mime||'').toLowerCase();
+ if(m.includes('wav'))return 'wav';
  if(m.includes('mp4'))return 'm4a';
  if(m.includes('ogg'))return 'ogg';
  if(m.includes('mpeg'))return 'mp3';
@@ -858,14 +843,20 @@ function updateVoiceUi(id,mode,seconds=0){
  if(btn)btn.setAttribute('aria-pressed',mode==='recording'?'true':'false');
 }
 function stopVoiceTracks(d){
+ try{d?.source?.disconnect?.();}catch(_){}
+ try{d?.processor?.disconnect?.();}catch(_){}
+ try{d?.silentGain?.disconnect?.();}catch(_){}
  try{d?.stream?.getTracks?.().forEach(t=>t.stop());}catch(_){}
  if(d?.interval)clearInterval(d.interval);
+ if(d?.audioContext&&d.audioContext.state!=='closed'){
+   try{d.audioContext.close();}catch(_){}
+ }
 }
 function resetVoiceDraft(id){
  const d=voiceDrafts.get(id);
  if(d){
    d.discard=true;
-   try{if(d.recorder&&d.recorder.state!=='inactive')d.recorder.stop();}catch(_){}
+   d.recording=false;
    stopVoiceTracks(d);
    if(d.localUrl)try{URL.revokeObjectURL(d.localUrl);}catch(_){}
  }
@@ -875,49 +866,133 @@ function resetVoiceDraft(id){
 function resetAllVoiceDrafts(){
  for(const id of [...voiceDrafts.keys()])resetVoiceDraft(id);
 }
+function mergeVoiceBuffers(buffers,totalSamples){
+ const out=new Float32Array(totalSamples);
+ let offset=0;
+ for(const b of buffers){out.set(b,offset);offset+=b.length;}
+ return out;
+}
+function downsampleVoiceBuffer(input,inputRate,outputRate=16000){
+ if(!input?.length)return new Float32Array(0);
+ if(!inputRate||inputRate<=outputRate)return input;
+ const ratio=inputRate/outputRate;
+ const outputLength=Math.max(1,Math.round(input.length/ratio));
+ const output=new Float32Array(outputLength);
+ let inStart=0;
+ for(let i=0;i<outputLength;i++){
+   const inEnd=Math.min(input.length,Math.round((i+1)*ratio));
+   let sum=0,count=0;
+   for(let j=inStart;j<inEnd;j++){sum+=input[j];count++;}
+   output[i]=count?sum/count:input[Math.min(input.length-1,Math.round(i*ratio))];
+   inStart=inEnd;
+ }
+ return output;
+}
+function encodeVoiceWav(samples,sampleRate=16000){
+ const buffer=new ArrayBuffer(44+samples.length*2);
+ const view=new DataView(buffer);
+ const write=(offset,text)=>{for(let i=0;i<text.length;i++)view.setUint8(offset+i,text.charCodeAt(i));};
+ write(0,'RIFF');
+ view.setUint32(4,36+samples.length*2,true);
+ write(8,'WAVE');
+ write(12,'fmt ');
+ view.setUint32(16,16,true);
+ view.setUint16(20,1,true);
+ view.setUint16(22,1,true);
+ view.setUint32(24,sampleRate,true);
+ view.setUint32(28,sampleRate*2,true);
+ view.setUint16(32,2,true);
+ view.setUint16(34,16,true);
+ write(36,'data');
+ view.setUint32(40,samples.length*2,true);
+ let offset=44;
+ for(let i=0;i<samples.length;i++,offset+=2){
+   const s=Math.max(-1,Math.min(1,samples[i]));
+   view.setInt16(offset,s<0?s*0x8000:s*0x7fff,true);
+ }
+ return new Blob([buffer],{type:'audio/wav'});
+}
+async function finishVoiceRecording(id){
+ const d=voiceDrafts.get(id);
+ if(!d||!d.recording)return;
+ d.recording=false;
+ stopVoiceTracks(d);
+ if(d.discard)return;
+
+ const pcm=mergeVoiceBuffers(d.buffers,d.totalSamples);
+ if(!pcm.length){
+   voiceDrafts.delete(id);
+   updateVoiceUi(id,'idle',0);
+   return flash(lang==='ar'?'لم يتم التقاط صوت. أعد التسجيل.':'No audio was captured. Record again.',true);
+ }
+
+ const durationExact=pcm.length/d.sampleRate;
+ d.duration=Math.max(1,Math.min(VOICE_MAX_SECONDS,Math.round(durationExact)));
+ const downsampled=downsampleVoiceBuffer(pcm,d.sampleRate,16000);
+ d.mime='audio/wav';
+ d.blob=encodeVoiceWav(downsampled,16000);
+
+ if(!d.blob.size){
+   voiceDrafts.delete(id);
+   updateVoiceUi(id,'idle',0);
+   return flash(lang==='ar'?'تعذر إنشاء الملف الصوتي. أعد التسجيل.':'Could not create the audio file. Record again.',true);
+ }
+
+ const preview=document.querySelector('[data-voice-preview="'+id+'"]');
+ if(d.localUrl)try{URL.revokeObjectURL(d.localUrl);}catch(_){}
+ d.localUrl=URL.createObjectURL(d.blob);
+ if(preview){preview.src=d.localUrl;preview.load();}
+ updateVoiceUi(id,'ready',d.duration);
+}
 async function toggleVoiceRecording(id){
  const current=voiceDrafts.get(id);
- if(current?.recorder&&current.recorder.state==='recording'){
-   current.recorder.stop();
+ if(current?.recording){
+   await finishVoiceRecording(id);
    return;
  }
  if(current?.blob)resetVoiceDraft(id);
- if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
-   return flash(lang==='ar'?'التسجيل الصوتي غير مدعوم في هذا المتصفح. افتح الموقع من متصفح حديث على الجوال.':'Voice recording is not supported in this browser. Open the site in a modern mobile browser.',true);
+
+ const AudioCtx=window.AudioContext||window.webkitAudioContext;
+ if(!navigator.mediaDevices?.getUserMedia||!AudioCtx){
+   return flash(lang==='ar'?'التسجيل الصوتي غير مدعوم في هذا المتصفح.':'Voice recording is not supported in this browser.',true);
  }
+
  try{
-   const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-   const mime=voiceMimeType();
-   const recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
-   const d={recorder,stream,chunks:[],startedAt:Date.now(),interval:null,blob:null,duration:0,mime:recorder.mimeType||mime||'audio/webm',localUrl:null,discard:false,uploadedPath:null};
-   voiceDrafts.set(id,d);
-   recorder.ondataavailable=e=>{if(e.data&&e.data.size)d.chunks.push(e.data);};
-   recorder.onerror=()=>{stopVoiceTracks(d);voiceDrafts.delete(id);updateVoiceUi(id,'idle',0);flash(lang==='ar'?'تعذر إكمال التسجيل الصوتي. حاول مرة أخرى.':'Could not complete the voice recording. Try again.',true);};
-   recorder.onstop=()=>{
-     stopVoiceTracks(d);
-     if(d.discard)return;
-     d.duration=Math.max(1,Math.min(VOICE_MAX_SECONDS,Math.round((Date.now()-d.startedAt)/1000)));
-     d.blob=new Blob(d.chunks,{type:d.mime});
-     if(!d.blob.size){
-       voiceDrafts.delete(id);
-       updateVoiceUi(id,'idle',0);
-       return flash(lang==='ar'?'لم يتم التقاط صوت في التسجيل. أعد المحاولة.':'No audio was captured. Please record again.',true);
-     }
-     const preview=document.querySelector('[data-voice-preview="'+id+'"]');
-     if(d.localUrl)try{URL.revokeObjectURL(d.localUrl);}catch(_){}
-     d.localUrl=URL.createObjectURL(d.blob);
-     if(preview){
-       preview.src=d.localUrl;
-       preview.load();
-     }
-     updateVoiceUi(id,'ready',d.duration);
+   const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+   const audioContext=new AudioCtx();
+   if(audioContext.state==='suspended')await audioContext.resume();
+
+   const source=audioContext.createMediaStreamSource(stream);
+   const processor=audioContext.createScriptProcessor(4096,1,1);
+   const silentGain=audioContext.createGain();
+   silentGain.gain.value=0;
+
+   const d={
+     stream,audioContext,source,processor,silentGain,
+     buffers:[],totalSamples:0,sampleRate:audioContext.sampleRate,
+     startedAt:Date.now(),interval:null,blob:null,duration:0,mime:'audio/wav',
+     localUrl:null,discard:false,uploadedPath:null,recording:true
    };
-   recorder.start();
+   voiceDrafts.set(id,d);
+
+   processor.onaudioprocess=e=>{
+     if(!d.recording||d.discard)return;
+     const input=e.inputBuffer.getChannelData(0);
+     const copy=new Float32Array(input.length);
+     copy.set(input);
+     d.buffers.push(copy);
+     d.totalSamples+=copy.length;
+   };
+
+   source.connect(processor);
+   processor.connect(silentGain);
+   silentGain.connect(audioContext.destination);
+
    updateVoiceUi(id,'recording',0);
    d.interval=setInterval(()=>{
      const sec=Math.floor((Date.now()-d.startedAt)/1000);
      updateVoiceUi(id,'recording',sec);
-     if(sec>=VOICE_MAX_SECONDS&&recorder.state==='recording')recorder.stop();
+     if(sec>=VOICE_MAX_SECONDS&&d.recording)finishVoiceRecording(id);
    },250);
  }catch(err){
    const denied=err&&['NotAllowedError','PermissionDeniedError'].includes(err.name);

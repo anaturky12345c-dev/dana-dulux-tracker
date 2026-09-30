@@ -801,9 +801,12 @@ function voiceRecorderHtml(id,label){
      <div class="voice-record-status"><span class="voice-pulse" data-voice-pulse="${esc(id)}"></span><b data-voice-timer="${esc(id)}">00:00</b><small data-voice-status="${esc(id)}">${lang==='ar'?'اضغط المايك وابدأ التقرير':'Tap the mic to start the report'}</small></div>
      <button type="button" class="btn secondary mini hidden" data-voice-reset="${esc(id)}">${lang==='ar'?'حذف وإعادة':'Delete & re-record'}</button>
    </div>
-   <div class="voice-native-preview hidden" data-voice-native-preview="${esc(id)}">
-     <div class="voice-native-preview-label">${lang==='ar'?'اسمع التسجيل قبل الحفظ':'Listen before saving'}</div>
-     <audio class="voice-local-preview" data-voice-preview="${esc(id)}" controls preload="auto" playsinline></audio>
+   <div class="voice-pcm-preview hidden" data-voice-pcm-preview="${esc(id)}">
+     <button type="button" class="voice-pcm-play" data-voice-pcm-play="${esc(id)}">
+       <span data-voice-pcm-icon="${esc(id)}">▶</span>
+       <span data-voice-pcm-text="${esc(id)}">${lang==='ar'?'سماع التسجيل قبل الحفظ':'Listen before saving'}</span>
+       <b data-voice-pcm-duration="${esc(id)}">00:00</b>
+     </button>
    </div>
  </div>`;
 }
@@ -816,9 +819,10 @@ function updateVoiceUi(id,mode,seconds=0){
  const status=widget.querySelector('[data-voice-status="'+id+'"]');
  const pulse=widget.querySelector('[data-voice-pulse="'+id+'"]');
  const reset=widget.querySelector('[data-voice-reset="'+id+'"]');
- const preview=widget.querySelector('[data-voice-preview="'+id+'"]');
- const nativeWrap=widget.querySelector('[data-voice-native-preview="'+id+'"]');
+ const previewWrap=widget.querySelector('[data-voice-pcm-preview="'+id+'"]');
+ const previewDuration=widget.querySelector('[data-voice-pcm-duration="'+id+'"]');
  if(timer)timer.textContent=voiceTime(seconds);
+ if(previewDuration)previewDuration.textContent=voiceTime(seconds);
  widget.classList.toggle('recording',mode==='recording');
  if(pulse)pulse.classList.toggle('active',mode==='recording');
 
@@ -826,21 +830,84 @@ function updateVoiceUi(id,mode,seconds=0){
    if(txt)txt.textContent=lang==='ar'?'إيقاف التسجيل':'Stop recording';
    if(status)status.textContent=lang==='ar'?'جاري التسجيل...':'Recording...';
    if(reset)reset.classList.remove('hidden');
-   if(nativeWrap)nativeWrap.classList.add('hidden');
-   if(preview)preview.pause();
+   if(previewWrap)previewWrap.classList.add('hidden');
  }else if(mode==='ready'){
    if(txt)txt.textContent=lang==='ar'?'إعادة التسجيل':'Record again';
-   if(status)status.textContent=lang==='ar'?'تم التسجيل — جرّب تشغيله قبل الحفظ':'Recorded — play it before saving';
+   if(status)status.textContent=lang==='ar'?'تم التسجيل — اسمعه قبل الحفظ':'Recorded — listen before saving';
    if(reset)reset.classList.remove('hidden');
-   if(nativeWrap)nativeWrap.classList.remove('hidden');
+   if(previewWrap)previewWrap.classList.remove('hidden');
  }else{
    if(txt)txt.textContent=lang==='ar'?'تسجيل صوتي':'Record voice';
    if(status)status.textContent=lang==='ar'?'اضغط المايك وابدأ التقرير':'Tap the mic to start the report';
    if(reset)reset.classList.add('hidden');
-   if(nativeWrap)nativeWrap.classList.add('hidden');
-   if(preview){preview.pause();preview.removeAttribute('src');preview.load();}
+   if(previewWrap)previewWrap.classList.add('hidden');
  }
  if(btn)btn.setAttribute('aria-pressed',mode==='recording'?'true':'false');
+}
+
+function stopPcmPreview(d){
+ if(!d)return;
+ try{d.previewSource?.stop?.();}catch(_){}
+ try{d.previewSource?.disconnect?.();}catch(_){}
+ try{d.previewCtx?.close?.();}catch(_){}
+ d.previewSource=null;
+ d.previewCtx=null;
+ d.previewPlaying=false;
+}
+
+function setPcmPreviewUi(id,playing){
+ const widget=document.querySelector('[data-voice-widget="'+id+'"]');if(!widget)return;
+ const txt=widget.querySelector('[data-voice-pcm-text="'+id+'"]');
+ const icon=widget.querySelector('[data-voice-pcm-icon="'+id+'"]');
+ if(txt)txt.textContent=playing?(lang==='ar'?'إيقاف الاستماع':'Stop listening'):(lang==='ar'?'سماع التسجيل قبل الحفظ':'Listen before saving');
+ if(icon)icon.textContent=playing?'■':'▶';
+}
+
+async function togglePcmPreview(id){
+ const d=voiceDrafts.get(id);
+ if(!d?.buffers?.length||!d.totalSamples){
+   return flash(lang==='ar'?'لا يوجد تسجيل صوتي جاهز.':'No voice recording is ready.',true);
+ }
+ if(d.previewPlaying){
+   stopPcmPreview(d);
+   setPcmPreviewUi(id,false);
+   return;
+ }
+ const AudioCtx=window.AudioContext||window.webkitAudioContext;
+ if(!AudioCtx)return flash(lang==='ar'?'تشغيل الصوت غير مدعوم في هذا المتصفح.':'Audio playback is not supported in this browser.',true);
+
+ try{
+   const ctx=new AudioCtx();
+   d.previewCtx=ctx;
+   if(ctx.state==='suspended'){
+     const resumePromise=ctx.resume();
+     if(resumePromise&&typeof resumePromise.then==='function')await resumePromise;
+   }
+
+   const pcm=mergeVoiceBuffers(d.buffers,d.totalSamples);
+   const buffer=ctx.createBuffer(1,pcm.length,d.sampleRate);
+   buffer.getChannelData(0).set(pcm);
+
+   const source=ctx.createBufferSource();
+   source.buffer=buffer;
+   source.connect(ctx.destination);
+   d.previewSource=source;
+   d.previewPlaying=true;
+   setPcmPreviewUi(id,true);
+
+   source.onended=()=>{
+     if(d.previewSource===source){
+       stopPcmPreview(d);
+       setPcmPreviewUi(id,false);
+     }
+   };
+   source.start(0);
+ }catch(err){
+   console.error('PCM preview failed',err);
+   stopPcmPreview(d);
+   setPcmPreviewUi(id,false);
+   flash(lang==='ar'?'تعذر تشغيل الصوت من المتصفح.':'The browser could not play the voice recording.',true);
+ }
 }
 function stopVoiceTracks(d){
  try{d?.source?.disconnect?.();}catch(_){}
@@ -857,6 +924,7 @@ function resetVoiceDraft(id){
  if(d){
    d.discard=true;
    d.recording=false;
+   stopPcmPreview(d);
    stopVoiceTracks(d);
    if(d.localUrl)try{URL.revokeObjectURL(d.localUrl);}catch(_){}
  }
@@ -928,6 +996,11 @@ async function finishVoiceRecording(id){
 
  const durationExact=pcm.length/d.sampleRate;
  d.duration=Math.max(1,Math.min(VOICE_MAX_SECONDS,Math.round(durationExact)));
+ if((d.peak||0)<0.001){
+   voiceDrafts.delete(id);
+   updateVoiceUi(id,'idle',0);
+   return flash(lang==='ar'?'الميكروفون لم يلتقط صوتاً واضحاً. تأكد من الميكروفون ثم أعد التسجيل.':'The microphone did not capture audible sound. Check the microphone and record again.',true);
+ }
  const downsampled=downsampleVoiceBuffer(pcm,d.sampleRate,16000);
  d.mime='audio/wav';
  d.blob=encodeVoiceWav(downsampled,16000);
@@ -971,7 +1044,8 @@ async function toggleVoiceRecording(id){
      stream,audioContext,source,processor,silentGain,
      buffers:[],totalSamples:0,sampleRate:audioContext.sampleRate,
      startedAt:Date.now(),interval:null,blob:null,duration:0,mime:'audio/wav',
-     localUrl:null,discard:false,uploadedPath:null,recording:true
+     localUrl:null,discard:false,uploadedPath:null,recording:true,peak:0,
+     previewCtx:null,previewSource:null,previewPlaying:false
    };
    voiceDrafts.set(id,d);
 
@@ -982,6 +1056,9 @@ async function toggleVoiceRecording(id){
      copy.set(input);
      d.buffers.push(copy);
      d.totalSamples+=copy.length;
+     let peak=d.peak||0;
+     for(let i=0;i<copy.length;i++){const a=Math.abs(copy[i]);if(a>peak)peak=a;}
+     d.peak=peak;
    };
 
    source.connect(processor);
@@ -1611,6 +1688,7 @@ $('dashboard')?.addEventListener('click',e=>{let el;if((el=e.target.closest('[da
 document.addEventListener('click',e=>{
  const toggle=e.target.closest('[data-voice-toggle]');if(toggle){e.preventDefault();toggleVoiceRecording(toggle.dataset.voiceToggle);return;}
  const reset=e.target.closest('[data-voice-reset]');if(reset){e.preventDefault();resetVoiceDraft(reset.dataset.voiceReset);return;}
+ const pcm=e.target.closest('[data-voice-pcm-play]');if(pcm){e.preventDefault();togglePcmPreview(pcm.dataset.voicePcmPlay);return;}
  const play=e.target.closest('[data-play-voice]');if(play){e.preventDefault();playSavedVoice(play);return;}
 });
 $('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#sActivateNowBtn')))enableSaleActivation();else if((b=e.target.closest('#sAgreedPendingBtn')))showPendingAgreementForm();else if((b=e.target.closest('#sSaveAgreedPendingBtn')))markAgreedPendingFromSales();else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-inactive-visit]')))openInactiveVisitForm(Number(b.dataset.inactiveVisit));else if((b=e.target.closest('#saveInactiveVisitBtn')))saveInactiveVisit(Number(b.dataset.id));else if((b=e.target.closest('#saveSalesFollowupBtn')))saveSalesFollowup();else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});

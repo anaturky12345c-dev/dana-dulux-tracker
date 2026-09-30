@@ -762,7 +762,161 @@ async function openCustomer(id){
 }
 
 function openModal(title,html){$('modalTitle').textContent=title;$('modalContent').innerHTML=html;$('modal').classList.add('open');}
-function closeModal(){if(state.pickerMap){try{state.pickerMap.remove()}catch(_){}state.pickerMap=null;state.pickerMarker=null;}$('modal').classList.remove('open');}
+function closeModal(){resetAllVoiceDrafts();if(state.pickerMap){try{state.pickerMap.remove()}catch(_){}state.pickerMap=null;state.pickerMarker=null;}$('modal').classList.remove('open');}
+
+const VOICE_BUCKET='dana-voice-reports';
+const VOICE_MAX_SECONDS=120;
+const voiceDrafts=new Map();
+
+function voiceTime(seconds){
+ const s=Math.max(0,Math.min(VOICE_MAX_SECONDS,Math.round(Number(seconds)||0)));
+ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+function voiceMimeType(){
+ const candidates=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
+ if(!window.MediaRecorder)return '';
+ return candidates.find(x=>MediaRecorder.isTypeSupported?.(x))||'';
+}
+function voiceExt(mime){
+ const m=String(mime||'').toLowerCase();
+ if(m.includes('mp4'))return 'm4a';
+ if(m.includes('ogg'))return 'ogg';
+ if(m.includes('mpeg'))return 'mp3';
+ return 'webm';
+}
+function voiceRecorderHtml(id,label){
+ return `<div class="voice-recorder" data-voice-widget="${esc(id)}">
+   <div class="voice-recorder-head"><b>${esc(label)}</b><span>${lang==='ar'?'إلزامي • بحد أقصى دقيقتين':'Required • up to 2 minutes'}</span></div>
+   <div class="voice-record-row">
+     <button type="button" class="voice-record-btn" data-voice-toggle="${esc(id)}"><span class="voice-mic">🎤</span><span data-voice-button-text="${esc(id)}">${lang==='ar'?'تسجيل صوتي':'Record voice'}</span></button>
+     <div class="voice-record-status"><span class="voice-pulse" data-voice-pulse="${esc(id)}"></span><b data-voice-timer="${esc(id)}">00:00</b><small data-voice-status="${esc(id)}">${lang==='ar'?'اضغط المايك وابدأ التقرير':'Tap the mic to start the report'}</small></div>
+     <button type="button" class="btn secondary mini hidden" data-voice-reset="${esc(id)}">${lang==='ar'?'حذف وإعادة':'Delete & re-record'}</button>
+   </div>
+   <audio class="voice-local-preview hidden" data-voice-preview="${esc(id)}" controls preload="metadata"></audio>
+ </div>`;
+}
+function voiceDraft(id){return voiceDrafts.get(id)||null;}
+function updateVoiceUi(id,mode,seconds=0){
+ const widget=document.querySelector('[data-voice-widget="'+id+'"]');if(!widget)return;
+ const btn=widget.querySelector('[data-voice-toggle="'+id+'"]');
+ const txt=widget.querySelector('[data-voice-button-text="'+id+'"]');
+ const timer=widget.querySelector('[data-voice-timer="'+id+'"]');
+ const status=widget.querySelector('[data-voice-status="'+id+'"]');
+ const pulse=widget.querySelector('[data-voice-pulse="'+id+'"]');
+ const reset=widget.querySelector('[data-voice-reset="'+id+'"]');
+ const preview=widget.querySelector('[data-voice-preview="'+id+'"]');
+ if(timer)timer.textContent=voiceTime(seconds);
+ widget.classList.toggle('recording',mode==='recording');
+ if(pulse)pulse.classList.toggle('active',mode==='recording');
+ if(mode==='recording'){
+   if(txt)txt.textContent=lang==='ar'?'إيقاف التسجيل':'Stop recording';
+   if(status)status.textContent=lang==='ar'?'جاري التسجيل...':'Recording...';
+   if(reset)reset.classList.remove('hidden');
+   if(preview)preview.classList.add('hidden');
+ }else if(mode==='ready'){
+   if(txt)txt.textContent=lang==='ar'?'تسجيل جديد':'Record again';
+   if(status)status.textContent=lang==='ar'?'تم التسجيل — اسمعه قبل الحفظ':'Recorded — listen before saving';
+   if(reset)reset.classList.remove('hidden');
+   if(preview)preview.classList.remove('hidden');
+ }else{
+   if(txt)txt.textContent=lang==='ar'?'تسجيل صوتي':'Record voice';
+   if(status)status.textContent=lang==='ar'?'اضغط المايك وابدأ التقرير':'Tap the mic to start the report';
+   if(reset)reset.classList.add('hidden');
+   if(preview){preview.classList.add('hidden');preview.removeAttribute('src');}
+ }
+ if(btn)btn.setAttribute('aria-pressed',mode==='recording'?'true':'false');
+}
+function stopVoiceTracks(d){
+ try{d?.stream?.getTracks?.().forEach(t=>t.stop());}catch(_){}
+ if(d?.interval)clearInterval(d.interval);
+}
+function resetVoiceDraft(id){
+ const d=voiceDrafts.get(id);
+ if(d){
+   d.discard=true;
+   try{if(d.recorder&&d.recorder.state!=='inactive')d.recorder.stop();}catch(_){}
+   stopVoiceTracks(d);
+   if(d.localUrl)try{URL.revokeObjectURL(d.localUrl);}catch(_){}
+ }
+ voiceDrafts.delete(id);
+ updateVoiceUi(id,'idle',0);
+}
+function resetAllVoiceDrafts(){
+ for(const id of [...voiceDrafts.keys()])resetVoiceDraft(id);
+}
+async function toggleVoiceRecording(id){
+ const current=voiceDrafts.get(id);
+ if(current?.recorder&&current.recorder.state==='recording'){
+   current.recorder.stop();
+   return;
+ }
+ if(current?.blob)resetVoiceDraft(id);
+ if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
+   return flash(lang==='ar'?'التسجيل الصوتي غير مدعوم في هذا المتصفح. افتح الموقع من متصفح حديث على الجوال.':'Voice recording is not supported in this browser. Open the site in a modern mobile browser.',true);
+ }
+ try{
+   const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+   const mime=voiceMimeType();
+   const recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+   const d={recorder,stream,chunks:[],startedAt:Date.now(),interval:null,blob:null,duration:0,mime:recorder.mimeType||mime||'audio/webm',localUrl:null,discard:false,uploadedPath:null};
+   voiceDrafts.set(id,d);
+   recorder.ondataavailable=e=>{if(e.data&&e.data.size)d.chunks.push(e.data);};
+   recorder.onerror=()=>{stopVoiceTracks(d);voiceDrafts.delete(id);updateVoiceUi(id,'idle',0);flash(lang==='ar'?'تعذر إكمال التسجيل الصوتي. حاول مرة أخرى.':'Could not complete the voice recording. Try again.',true);};
+   recorder.onstop=()=>{
+     stopVoiceTracks(d);
+     if(d.discard)return;
+     d.duration=Math.max(1,Math.min(VOICE_MAX_SECONDS,Math.round((Date.now()-d.startedAt)/1000)));
+     d.blob=new Blob(d.chunks,{type:d.mime});
+     const preview=document.querySelector('[data-voice-preview="'+id+'"]');
+     if(d.localUrl)try{URL.revokeObjectURL(d.localUrl);}catch(_){}
+     d.localUrl=URL.createObjectURL(d.blob);
+     if(preview){preview.src=d.localUrl;preview.load();}
+     updateVoiceUi(id,'ready',d.duration);
+   };
+   recorder.start(250);
+   updateVoiceUi(id,'recording',0);
+   d.interval=setInterval(()=>{
+     const sec=Math.floor((Date.now()-d.startedAt)/1000);
+     updateVoiceUi(id,'recording',sec);
+     if(sec>=VOICE_MAX_SECONDS&&recorder.state==='recording')recorder.stop();
+   },250);
+ }catch(err){
+   const denied=err&&['NotAllowedError','PermissionDeniedError'].includes(err.name);
+   flash(denied?(lang==='ar'?'فعّل إذن الميكروفون للموقع ثم حاول مرة أخرى.':'Allow microphone access for this site, then try again.'):(lang==='ar'?'تعذر تشغيل الميكروفون. حاول مرة أخرى.':'Could not start the microphone. Try again.'),true);
+ }
+}
+async function uploadVoiceDraft(id,purpose,customerId){
+ const d=voiceDrafts.get(id);
+ if(!d?.blob||!d.duration)throw new Error(lang==='ar'?'سجّل التقرير الصوتي أولاً.':'Record the voice report first.');
+ if(d.duration>VOICE_MAX_SECONDS)throw new Error(lang==='ar'?'مدة التسجيل تتجاوز دقيقتين.':'Recording exceeds two minutes.');
+ if(d.uploadedPath)return {path:d.uploadedPath,duration:d.duration};
+ const uid=state.session?.user?.id||state.profile?.id;
+ if(!uid)throw new Error(lang==='ar'?'انتهت الجلسة. سجل الدخول من جديد.':'Session expired. Sign in again.');
+ const token=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
+ const path='voice/'+uid+'/'+String(purpose||'report').replace(/[^a-z0-9_-]/gi,'-')+'-'+Number(customerId||0)+'-'+token+'.'+voiceExt(d.mime);
+ const {error}=await sb.storage.from(VOICE_BUCKET).upload(path,d.blob,{contentType:d.mime||'audio/webm',cacheControl:'3600',upsert:false});
+ if(error)throw new Error((lang==='ar'?'تعذر رفع التسجيل الصوتي: ':'Could not upload voice recording: ')+error.message);
+ d.uploadedPath=path;
+ return {path,duration:d.duration};
+}
+function savedVoiceHtml(path,duration){
+ if(!path)return '';
+ return `<span class="saved-voice"><button type="button" class="voice-play-btn" data-play-voice="${esc(path)}"><span>▶</span> ${lang==='ar'?'تشغيل التقرير الصوتي':'Play voice report'} <b>${voiceTime(duration||0)}</b></button><audio class="saved-voice-audio hidden" controls preload="none"></audio></span>`;
+}
+async function playSavedVoice(button){
+ const wrap=button.closest('.saved-voice');if(!wrap)return;
+ const audio=wrap.querySelector('audio');if(!audio)return;
+ if(audio.src){
+   if(audio.paused)audio.play();else audio.pause();
+   return;
+ }
+ button.disabled=true;
+ const {data,error}=await sb.storage.from(VOICE_BUCKET).createSignedUrl(button.dataset.playVoice,900);
+ button.disabled=false;
+ if(error||!data?.signedUrl)return flash(lang==='ar'?'تعذر فتح التسجيل الصوتي.':'Could not open the voice recording.',true);
+ audio.src=data.signedUrl;audio.classList.remove('hidden');button.classList.add('hidden');
+ try{await audio.play();}catch(_){}
+}
 function customerOptions(selected=null){return state.customers.map(c=>`<option value="${c.id}" ${Number(selected)===Number(c.id)?'selected':''}>${esc(c.name)}</option>`).join('');}
 function customerPickerHtml(prefix,selected=null,activeOnly=false){
  const c=state.customers.find(x=>Number(x.id)===Number(selected)&&(!activeOnly||x.status==='active'));

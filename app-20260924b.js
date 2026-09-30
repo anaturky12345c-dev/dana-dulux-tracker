@@ -786,9 +786,20 @@ function voiceTime(seconds){
  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 }
 function voiceMimeType(){
- const candidates=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
  if(!window.MediaRecorder)return '';
- return candidates.find(x=>MediaRecorder.isTypeSupported?.(x))||'';
+ const audio=document.createElement('audio');
+ const candidates=[
+   ['audio/webm;codecs=opus','audio/webm; codecs="opus"'],
+   ['audio/mp4;codecs=mp4a.40.2','audio/mp4; codecs="mp4a.40.2"'],
+   ['audio/mp4','audio/mp4'],
+   ['audio/webm','audio/webm'],
+   ['audio/ogg;codecs=opus','audio/ogg; codecs="opus"'],
+   ['audio/ogg','audio/ogg']
+ ];
+ const both=candidates.find(([recordType,playType])=>MediaRecorder.isTypeSupported?.(recordType)&&audio.canPlayType(playType)!=='');
+ if(both)return both[0];
+ const recordOnly=candidates.find(([recordType])=>MediaRecorder.isTypeSupported?.(recordType));
+ return recordOnly?.[0]||'';
 }
 function voiceExt(mime){
  const m=String(mime||'').toLowerCase();
@@ -857,27 +868,72 @@ function updateVoiceUi(id,mode,seconds=0){
  }
  if(btn)btn.setAttribute('aria-pressed',mode==='recording'?'true':'false');
 }
+function waitForVoicePreviewReady(audio,timeoutMs=3500){
+ if(!audio)return Promise.resolve(false);
+ if(audio.readyState>=2&&!audio.error)return Promise.resolve(true);
+ return new Promise(resolve=>{
+   let done=false;
+   const finish=ok=>{
+     if(done)return;
+     done=true;
+     clearTimeout(timer);
+     audio.removeEventListener('canplay',onReady);
+     audio.removeEventListener('loadeddata',onReady);
+     audio.removeEventListener('error',onError);
+     resolve(ok);
+   };
+   const onReady=()=>finish(true);
+   const onError=()=>finish(false);
+   const timer=setTimeout(()=>finish(audio.readyState>=2&&!audio.error),timeoutMs);
+   audio.addEventListener('canplay',onReady,{once:true});
+   audio.addEventListener('loadeddata',onReady,{once:true});
+   audio.addEventListener('error',onError,{once:true});
+ });
+}
 async function toggleLocalVoicePreview(id){
  const d=voiceDrafts.get(id);
  const widget=document.querySelector('[data-voice-widget="'+id+'"]');
  const audio=widget?.querySelector('[data-voice-preview="'+id+'"]');
  const textEl=widget?.querySelector('[data-voice-preview-text="'+id+'"]');
  const iconEl=widget?.querySelector('[data-voice-preview-icon="'+id+'"]');
- if(!d?.blob||!audio)return flash(lang==='ar'?'لا يوجد تسجيل جاهز للتشغيل.':'No recording is ready to play.',true);
- if(!audio.src&&d.localUrl){audio.src=d.localUrl;audio.load();}
+ if(!d?.blob||!d.blob.size||!audio)return flash(lang==='ar'?'لا يوجد تسجيل صالح للتشغيل. أعد التسجيل.':'There is no valid recording to play. Re-record it.',true);
+
  if(!audio.paused){
    audio.pause();
    if(textEl)textEl.textContent=lang==='ar'?'متابعة الاستماع':'Resume listening';
    if(iconEl)iconEl.textContent='▶';
    return;
  }
+
  try{
-   await audio.play();
+   if(!audio.getAttribute('src')){
+     if(!d.localUrl)d.localUrl=URL.createObjectURL(d.blob);
+     audio.src=d.localUrl;
+     audio.load();
+   }
+
+   let ready=await waitForVoicePreviewReady(audio,1200);
+   if(!ready){
+     audio.removeAttribute('src');
+     audio.load();
+     if(d.localUrl){try{URL.revokeObjectURL(d.localUrl);}catch(_){}}
+     d.localUrl=URL.createObjectURL(d.blob);
+     audio.src=d.localUrl;
+     audio.load();
+     ready=await waitForVoicePreviewReady(audio,2500);
+   }
+   if(!ready||audio.error)throw new Error('preview source not playable');
+
+   audio.currentTime=Number.isFinite(audio.currentTime)?audio.currentTime:0;
+   const playPromise=audio.play();
+   if(playPromise&&typeof playPromise.then==='function')await playPromise;
+
    if(textEl)textEl.textContent=lang==='ar'?'إيقاف مؤقت':'Pause';
    if(iconEl)iconEl.textContent='⏸';
    audio.onended=()=>{
      if(textEl)textEl.textContent=lang==='ar'?'سماع التسجيل مرة أخرى':'Listen again';
      if(iconEl)iconEl.textContent='▶';
+     try{audio.currentTime=0;}catch(_){}
    };
    audio.onpause=()=>{
      if(audio.ended)return;
@@ -885,7 +941,8 @@ async function toggleLocalVoicePreview(id){
      if(iconEl)iconEl.textContent='▶';
    };
  }catch(err){
-   flash(lang==='ar'?'تعذر تشغيل التسجيل. أعد التسجيل وحاول مرة أخرى.':'Could not play the recording. Re-record and try again.',true);
+   console.error('voice preview failed',err,{mime:d.mime,size:d.blob?.size,duration:d.duration,readyState:audio?.readyState,error:audio?.error});
+   flash(lang==='ar'?'تعذر تشغيل المعاينة. التسجيل لم يُحفظ؛ اضغط «إعادة التسجيل» وسجله مرة أخرى.':'Preview could not be played. The recording was not saved; re-record it and try again.',true);
  }
 }
 function stopVoiceTracks(d){
@@ -924,18 +981,27 @@ async function toggleVoiceRecording(id){
    voiceDrafts.set(id,d);
    recorder.ondataavailable=e=>{if(e.data&&e.data.size)d.chunks.push(e.data);};
    recorder.onerror=()=>{stopVoiceTracks(d);voiceDrafts.delete(id);updateVoiceUi(id,'idle',0);flash(lang==='ar'?'تعذر إكمال التسجيل الصوتي. حاول مرة أخرى.':'Could not complete the voice recording. Try again.',true);};
-   recorder.onstop=()=>{
+   recorder.onstop=async()=>{
      stopVoiceTracks(d);
      if(d.discard)return;
      d.duration=Math.max(1,Math.min(VOICE_MAX_SECONDS,Math.round((Date.now()-d.startedAt)/1000)));
      d.blob=new Blob(d.chunks,{type:d.mime});
+     if(!d.blob.size){
+       voiceDrafts.delete(id);
+       updateVoiceUi(id,'idle',0);
+       return flash(lang==='ar'?'لم يتم التقاط صوت في التسجيل. أعد المحاولة.':'No audio was captured. Please record again.',true);
+     }
      const preview=document.querySelector('[data-voice-preview="'+id+'"]');
      if(d.localUrl)try{URL.revokeObjectURL(d.localUrl);}catch(_){}
      d.localUrl=URL.createObjectURL(d.blob);
-     if(preview){preview.src=d.localUrl;preview.load();}
+     if(preview){
+       preview.src=d.localUrl;
+       preview.load();
+       await waitForVoicePreviewReady(preview,3000);
+     }
      updateVoiceUi(id,'ready',d.duration);
    };
-   recorder.start(250);
+   recorder.start();
    updateVoiceUi(id,'recording',0);
    d.interval=setInterval(()=>{
      const sec=Math.floor((Date.now()-d.startedAt)/1000);

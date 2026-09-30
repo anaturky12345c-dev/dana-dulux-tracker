@@ -1021,3 +1021,69 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
     font-size:10px;
   }
 }
+
+
+/* Collapsed priority cards: tap header to reveal the list */
+.priority-collapsible .attention-head{
+  margin-bottom:0;
+  cursor:pointer;
+  user-select:none;
+}
+.priority-collapsible.expanded .attention-head{
+  margin-bottom:10px;
+}
+.priority-toggle:focus-visible{
+  outline:2px solid #2563eb;
+  outline-offset:4px;
+  border-radius:10px;
+}
+.priority-side{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  justify-self:end;
+}
+.priority-chevron{
+  width:28px;
+  height:28px;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(148,163,184,.35);
+  color:#475569;
+  font-size:20px;
+  font-weight:900;
+  line-height:1;
+  transition:transform .16s ease;
+}
+.priority-collapsible.expanded .priority-chevron{
+  transform:rotate(180deg);
+}
+.priority-list.hidden{
+  display:none!important;
+}
+@media(max-width:700px){
+  .dashboard-priority-grid>.card{
+    padding:10px 12px;
+  }
+  .dashboard-priority-grid .attention-head{
+    grid-template-columns:minmax(0,1fr) auto;
+    margin-bottom:0;
+  }
+  .dashboard-priority-grid .attention-count{
+    width:68px;
+    min-width:68px;
+    height:58px;
+    font-size:32px;
+  }
+  .priority-side{
+    gap:6px;
+  }
+  .priority-chevron{
+    width:26px;
+    height:26px;
+    font-size:18px;
+  }
+}

@@ -1112,16 +1112,24 @@ function markerIcon(category,type){
 }
 function refreshMapRepFilter(){
  const el=$('mapRepFilter');if(!el)return;
+ if(!canManage()){
+   const own=state.profile;
+   el.innerHTML='<option value="'+esc(own?.id||'')+'">'+esc(own?.full_name||t('representative'))+'</option>';
+   el.value=own?.id||'';
+   return;
+ }
  const selected=el.value,reps=state.profiles.filter(p=>p.role==='rep');
  el.innerHTML='<option value="">'+t('allReps')+'</option>'+reps.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.full_name)+'</option>').join('');
- if(reps.some(p=>p.id===selected))el.value=selected;
+ if(reps.some(p=>p.id===selected))el.value=selected;else el.value='';
 }
 function mapFilteredRows(){
  const filter=$('mapFilter')?.value||'',repFilter=$('mapRepFilter')?.value||'',typeFilter=$('mapTypeFilter')?.value||'',q=($('mapSearch')?.value||'').trim().toLowerCase();
  const rows=[];
+ const ownRepId=state.profile?.id||'';
  for(const x of state.mapLocations||[]){
    const c=state.customers.find(z=>Number(z.id)===Number(x.customer_id));
    if(!c||x.lat==null||x.lng==null)continue;
+   if(!canManage()&&c.assigned_rep!==ownRepId)continue;
    const ac=activityForCustomer(c.id),category=customerCategory(c);
    const statusOk=!filter||(filter==='frequent'?category==='frequent':c.status===filter);
    if(!statusOk)continue;
@@ -1141,8 +1149,8 @@ function setMapText(){
  if($('mapStatHesitantLabel'))$('mapStatHesitantLabel').textContent=t('hesitant');
  if($('mapStatRejectedLabel'))$('mapStatRejectedLabel').textContent=t('rejected');
  if($('mapStatSalesLabel'))$('mapStatSalesLabel').textContent=t('salesThisMonth');
- if($('mapListTitle'))$('mapListTitle').textContent=ar?'العملاء حسب الفلاتر':'Customers by filters';
- if($('mapListHint'))$('mapListHint').textContent=ar?'اضغط على العميل للانتقال إليه':'Tap a customer to focus on it';
+ if($('mapListTitle'))$('mapListTitle').textContent=ar?(canManage()?'العملاء حسب الفلاتر':'عملائي على الخريطة'):(canManage()?'Customers by filters':'My Customers on Map');
+ if($('mapListHint'))$('mapListHint').textContent=ar?(canManage()?'اضغط على العميل للانتقال إليه':'تظهر لك بيانات عملائك فقط — اضغط على العميل للانتقال إليه'):(canManage()?'Tap a customer to focus on it':'Only your customers are shown — tap a customer to focus on it');
  if($('mapFitBtn'))$('mapFitBtn').textContent=ar?'إظهار الكل':'Fit Customers';
  if($('mapClearBtn'))$('mapClearBtn').textContent=ar?'مسح الفلاتر':'Clear Filters';
  if($('mapFullscreenBtn'))$('mapFullscreenBtn').textContent=ar?'ملء الشاشة':'Full Screen';
@@ -1188,7 +1196,7 @@ function focusMapCustomer(id){
  marker.openPopup();
 }
 async function renderMap(){
-  if(!isAdmin())return;
+  if(!state.profile)return;
   refreshMapRepFilter();setMapText();
   if(!state.map){
     state.map=L.map('map',{zoomControl:true}).setView([24.78,46.76],11);
@@ -1198,7 +1206,7 @@ async function renderMap(){
   }
   const results=await Promise.all([
     sb.from('customer_locations').select('customer_id,lat,lng'),
-    sb.from('customer_followup_state').select('customer_id,owner_mode,next_due_at')
+    sb.from('sales_followup_state').select('customer_id,next_due_at')
   ]);
   if(results[0].error){console.error(results[0].error);return flash(lang==='ar'?'تعذر تحميل الخريطة':'Could not load map',true);}
   state.mapLocations=results[0].data||[];
@@ -1258,7 +1266,7 @@ async function changePassword(forced=false){
 async function renderSecurityStatus(){const box=$('securityStatus');if(!box||!state.profile)return;const changed=state.profile.password_changed_at?dateTime(state.profile.password_changed_at):(lang==='ar'?'لم تُسجل بعد':'Not recorded yet');box.innerHTML=lang==='ar'?`كلمة المرور: <b>${state.profile.must_change_password?'يجب تغييرها':'محدثة'}</b><br>آخر تغيير: ${esc(changed)}<br>الجلسة تُغلق بعد ساعة من عدم الاستخدام وبحد أقصى 8 ساعات.`:`Password: <b>${state.profile.must_change_password?'Change required':'Updated'}</b><br>Last change: ${esc(changed)}<br>Session closes after 1 hour of inactivity and after a maximum of 8 hours.`;const m=$('mfaAccount');if(!m||!isAdmin())return;const [aal,factors]=await Promise.all([sb.auth.mfa.getAuthenticatorAssuranceLevel(),sb.auth.mfa.listFactors()]);const verified=(factors.data?.totp||[]).some(x=>x.status==='verified');m.innerHTML=`<h4>${lang==='ar'?'التحقق بخطوتين للإدارة':'Admin two-factor authentication'}</h4><div class="${verified?'security-good':'security-warn'}">${verified?(lang==='ar'?'مفعّل. مستوى الجلسة: ':'Enabled. Session level: ')+esc(aal.data?.currentLevel||'-'):(lang==='ar'?'غير مفعّل.':'Not enabled.')}</div>`;}
 
 function gotoPage(id){
- if(state.securityGateMode)return;if(state.profile?.must_change_password)return showPasswordGate();if(!canManage()&&(id==='mapPage'||id==='analytics'))return;if(!isAdmin()&&id==='audit')return;
+ if(state.securityGateMode)return;if(state.profile?.must_change_password)return showPasswordGate();if(!canManage()&&id==='analytics')return;if(!isAdmin()&&id==='audit')return;
  document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.nav-grid button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
  const titles={dashboard:t('dashboard'),customers:t('customers'),sales:t('sales'),reports:t('followups'),analytics:t('reports'),mapPage:t('map'),audit:t('audit'),account:t('account')};$('pageTitle').textContent=titles[id]||'';
  if(id==='mapPage')setTimeout(renderMap,100);if(id==='analytics')setupAnalytics();if(id==='audit')renderAudit();if(id==='account')renderSecurityStatus();

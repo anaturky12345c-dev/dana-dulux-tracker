@@ -864,3 +864,29 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
   height:42px;
   margin:0;
 }
+
+
+/* Direct PCM preview: no media element or codec dependency */
+.voice-pcm-preview{
+  margin-top:10px;
+}
+.voice-pcm-play{
+  width:100%;
+  min-height:48px;
+  border:1px solid #8bcdb1;
+  background:#eaf8f1;
+  color:#065f46;
+  border-radius:12px;
+  padding:10px 13px;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.voice-pcm-play:hover{background:#dff4e9}
+.voice-pcm-play b{
+  font-variant-numeric:tabular-nums;
+  font-size:13px;
+}

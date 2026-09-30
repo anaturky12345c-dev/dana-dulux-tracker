@@ -843,3 +843,24 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
   font-variant-numeric:tabular-nums;
   font-size:13px;
 }
+
+
+.voice-native-preview{
+  margin-top:10px;
+  border:1px solid #a7d9c3;
+  background:#eefaf4;
+  border-radius:12px;
+  padding:10px;
+}
+.voice-native-preview-label{
+  font-size:12px;
+  font-weight:800;
+  color:#065f46;
+  margin-bottom:7px;
+}
+.voice-native-preview .voice-local-preview{
+  display:block;
+  width:100%;
+  height:42px;
+  margin:0;
+}

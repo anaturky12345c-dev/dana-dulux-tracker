@@ -890,13 +890,19 @@ function waitForVoicePreviewReady(audio,timeoutMs=3500){
    audio.addEventListener('error',onError,{once:true});
  });
 }
-async function toggleLocalVoicePreview(id){
+function toggleLocalVoicePreview(id){
  const d=voiceDrafts.get(id);
  const widget=document.querySelector('[data-voice-widget="'+id+'"]');
  const audio=widget?.querySelector('[data-voice-preview="'+id+'"]');
  const textEl=widget?.querySelector('[data-voice-preview-text="'+id+'"]');
  const iconEl=widget?.querySelector('[data-voice-preview-icon="'+id+'"]');
  if(!d?.blob||!d.blob.size||!audio)return flash(lang==='ar'?'لا يوجد تسجيل صالح للتشغيل. أعد التسجيل.':'There is no valid recording to play. Re-record it.',true);
+
+ if(!audio.getAttribute('src')){
+   if(!d.localUrl)d.localUrl=URL.createObjectURL(d.blob);
+   audio.src=d.localUrl;
+   audio.load();
+ }
 
  if(!audio.paused){
    audio.pause();
@@ -905,31 +911,22 @@ async function toggleLocalVoicePreview(id){
    return;
  }
 
+ // Important: call play() immediately inside the user's click.
+ // Waiting before play() can make browsers drop the user gesture and reject playback.
  try{
-   if(!audio.getAttribute('src')){
-     if(!d.localUrl)d.localUrl=URL.createObjectURL(d.blob);
-     audio.src=d.localUrl;
-     audio.load();
-   }
-
-   let ready=await waitForVoicePreviewReady(audio,1200);
-   if(!ready){
-     audio.removeAttribute('src');
-     audio.load();
-     if(d.localUrl){try{URL.revokeObjectURL(d.localUrl);}catch(_){}}
-     d.localUrl=URL.createObjectURL(d.blob);
-     audio.src=d.localUrl;
-     audio.load();
-     ready=await waitForVoicePreviewReady(audio,2500);
-   }
-   if(!ready||audio.error)throw new Error('preview source not playable');
-
-   audio.currentTime=Number.isFinite(audio.currentTime)?audio.currentTime:0;
-   const playPromise=audio.play();
-   if(playPromise&&typeof playPromise.then==='function')await playPromise;
-
+   const p=audio.play();
    if(textEl)textEl.textContent=lang==='ar'?'إيقاف مؤقت':'Pause';
    if(iconEl)iconEl.textContent='⏸';
+   if(p&&typeof p.catch==='function'){
+     p.catch(err=>{
+       console.error('voice preview failed',err,{mime:d.mime,size:d.blob?.size,duration:d.duration,readyState:audio?.readyState,error:audio?.error});
+       audio.controls=true;
+       audio.classList.remove('hidden');
+       if(textEl)textEl.textContent=lang==='ar'?'استخدم مشغل الصوت بالأسفل':'Use the audio player below';
+       if(iconEl)iconEl.textContent='▶';
+       flash(lang==='ar'?'لم يعمل زر المعاينة؛ ظهر لك مشغل الصوت المباشر بالأسفل.':'The preview button could not start playback; use the audio player shown below.',true);
+     });
+   }
    audio.onended=()=>{
      if(textEl)textEl.textContent=lang==='ar'?'سماع التسجيل مرة أخرى':'Listen again';
      if(iconEl)iconEl.textContent='▶';
@@ -941,8 +938,10 @@ async function toggleLocalVoicePreview(id){
      if(iconEl)iconEl.textContent='▶';
    };
  }catch(err){
-   console.error('voice preview failed',err,{mime:d.mime,size:d.blob?.size,duration:d.duration,readyState:audio?.readyState,error:audio?.error});
-   flash(lang==='ar'?'تعذر تشغيل المعاينة. التسجيل لم يُحفظ؛ اضغط «إعادة التسجيل» وسجله مرة أخرى.':'Preview could not be played. The recording was not saved; re-record it and try again.',true);
+   console.error('voice preview failed',err);
+   audio.controls=true;
+   audio.classList.remove('hidden');
+   flash(lang==='ar'?'استخدم مشغل الصوت الذي ظهر بالأسفل لسماع التسجيل قبل الحفظ.':'Use the audio player shown below to listen before saving.',true);
  }
 }
 function stopVoiceTracks(d){
@@ -981,7 +980,7 @@ async function toggleVoiceRecording(id){
    voiceDrafts.set(id,d);
    recorder.ondataavailable=e=>{if(e.data&&e.data.size)d.chunks.push(e.data);};
    recorder.onerror=()=>{stopVoiceTracks(d);voiceDrafts.delete(id);updateVoiceUi(id,'idle',0);flash(lang==='ar'?'تعذر إكمال التسجيل الصوتي. حاول مرة أخرى.':'Could not complete the voice recording. Try again.',true);};
-   recorder.onstop=async()=>{
+   recorder.onstop=()=>{
      stopVoiceTracks(d);
      if(d.discard)return;
      d.duration=Math.max(1,Math.min(VOICE_MAX_SECONDS,Math.round((Date.now()-d.startedAt)/1000)));
@@ -997,7 +996,6 @@ async function toggleVoiceRecording(id){
      if(preview){
        preview.src=d.localUrl;
        preview.load();
-       await waitForVoicePreviewReady(preview,3000);
      }
      updateVoiceUi(id,'ready',d.duration);
    };

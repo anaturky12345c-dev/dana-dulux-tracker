@@ -818,3 +818,28 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
   .voice-play-btn{width:100%;justify-content:center}
   .saved-voice-audio{width:100%}
 }
+
+
+.voice-preview-actions{
+  margin-top:10px;
+}
+.voice-preview-play{
+  width:100%;
+  min-height:46px;
+  border:1px solid #9fd0bb;
+  background:#eefaf4;
+  color:#065f46;
+  border-radius:12px;
+  padding:10px 13px;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:9px;
+  align-items:center;
+  font-weight:800;
+  cursor:pointer;
+}
+.voice-preview-play:hover{background:#e3f5ec}
+.voice-preview-play b{
+  font-variant-numeric:tabular-nums;
+  font-size:13px;
+}

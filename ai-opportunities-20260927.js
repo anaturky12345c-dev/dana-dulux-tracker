@@ -20,12 +20,13 @@ function boot(){
     const u=safeUrl(x.google_maps_url);if(!u)return '';
     try{
       const z=new URL(u),h=z.hostname.toLowerCase(),p=z.pathname.toLowerCase();
-      if(h==='maps.app.goo.gl')return u;
+      if(h==='maps.app.goo.gl'||(h==='goo.gl'&&z.pathname.startsWith('/maps')))return u;
       if(h==='google.com'||h==='www.google.com'||h==='maps.google.com'){
         if(p.includes('/maps/search'))return '';
         if(p.includes('/maps/place/')||p.includes('/maps/@')||p.includes('/maps/dir/'))return u;
-        const q=z.searchParams.get('query')||'';
+        const q=z.searchParams.get('query')||z.searchParams.get('q')||'';
         if(/^[-+]?\d{1,2}(?:\.\d+)?\s*,\s*[-+]?\d{1,3}(?:\.\d+)?$/.test(q))return u;
+        if(z.searchParams.get('cid'))return u;
       }
     }catch(_){}
     return '';

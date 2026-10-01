@@ -1905,3 +1905,30 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
     width:100%;
   }
 }
+
+
+/* Keep phone numbers, dates and scores readable inside Arabic RTL cards */
+.ai-ltr-number{
+  direction:ltr;
+  unicode-bidi:isolate;
+  display:inline-block;
+  text-align:left;
+  white-space:nowrap;
+}
+.ai-phone-link{
+  direction:inherit;
+  unicode-bidi:isolate;
+}
+.ai-phone-button{
+  display:inline-flex;
+  flex-direction:row;
+  align-items:center;
+  gap:6px;
+}
+.ai-call-label{
+  direction:rtl;
+  unicode-bidi:isolate;
+}
+html[dir="ltr"] .ai-call-label{
+  direction:ltr;
+}

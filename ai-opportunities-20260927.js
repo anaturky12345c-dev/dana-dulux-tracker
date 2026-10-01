@@ -6,7 +6,8 @@ function boot(){
   if(!app){setTimeout(boot,150);return;}
 
   const sb=app.sb,state=app.state,esc=app.esc,dateTime=app.dateTime,flash=app.flash,openModal=app.openModal,closeModal=app.closeModal;
-  let refreshTimer=null,agentTimerInterval=null,searching=false,availableOpen=false;\n  const claimInFlight=new Set();
+  let refreshTimer=null,agentTimerInterval=null,searching=false,availableOpen=false;
+  const claimInFlight=new Set();
   let latestReports=new Map(),guidanceByOpportunity=new Map(),opportunityById=new Map();
 
   const ar=()=>app.getLang()==='ar';

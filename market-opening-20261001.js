@@ -301,6 +301,7 @@
     const el=document.getElementById('marketMissionPickerMap');
     if(!el||!window.L)return;
     if(mo.pickerMap){try{mo.pickerMap.remove()}catch(_){}}
+    mo.pickerMap=null;mo.pickerMarker=null;mo.pickerCircle=null;
     const center=m?[Number(m.center_lat),Number(m.center_lng)]:[24.7136,46.6753];
     mo.pickerMap=L.map(el,{zoomControl:true}).setView(center,m?13:11);
     addBaseMap(mo.pickerMap);

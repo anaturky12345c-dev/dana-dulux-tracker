@@ -126,16 +126,16 @@ function boot(){
         '<div class="grid cards" id="aiOppSummary" style="margin-bottom:14px"></div>'+
         '<div class="toolbar" style="margin-bottom:10px"><select id="aiOppStatusFilter"></select><select id="aiOppTypeFilter"></select><select id="aiOppGradeFilter"></select><select id="aiOppCityFilter"></select><select id="aiOppPeriodFilter"></select></div>'+
         '<div id="aiOppList">'+
-          '<div class="card ai-opportunity-section" style="margin-bottom:12px">'+
+          '<div class="card ai-opportunity-section ai-available-section" style="margin-bottom:12px">'+
+            '<div class="workload-collapsed-head open" id="aiAvailableToggle" role="button" tabindex="0" aria-expanded="true">'+
+              '<div><h3 id="aiAvailableTitle"></h3><div class="small" id="aiAvailableHelp"></div></div>'+
+              '<div class="ai-section-count"><span class="badge b-warn" id="aiAvailableCount">0</span><span class="workload-collapse-arrow">⌄</span></div>'+
+            '</div>'+
+            '<div id="aiAvailableBody" style="margin-top:10px"><div id="aiAvailableList"></div></div>'+
+          '</div>'+
+          '<div class="card ai-opportunity-section ai-claimed-section" style="margin-bottom:12px">'+
             '<div class="dashboard-head"><div><h3 id="aiClaimedTitle"></h3><div class="small" id="aiClaimedHelp"></div></div><span class="badge b-good" id="aiClaimedCount">0</span></div>'+
             '<div id="aiClaimedList"></div>'+
-          '</div>'+
-          '<div class="card ai-opportunity-section" style="margin-bottom:12px">'+
-            '<div class="workload-collapsed-head" id="aiAvailableToggle" role="button" tabindex="0" aria-expanded="false">'+
-              '<div><h3 id="aiAvailableTitle"></h3><div class="small" id="aiAvailableHelp"></div></div>'+
-              '<div style="display:flex;align-items:center;gap:8px"><span class="badge b-warn" id="aiAvailableCount">0</span><span class="workload-collapse-arrow">⌄</span></div>'+
-            '</div>'+
-            '<div id="aiAvailableBody" class="hidden" style="margin-top:12px"><div id="aiAvailableList"></div></div>'+
           '</div>'+
         '</div>';
       main.appendChild(section);
@@ -144,6 +144,7 @@ function boot(){
       section.querySelector('#aiSearchNowBtn')?.addEventListener('click',searchNow);
       ['#aiOppStatusFilter','#aiOppTypeFilter','#aiOppGradeFilter','#aiOppCityFilter','#aiOppPeriodFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
 
+      availableOpen=true;
       const toggle=section.querySelector('#aiAvailableToggle');
       const toggleAvailable=()=>{
         availableOpen=!availableOpen;
@@ -399,16 +400,18 @@ function boot(){
     if(!g)return '<div class="ai-guide-loading">'+(ar()?'الإيجنت يجهز خطة الزيارة لهذه الفرصة.':'The agent is preparing the visit plan for this opportunity.')+'</div>';
     const accessSrc=safeUrl(g.access_source_url);
     const step=(n,title,value)=>value?'<div class="ai-guide-step"><span>'+n+'</span><div><b>'+esc(title)+'</b><p>'+esc(value)+'</p></div></div>':'';
-    return '<div class="ai-rep-guide">'+
-      '<div class="ai-guide-title"><b>'+(ar()?'خطة الزيارة':'Visit plan')+'</b><span>'+(ar()?'مختصرة وواضحة للمندوب':'Quick rep guide')+'</span></div>'+
-      '<div class="ai-guide-steps">'+
-        step('1',ar()?'كيف توصل':'How to get there',g.access_plan)+
-        step('2',ar()?'وش تسوي أول ما توصل':'What to do on arrival',g.visit_playbook)+
-        step('3',ar()?'الهدف من الزيارة':'Goal of the visit',g.capture_plan)+
+    return '<details class="ai-visit-plan ai-compact-details">'+
+      '<summary><span>'+(ar()?'خطة الزيارة للمندوب':'Representative visit plan')+'</span><span class="ai-detail-arrow">⌄</span></summary>'+
+      '<div class="ai-rep-guide">'+
+        '<div class="ai-guide-steps">'+
+          step('1',ar()?'كيف أوصل؟':'How do I get there?',g.access_plan)+
+          step('2',ar()?'مين أكلم ووش أقول؟':'Who do I ask for and what do I say?',g.visit_playbook)+
+          step('3',ar()?'وش هدفي من الزيارة؟':'What is my goal?',g.capture_plan)+
+        '</div>'+
+        (g.likely_requests?'<div class="ai-guide-request"><b>'+(ar()?'جهّز معك: ':'Be ready for: ')+'</b>'+esc(g.likely_requests)+'</div>':'')+
+        (accessSrc?'<a class="ai-guide-source" href="'+esc(accessSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'مصدر معلومات الوصول':'Access source')+'</a>':'')+
       '</div>'+
-      (g.likely_requests?'<div class="ai-guide-request"><b>'+(ar()?'جهّز معك: ':'Be ready for: ')+'</b>'+esc(g.likely_requests)+'</div>':'')+
-      (accessSrc?'<a class="ai-guide-source" href="'+esc(accessSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'مصدر معلومات الوصول':'Access source')+'</a>':'')+
-    '</div>';
+    '</details>';
   }
 
   function claimCancelState(x){
@@ -429,7 +432,7 @@ function boot(){
     const contractorName=String(x.linked_contractor_name||'').trim();
     const contractorPhone=String(x.linked_contractor_phone||'').trim();
     const bestRole=String(fallbackRole(x)||'').trim();
-    const products=(x.suggested_products||[]).filter(Boolean).slice(0,6);
+    const products=(x.suggested_products||[]).filter(Boolean).slice(0,5);
     let actions='';
 
     if(isRep()){
@@ -444,7 +447,7 @@ function boot(){
       }else if(!x.assigned_rep&&['new','reviewed'].includes(x.status)){
         actions=repBlocked
           ?'<div class="ai-opp-actions"><button class="btn secondary" type="button" disabled>'+(ar()?'ارفع التقرير المتأخر أولاً':'Submit overdue report first')+'</button></div>'
-          :'<div class="ai-opp-actions"><button class="btn good" data-ai-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'استلام الفرصة':'Claim opportunity')+'</button></div>';
+          :'<div class="ai-opp-actions"><button class="btn good ai-primary-claim" data-ai-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'استلام الفرصة':'Claim opportunity')+'</button></div>';
       }
     }else if(isManagement()){
       if(x.assigned_rep&&x.status==='assigned'){
@@ -463,41 +466,49 @@ function boot(){
     }
 
     const topTags=[
-      '<span class="badge b-gray">'+esc(type)+'</span>',
-      x.city?'<span class="badge b-info">'+esc(x.city)+'</span>':'',
-      x.project_stage?'<span class="ai-opp-chip">'+esc(x.project_stage)+'</span>':'',
-      x.activity?'<span class="ai-opp-chip">'+esc(x.activity)+'</span>':''
+      '<span class="ai-type-pill '+(x.opportunity_type==='factory'?'factory':'project')+'">'+esc(type)+'</span>',
+      x.city?'<span class="ai-city-pill">'+esc(x.city)+'</span>':'',
+      x.project_stage?'<span class="ai-stage-pill">'+esc(x.project_stage)+'</span>':''
     ].filter(Boolean).join('');
 
     const priority=priorityIndex?'<span class="ai-priority-pill">'+(ar()?'أولوية '+priorityIndex:'Priority '+priorityIndex)+'</span>':'';
     const managementScore=isManagement()?'<span class="badge '+gradeClass(x.grade)+'">'+esc(x.grade||'C')+' · '+Number(x.score||0)+'</span>':'';
 
-    const locationBlock='<div class="ai-opp-key ai-opp-location">'+
-      '<span>'+(ar()?'الموقع':'Location')+'</span>'+
-      '<div class="ai-key-content"><b>'+esc(locationText||x.city||'-')+'</b>'+
-      (maps?'<a class="btn secondary mini" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح الخريطة':'Open map')+'</a>':'')+
-      '</div></div>';
-
-    const contractorBlock=(x.opportunity_type==='project'&&contractorName)
-      ?'<div class="ai-opp-key"><span>'+(ar()?'المقاول':'Contractor')+'</span><div class="ai-key-content"><b>'+esc(contractorName)+'</b>'+
-        (contractorPhone?'<a class="ai-phone-link" href="tel:'+esc(contractorPhone.replace(/[^+0-9]/g,''))+'">☎ '+esc(contractorPhone)+'</a>':'')+
-        '</div></div>'
+    const row=(label,value,extra,cls='')=>value||extra
+      ?'<div class="ai-info-row '+cls+'"><div class="ai-info-label">'+esc(label)+'</div><div class="ai-info-value">'+(value?value:'')+(extra||'')+'</div></div>'
       :'';
 
-    const contactParts=[
+    const locationValue='<b>'+esc(locationText||x.city||'-')+'</b>';
+    const locationExtra=maps?'<a class="ai-row-action" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح الموقع':'Open map')+'</a>':'';
+    const locationRow=row(ar()?'الموقع':'Location',locationValue,locationExtra,'location');
+
+    const contractorValue=(x.opportunity_type==='project'&&contractorName)
+      ?'<b>'+esc(contractorName)+'</b>'+
+        (contractorPhone?'<a class="ai-phone-link" href="tel:'+esc(contractorPhone.replace(/[^+0-9]/g,''))+'">☎ '+esc(contractorPhone)+'</a>':'')
+      :'';
+    const contractorRow=contractorValue?row(ar()?'المقاول':'Contractor',contractorValue,'','contractor'):'';
+
+    const contactBits=[
       bestRole?'<b>'+esc(bestRole)+'</b>':'',
       contactName?'<span>'+esc(contactName)+'</span>':'',
       contactPhone?'<a class="ai-phone-link" href="tel:'+esc(contactPhone.replace(/[^+0-9]/g,''))+'">☎ '+esc(contactPhone)+'</a>':''
     ].filter(Boolean).join('<span class="ai-dot">•</span>');
-    const contactBlock=contactParts?'<div class="ai-opp-key"><span>'+(ar()?'تواصل مع':'Contact')+'</span><div class="ai-key-content ai-inline-contact">'+contactParts+'</div></div>':'';
+    const contactRow=contactBits?row(ar()?'التواصل':'Contact',contactBits,'','contact'):'';
 
-    const productsHtml=products.length?'<div class="ai-opp-products"><span>'+(ar()?'منتجات مناسبة':'Suggested')+'</span><div>'+products.map(p=>'<span class="badge b-gray">'+esc(p)+'</span>').join('')+'</div></div>':'';
+    const productsHtml=products.length
+      ?'<div class="ai-products-line"><span>'+(ar()?'مناسب لها':'Suggested')+'</span><div>'+products.map(p=>'<span>'+esc(p)+'</span>').join('')+'</div></div>'
+      :'';
+
+    const reasonHtml=reason
+      ?'<div class="ai-opportunity-why"><span>'+(ar()?'ليش فرصة؟':'Why?')+'</span><p title="'+esc(reason)+'">'+esc(reason)+'</p></div>'
+      :'';
 
     const dueHtml=due
       ?'<div class="ai-due-strip '+(due.overdue?'overdue':due.done?'done':'')+'"><b>'+esc(due.text)+'</b>'+(x.report_due_at&&!due.done?'<span>'+esc(dateTime(x.report_due_at))+'</span>':'')+'</div>'
       :'';
 
     const moreItems=[
+      x.activity?'<div><span>'+(ar()?'النشاط':'Activity')+'</span><b>'+esc(x.activity)+'</b></div>':'',
       isManagement()&&x.administrative_region?'<div><span>'+(ar()?'المنطقة':'Region')+'</span><b>'+esc(x.administrative_region)+'</b></div>':'',
       isManagement()?'<div><span>'+(ar()?'الحالة':'Status')+'</span><b>'+esc(statusLabel(x.status))+'</b></div>':'',
       isManagement()&&assignedName?'<div><span>'+(ar()?'المندوب':'Representative')+'</span><b>'+esc(assignedName)+'</b></div>':'',
@@ -509,16 +520,17 @@ function boot(){
     ].filter(Boolean).join('');
 
     return '<div class="card ai-opportunity-card" data-opportunity-id="'+esc(x.id)+'">'+
-      '<div class="ai-opp-top">'+
-        '<div class="ai-opp-heading"><div class="ai-opp-name-row"><b class="ai-opp-name">'+esc(x.name)+'</b>'+priority+managementScore+'</div><div class="ai-opp-tags">'+topTags+'</div></div>'+
+      '<div class="ai-card-head">'+
+        '<div class="ai-card-title"><b>'+esc(x.name)+'</b><div class="ai-card-tags">'+topTags+'</div></div>'+
+        '<div class="ai-card-rank">'+priority+managementScore+'</div>'+
       '</div>'+
-      '<div class="ai-opp-key-grid">'+locationBlock+contractorBlock+contactBlock+'</div>'+
-      (reason?'<div class="ai-opp-reason"><b>'+(ar()?'ليش تستحق التواصل؟':'Why contact this opportunity?')+'</b><span>'+esc(reason)+'</span></div>':'')+
+      '<div class="ai-core-info">'+locationRow+contractorRow+contactRow+'</div>'+
+      reasonHtml+
       productsHtml+
       dueHtml+
       claimedGuidanceHtml(x)+
       latestReportHtml(x)+
-      (moreItems?'<details class="ai-compact-details ai-opp-more"><summary>'+(ar()?'تفاصيل أكثر':'More details')+'<span class="ai-detail-arrow">⌄</span></summary><div class="ai-more-grid">'+moreItems+'</div></details>':'')+
+      (moreItems?'<details class="ai-compact-details ai-opp-more"><summary>'+(ar()?'معلومات إضافية':'More information')+'<span class="ai-detail-arrow">⌄</span></summary><div class="ai-more-grid">'+moreItems+'</div></details>':'')+
       actions+
     '</div>';
   }

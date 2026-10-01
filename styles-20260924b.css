@@ -1932,3 +1932,59 @@ html[dir="rtl"] .dashboard-cards .metric-card::before{
 html[dir="ltr"] .ai-call-label{
   direction:ltr;
 }
+
+
+/* Compact opportunity filters */
+#aiOppPage .ai-opp-filterbar{
+  padding:6px;
+  gap:6px;
+  align-items:end;
+}
+#aiOppPage .ai-filter-field{
+  flex:0 1 auto;
+  min-width:108px;
+  max-width:150px;
+  gap:2px;
+}
+#aiOppPage .ai-filter-field>span{
+  font-size:9px;
+  line-height:1.2;
+}
+#aiOppPage .ai-filter-field select{
+  width:auto!important;
+  min-width:108px!important;
+  max-width:150px!important;
+  height:34px!important;
+  min-height:34px!important;
+  padding:4px 28px 4px 8px!important;
+  font-size:11px!important;
+  border-radius:8px!important;
+}
+html[dir="rtl"] #aiOppPage .ai-filter-field select{
+  padding:4px 8px 4px 28px!important;
+}
+@media(max-width:700px){
+  #aiOppPage .ai-opp-filterbar{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    padding:5px 4px 7px;
+    gap:5px;
+    scrollbar-width:none;
+  }
+  #aiOppPage .ai-opp-filterbar::-webkit-scrollbar{display:none}
+  #aiOppPage .ai-filter-field{
+    flex:0 0 auto;
+    min-width:102px;
+    max-width:126px;
+  }
+  #aiOppPage .ai-filter-field select{
+    min-width:102px!important;
+    max-width:126px!important;
+    height:32px!important;
+    min-height:32px!important;
+    font-size:10px!important;
+  }
+}

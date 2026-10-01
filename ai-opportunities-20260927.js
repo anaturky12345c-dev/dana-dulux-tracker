@@ -17,7 +17,30 @@ function boot(){
   const safeUrl=v=>{if(!v)return '';try{const u=new URL(v);return(u.protocol==='https:'||u.protocol==='http:')?u.href:'';}catch(_){return '';}};
   const googleMapsSearchUrl=x=>{
     if(x.google_maps_verified!==true)return '';
-    return safeUrl(x.google_maps_url);
+    const u=safeUrl(x.google_maps_url);if(!u)return '';
+    try{
+      const z=new URL(u),h=z.hostname.toLowerCase(),p=z.pathname.toLowerCase();
+      if(h==='maps.app.goo.gl')return u;
+      if(h==='google.com'||h==='www.google.com'||h==='maps.google.com'){
+        if(p.includes('/maps/search'))return '';
+        if(p.includes('/maps/place/')||p.includes('/maps/@')||p.includes('/maps/dir/'))return u;
+        const q=z.searchParams.get('query')||'';
+        if(/^[-+]?\d{1,2}(?:\.\d+)?\s*,\s*[-+]?\d{1,3}(?:\.\d+)?$/.test(q))return u;
+      }
+    }catch(_){}
+    return '';
+  };
+  const riyadhDateKey=v=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(v?new Date(v):new Date());
+  const weekStartKey=()=>{
+    const t=riyadhDateKey(),d=new Date(t+'T00:00:00Z'),dow=d.getUTCDay(),diff=(dow+1)%7;
+    d.setUTCDate(d.getUTCDate()-diff);return d.toISOString().slice(0,10);
+  };
+  const periodMatch=(x,p)=>{
+    if(!p)return true;
+    const k=riyadhDateKey(x.discovered_at),today=riyadhDateKey();
+    if(p==='today')return k===today;
+    if(p==='week')return k>=weekStartKey()&&k<=today;
+    return true;
   };
   const typeLabel=v=>({factory:ar()?'مصنع':'Factory',project:ar()?'مشروع':'Project',contractor:ar()?'شركة مقاولات':'Contractor'}[v]||v||'-');
   const statusLabel=v=>({new:ar()?'جديدة':'New',reviewed:ar()?'معتمدة':'Reviewed',assigned:ar()?'مستلمة':'Claimed',rejected:ar()?'مرفوضة':'Rejected',won:ar()?'تم كسبها':'Won',lost:ar()?'مفقودة':'Lost'}[v]||v||'-');
@@ -99,7 +122,7 @@ function boot(){
         '</div>'+
         '<div id="aiOverdueWarning"></div>'+
         '<div class="grid cards" id="aiOppSummary" style="margin-bottom:14px"></div>'+
-        '<div class="toolbar" style="margin-bottom:10px"><select id="aiOppStatusFilter"></select><select id="aiOppTypeFilter"></select><select id="aiOppGradeFilter"></select><select id="aiOppAreaFilter"></select></div>'+
+        '<div class="toolbar" style="margin-bottom:10px"><select id="aiOppStatusFilter"></select><select id="aiOppTypeFilter"></select><select id="aiOppGradeFilter"></select><select id="aiOppCityFilter"></select><select id="aiOppPeriodFilter"></select></div>'+
         '<div id="aiOppList">'+
           '<div class="card ai-opportunity-section" style="margin-bottom:12px">'+
             '<div class="dashboard-head"><div><h3 id="aiClaimedTitle"></h3><div class="small" id="aiClaimedHelp"></div></div><span class="badge b-good" id="aiClaimedCount">0</span></div>'+
@@ -117,7 +140,7 @@ function boot(){
 
       section.querySelector('#aiOppRefresh')?.addEventListener('click',loadAll);
       section.querySelector('#aiSearchNowBtn')?.addEventListener('click',searchNow);
-      ['#aiOppStatusFilter','#aiOppTypeFilter','#aiOppGradeFilter','#aiOppAreaFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
+      ['#aiOppStatusFilter','#aiOppTypeFilter','#aiOppGradeFilter','#aiOppCityFilter','#aiOppPeriodFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
 
       const toggle=section.querySelector('#aiAvailableToggle');
       const toggleAvailable=()=>{
@@ -161,6 +184,21 @@ function boot(){
           return loadAll();
         }
 
+        b=ev.target.closest('[data-ai-delete-opportunity]');
+        if(b&&isManagement()){
+          const id=b.dataset.id;
+          const x=opportunityById.get(id);
+          const ok=window.confirm(ar()?('حذف '+(x?.name||'هذه الفرصة')+' نهائياً؟ لن يسمح الإيجنت بإضافتها مرة ثانية.'):'Delete this opportunity permanently? The agent will not add it again.');
+          if(!ok)return;
+          b.disabled=true;
+          const {data,error}=await sb.rpc('admin_delete_ai_opportunity',{p_opportunity_id:id});
+          b.disabled=false;
+          if(error)return flash((ar()?'تعذر حذف الفرصة: ':'Could not delete opportunity: ')+error.message,true);
+          if(data!==true)return flash(ar()?'الفرصة غير موجودة.':'Opportunity not found.',true);
+          flash(ar()?'تم حذف الفرصة ومنع الإيجنت من إعادتها.':'Opportunity deleted and blocked from being re-added.');
+          return loadAll();
+        }
+
         b=ev.target.closest('[data-ai-opp-status]');
         if(b&&isManagement()){
           const id=b.dataset.id,status=b.dataset.aiOppStatus;
@@ -190,8 +228,6 @@ function boot(){
 
     const search=document.getElementById('aiSearchNowBtn');
     if(search)search.classList.toggle('hidden',!isPrimaryAdmin());
-    const areaFilter=document.getElementById('aiOppAreaFilter');
-    if(areaFilter)areaFilter.classList.toggle('hidden',!isManagement());
     updateLabels();
     startAgentTimer();
   }
@@ -229,7 +265,7 @@ function boot(){
     const nav=document.getElementById('aiOppNav');if(nav)nav.textContent=ar()?'مصانع ومشاريع':'Factories & Projects';
     const h=document.getElementById('aiOppHeading');if(h)h.textContent=ar()?'مصانع ومشاريع':'Factories & Projects';
     const help=document.getElementById('aiOppHelp');
-    if(help)help.textContent=ar()?(isManagement()?'الإدارة ترى كل المملكة، والمناديب يرون فرص المنطقة الوسطى فقط.':'استلم الفرصة المناسبة لك، وبعد الاستلام أمامك يومان لرفع التقرير.'):(isManagement()?'Management sees all Saudi opportunities; representatives see Central Region only.':'Claim an opportunity; a report is required within two days.');
+    if(help)help.textContent=ar()?(isManagement()?'الفرص مصنفة حسب المدينة، مع موقع فعلي موثق وبيانات قابلة للتنفيذ.':'اختر الفرصة حسب المدينة، وبعد الاستلام أمامك يومان لرفع التقرير.'):(isManagement()?'Opportunities are organized by city with verified physical locations and actionable data.':'Choose an opportunity by city; reports are due within two days.');
     const r=document.getElementById('aiOppRefresh');if(r)r.textContent=ar()?'تحديث':'Refresh';
     const s=document.getElementById('aiSearchNowBtn');if(s)s.textContent=searching?(ar()?'جاري بدء البحث...':'Starting search...'):(ar()?'بحث عن فرص جديدة':'Find new opportunities');
     updateAgentTimer();
@@ -243,8 +279,8 @@ function boot(){
     const gf=document.getElementById('aiOppGradeFilter');
     if(gf){const v=gf.value;gf.innerHTML='<option value="">'+(ar()?'كل الدرجات':'All grades')+'</option><option value="A">A</option><option value="B">B</option><option value="C">C</option>';gf.value=v;}
 
-    const af=document.getElementById('aiOppAreaFilter');
-    if(af){const v=af.value;af.innerHTML='<option value="">'+(ar()?'كل المملكة':'All Saudi Arabia')+'</option><option value="central">'+(ar()?'المنطقة الوسطى':'Central Region')+'</option><option value="outside">'+(ar()?'خارج المنطقة الوسطى':'Outside Central Region')+'</option>';af.value=v;}
+    const pf=document.getElementById('aiOppPeriodFilter');
+    if(pf){const v=pf.value;pf.innerHTML='<option value="">'+(ar()?'كل الفترات':'All periods')+'</option><option value="today">'+(ar()?'مشاريع اليوم':'Today')+'</option><option value="week">'+(ar()?'هذا الأسبوع':'This week')+'</option>';pf.value=v;}
   }
 
   async function searchNow(){
@@ -403,6 +439,10 @@ function boot(){
       }
     }
 
+    if(isManagement()){
+      actions+=(actions?' ':'')+'<button class="btn bad mini" data-ai-delete-opportunity="1" data-id="'+esc(x.id)+'">'+(ar()?'حذف نهائي':'Delete permanently')+'</button>';
+    }
+
     const priorityBadge=priorityIndex?'<span class="badge b-info">'+(ar()?'أولوية التواصل #'+priorityIndex:'Contact priority #'+priorityIndex)+'</span>':'';
     const dueHtml=due
       ?'<div class="'+(due.overdue?'danger-note':due.done?'security-good':'notice')+'" style="margin:8px 0"><b>'+esc(due.text)+'</b>'+(x.report_due_at&&!due.done?'<div class="small" style="margin-top:4px">'+(ar()?'الموعد النهائي: ':'Deadline: ')+esc(dateTime(x.report_due_at))+'</div>':'')+'</div>'
@@ -410,7 +450,7 @@ function boot(){
 
     return '<div class="card ai-opportunity-card" data-opportunity-id="'+esc(x.id)+'">'+
       '<div class="dashboard-head" style="margin-bottom:8px">'+
-        '<div><b>'+esc(x.name)+'</b> <span class="badge b-gray">'+esc(typeLabel(x.opportunity_type))+'</span> '+(isManagement()?'<span class="badge '+(x.market_area==='central'?'b-good':'b-info')+'">'+(x.market_area==='central'?(ar()?'الوسطى':'Central'):(ar()?'خارج الوسطى':'Outside Central'))+'</span>':'')+'</div>'+
+        '<div><b>'+esc(x.name)+'</b> <span class="badge b-gray">'+esc(typeLabel(x.opportunity_type))+'</span> '+(x.city?'<span class="badge b-info">'+esc(x.city)+'</span>':'')+'</div>'+
         '<div>'+priorityBadge+' <span class="badge '+gradeClass(x.grade)+'">'+esc(x.grade||'C')+' · '+Number(x.score||0)+'</span> <span class="badge '+verifyClass(x.verification_status)+'">'+esc(verifyLabel(x.verification_status))+'</span></div>'+
       '</div>'+
       '<div class="detail-grid">'+
@@ -418,7 +458,7 @@ function boot(){
         '<div><b>'+(ar()?'المنطقة':'Region')+'</b>'+esc(x.administrative_region||'-')+'</div>'+
         '<div><b>'+(ar()?'المدينة':'City')+'</b>'+esc(x.city||'-')+'</div>'+
         '<div><b>'+(ar()?'الحي / الموقع':'District / location')+'</b>'+esc(x.district||x.address||'-')+'</div>'+
-        '<div><b>'+(ar()?'الموقع في Google Maps':'Google Maps location')+'</b>'+(maps?'<a class="btn secondary mini" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح الموقع الموثق':'Open verified location')+'</a>':esc(x.location_checked_at?(ar()?'لم يجد الإيجنت موقعاً موثوقاً حتى الآن':'The agent has not found a verified location yet'):(ar()?'الإيجنت يبحث عن الموقع':'Agent is searching for the location')))+'</div>'+
+        '<div><b>'+(ar()?'الموقع الفعلي':'Physical location')+'</b>'+(maps?'<a class="btn secondary mini" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح الموقع الفعلي':'Open physical location')+'</a>':esc(ar()?'لا يوجد موقع فعلي موثق':'No verified physical location'))+'</div>'+
         '<div><b>'+(ar()?'مرحلة المشروع':'Project stage')+'</b>'+esc(x.project_stage||'-')+'</div>'+
         '<div><b>'+(ar()?'الشخص الأنسب للتواصل':'Best role to contact')+'</b>'+esc(fallbackRole(x))+'</div>'+
         '<div><b>'+(ar()?'اسم المسؤول المنشور':'Published contact name')+'</b>'+esc(contactName)+'</div>'+
@@ -464,12 +504,10 @@ function boot(){
     if(claimedList)claimedList.innerHTML='<div class="small">'+(ar()?'جاري التحميل...':'Loading...')+'</div>';
     if(availableList)availableList.innerHTML='<div class="small">'+(ar()?'جاري التحميل...':'Loading...')+'</div>';
 
-    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,market_area,district,address,phone,website,contact_name,contact_role,recommended_contact_role,linked_contractor_name,linked_contractor_phone,linked_contractor_source_url,priority_reason,google_maps_url,google_maps_verified,location_source_url,location_checked_at,intelligence_checked_at,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep,claimed_at,report_due_at,last_report_at').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
+    let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,district,address,phone,website,contact_name,contact_role,recommended_contact_role,linked_contractor_name,linked_contractor_phone,linked_contractor_source_url,priority_reason,google_maps_url,google_maps_verified,location_source_url,location_checked_at,intelligence_checked_at,quality_checked_at,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep,claimed_at,report_due_at,last_report_at').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
     const st=document.getElementById('aiOppStatusFilter')?.value||'';if(st)q=q.eq('status',st);
     const ty=document.getElementById('aiOppTypeFilter')?.value||'';if(ty)q=q.eq('opportunity_type',ty);
     const gr=document.getElementById('aiOppGradeFilter')?.value||'';if(gr)q=q.eq('grade',gr);
-    const area=document.getElementById('aiOppAreaFilter')?.value||'';if(area&&isManagement())q=q.eq('market_area',area);
-
     const results=await Promise.all([q,loadOpportunityReports(),loadOpportunityGuidance()]);
     const data=results[0].data,error=results[0].error;
     if(error){
@@ -479,7 +517,17 @@ function boot(){
       return;
     }
 
-    const rows=(data||[]).filter(x=>x.intelligence_checked_at||x.assigned_rep||!['new','reviewed'].includes(x.status)),rmap=repMap();
+    const allRows=(data||[]).filter(x=>x.quality_checked_at||x.assigned_rep||!['new','reviewed'].includes(x.status));
+    const cityFilter=document.getElementById('aiOppCityFilter');
+    if(cityFilter){
+      const selected=cityFilter.value||'';
+      const cities=[...new Set(allRows.map(x=>String(x.city||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,ar()?'ar':'en'));
+      cityFilter.innerHTML='<option value="">'+(ar()?'كل المدن':'All cities')+'</option>'+cities.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+      cityFilter.value=cities.includes(selected)?selected:'';
+    }
+    const city=cityFilter?.value||'';
+    const period=document.getElementById('aiOppPeriodFilter')?.value||'';
+    const rows=allRows.filter(x=>(!city||String(x.city||'')===city)&&periodMatch(x,period)),rmap=repMap();
     opportunityById=new Map(rows.map(x=>[x.id,x]));
     renderSummary(rows);renderRepDashboard(rows);
 

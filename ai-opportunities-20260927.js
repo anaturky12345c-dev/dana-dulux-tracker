@@ -124,12 +124,11 @@ function boot(){
         '</div>'+
         '<div id="aiOverdueWarning"></div>'+
         '<div class="grid cards" id="aiOppSummary" style="margin-bottom:14px"></div>'+
-        '<div class="toolbar ai-opp-filterbar" style="margin-bottom:10px">'+
-          '<label class="ai-filter-field" id="aiStatusFilterWrap"><span>'+(ar()?'الحالة':'Status')+'</span><select id="aiOppStatusFilter"></select></label>'+
-          '<label class="ai-filter-field"><span>'+(ar()?'النوع':'Type')+'</span><select id="aiOppTypeFilter"></select></label>'+
-          '<label class="ai-filter-field" id="aiGradeFilterWrap"><span>'+(ar()?'الأولوية':'Priority')+'</span><select id="aiOppGradeFilter"></select></label>'+
-          '<label class="ai-filter-field"><span>'+(ar()?'المدينة':'City')+'</span><select id="aiOppCityFilter"></select></label>'+
-          '<label class="ai-filter-field"><span>'+(ar()?'الفترة':'Period')+'</span><select id="aiOppPeriodFilter"></select></label>'+
+        '<div class="toolbar" style="margin-bottom:10px">'+
+          '<select id="aiOppTypeFilter" aria-label="'+(ar()?'النوع':'Type')+'"></select>'+
+          '<select id="aiOppGradeFilter" aria-label="'+(ar()?'الأولوية':'Priority')+'"></select>'+
+          '<select id="aiOppCityFilter" aria-label="'+(ar()?'المدينة':'City')+'"></select>'+
+          '<select id="aiOppPeriodFilter" aria-label="'+(ar()?'الفترة':'Period')+'"></select>'+
         '</div>'+
         '<div id="aiOppList">'+
           '<div class="card ai-opportunity-section ai-available-section" style="margin-bottom:12px">'+
@@ -148,7 +147,7 @@ function boot(){
 
       section.querySelector('#aiOppRefresh')?.addEventListener('click',loadAll);
       section.querySelector('#aiSearchNowBtn')?.addEventListener('click',searchNow);
-      ['#aiOppStatusFilter','#aiOppTypeFilter','#aiOppGradeFilter','#aiOppCityFilter','#aiOppPeriodFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
+      ['#aiOppTypeFilter','#aiOppGradeFilter','#aiOppCityFilter','#aiOppPeriodFilter'].forEach(sel=>section.querySelector(sel)?.addEventListener('change',loadOpportunities));
 
       availableOpen=true;
       const toggle=section.querySelector('#aiAvailableToggle');
@@ -244,8 +243,7 @@ function boot(){
 
     const search=document.getElementById('aiSearchNowBtn');
     if(search)search.classList.toggle('hidden',!isPrimaryAdmin());
-    document.getElementById('aiStatusFilterWrap')?.classList.toggle('hidden',isRep());
-    document.getElementById('aiGradeFilterWrap')?.classList.toggle('hidden',isRep());
+    document.getElementById('aiOppGradeFilter')?.classList.toggle('hidden',isRep());
     document.querySelector('#aiOppPage .ai-agent-timer')?.classList.toggle('hidden',isRep());
     updateLabels();
     startAgentTimer();
@@ -288,9 +286,6 @@ function boot(){
     const r=document.getElementById('aiOppRefresh');if(r)r.textContent=ar()?'تحديث':'Refresh';
     const s=document.getElementById('aiSearchNowBtn');if(s)s.textContent=searching?(ar()?'جاري بدء البحث...':'Starting search...'):(ar()?'بحث عن فرص جديدة':'Find new opportunities');
     updateAgentTimer();
-
-    const sf=document.getElementById('aiOppStatusFilter');
-    if(sf){const v=sf.value;sf.innerHTML='<option value="">'+(ar()?'كل الحالات':'All statuses')+'</option><option value="new">'+statusLabel('new')+'</option><option value="reviewed">'+statusLabel('reviewed')+'</option><option value="assigned">'+statusLabel('assigned')+'</option><option value="rejected">'+statusLabel('rejected')+'</option>';sf.value=v;}
 
     const tf=document.getElementById('aiOppTypeFilter');
     if(tf){const v=tf.value;tf.innerHTML='<option value="">'+(ar()?'كل الأنواع':'All types')+'</option><option value="factory">'+typeLabel('factory')+'</option><option value="project">'+typeLabel('project')+'</option><option value="contractor">'+typeLabel('contractor')+'</option>';tf.value=v;}
@@ -573,7 +568,6 @@ function boot(){
     if(availableList)availableList.innerHTML='<div class="small">'+(ar()?'جاري التحميل...':'Loading...')+'</div>';
 
     let q=sb.from('ai_opportunities').select('id,opportunity_type,name,activity,city,administrative_region,district,address,phone,website,contact_name,contact_role,recommended_contact_role,linked_contractor_name,linked_contractor_phone,linked_contractor_source_url,priority_reason,google_maps_url,google_maps_verified,location_source_url,location_checked_at,intelligence_checked_at,quality_checked_at,project_stage,suggested_products,score,grade,recommendation_reason,verification_status,confidence,source_name,source_url,source_published_at,discovered_at,last_verified_at,status,assigned_rep,claimed_at,report_due_at,last_report_at').order('score',{ascending:false}).order('discovered_at',{ascending:false}).limit(500);
-    const st=document.getElementById('aiOppStatusFilter')?.value||'';if(st)q=q.eq('status',st);
     const ty=document.getElementById('aiOppTypeFilter')?.value||'';if(ty)q=q.eq('opportunity_type',ty);
     const gr=document.getElementById('aiOppGradeFilter')?.value||'';if(gr)q=q.eq('grade',gr);
     const results=await Promise.all([q,loadOpportunityReports(),loadOpportunityGuidance()]);

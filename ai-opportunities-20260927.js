@@ -357,7 +357,7 @@ function boot(){
     const r=latestReports.get(x.id);
     if(!r)return'';
     const meta=[
-      r.responsible_phone?'<span>☎ '+esc(r.responsible_phone)+'</span>':'',
+      r.responsible_phone?'<span>☎ <bdi class="ai-ltr-number" dir="ltr">'+esc(r.responsible_phone)+'</bdi></span>':'',
       r.location_text?'<span>⌖ '+esc(r.location_text)+'</span>':'',
       r.created_at?'<span>◷ '+esc(dateTime(r.created_at))+'</span>':''
     ].filter(Boolean).join('');
@@ -477,8 +477,8 @@ function boot(){
       x.project_stage?'<span class="ai-stage-pill">'+esc(x.project_stage)+'</span>':''
     ].filter(Boolean).join('');
 
-    const priority=priorityIndex?'<span class="ai-priority-pill">'+(ar()?'أولوية '+priorityIndex:'Priority '+priorityIndex)+'</span>':'';
-    const managementScore=isManagement()?'<span class="badge '+gradeClass(x.grade)+'">'+esc(x.grade||'C')+' · '+Number(x.score||0)+'</span>':'';
+    const priority=priorityIndex?'<span class="ai-priority-pill">'+(ar()?'أولوية ':'Priority ')+'<bdi class="ai-ltr-number" dir="ltr">'+priorityIndex+'</bdi></span>':'';
+    const managementScore=isManagement()?'<span class="badge '+gradeClass(x.grade)+'">'+esc(x.grade||'C')+' · <bdi class="ai-ltr-number" dir="ltr">'+Number(x.score||0)+'</bdi></span>':'';
 
     const locationBlock='<div class="ai-main-fact ai-main-location">'+
       '<div class="ai-main-fact-label">'+(ar()?'الموقع الفعلي':'Physical location')+'</div>'+
@@ -492,7 +492,7 @@ function boot(){
       ?'<div class="ai-main-fact ai-main-contractor">'+
         '<div class="ai-main-fact-label">'+(ar()?'المقاول / الجهة المنفذة':'Contractor / executing company')+'</div>'+
         '<div class="ai-main-fact-value"><b>'+esc(contractorName)+'</b>'+
-          (contractorPhone?'<a class="ai-phone-link" href="tel:'+esc(contractorPhone.replace(/[^+0-9]/g,''))+'">'+esc(contractorPhone)+'</a>':'')+
+          (contractorPhone?'<a class="ai-phone-link" href="tel:'+esc(contractorPhone.replace(/[^+0-9]/g,''))+'"><bdi class="ai-ltr-number" dir="ltr">'+esc(contractorPhone)+'</bdi></a>':'')+
         '</div>'+
       '</div>'
       :'';
@@ -500,7 +500,7 @@ function boot(){
     const contactLines=[
       bestRole?'<b>'+esc(bestRole)+'</b>':'',
       contactName?'<span>'+esc(contactName)+'</span>':'',
-      contactPhone?'<a class="ai-phone-link ai-phone-button" href="tel:'+esc(contactPhone.replace(/[^+0-9]/g,''))+'">'+(ar()?'اتصال: ':'Call: ')+esc(contactPhone)+'</a>':''
+      contactPhone?'<a class="ai-phone-link ai-phone-button" href="tel:'+esc(contactPhone.replace(/[^+0-9]/g,''))+'"><span class="ai-call-label">'+(ar()?'اتصال:':'Call:')+'</span><bdi class="ai-ltr-number" dir="ltr">'+esc(contactPhone)+'</bdi></a>':''
     ].filter(Boolean).join('');
     const contactBlock=contactLines?'<div class="ai-main-fact ai-main-contact">'+
       '<div class="ai-main-fact-label">'+(ar()?'أفضل جهة للتواصل':'Best contact')+'</div>'+
@@ -520,7 +520,7 @@ function boot(){
       :'';
 
     const dueHtml=due
-      ?'<div class="ai-due-strip '+(due.overdue?'overdue':due.done?'done':'')+'"><b>'+esc(due.text)+'</b>'+(x.report_due_at&&!due.done?'<span>'+esc(dateTime(x.report_due_at))+'</span>':'')+'</div>'
+      ?'<div class="ai-due-strip '+(due.overdue?'overdue':due.done?'done':'')+'"><b>'+esc(due.text)+'</b>'+(x.report_due_at&&!due.done?'<span><bdi class="ai-ltr-number" dir="ltr">'+esc(dateTime(x.report_due_at))+'</bdi></span>':'')+'</div>'
       :'';
 
     const moreItems=[
@@ -528,7 +528,7 @@ function boot(){
       isManagement()?'<div><span>'+(ar()?'الحالة':'Status')+'</span><b>'+esc(statusLabel(x.status))+'</b></div>':'',
       isManagement()&&assignedName?'<div><span>'+(ar()?'المندوب':'Representative')+'</span><b>'+esc(assignedName)+'</b></div>':'',
       isManagement()&&x.verification_status?'<div><span>'+(ar()?'التحقق':'Verification')+'</span><b>'+esc(verifyLabel(x.verification_status))+'</b></div>':'',
-      x.claimed_at?'<div><span>'+(ar()?'وقت الاستلام':'Claimed at')+'</span><b>'+esc(dateTime(x.claimed_at))+'</b></div>':'',
+      x.claimed_at?'<div><span>'+(ar()?'وقت الاستلام':'Claimed at')+'</span><b><bdi class="ai-ltr-number" dir="ltr">'+esc(dateTime(x.claimed_at))+'</bdi></b></div>':'',
       web?'<div><span>'+(ar()?'موقع الجهة':'Website')+'</span><a href="'+esc(web)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح':'Open')+'</a></div>':'',
       src?'<div><span>'+(ar()?'المصدر':'Source')+'</span><a href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح':'Open')+'</a></div>':'',
       contractorSrc&&contractorName?'<div><span>'+(ar()?'مصدر المقاول':'Contractor source')+'</span><a href="'+esc(contractorSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح':'Open')+'</a></div>':''

@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=20260927-push1" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <link rel="stylesheet" href="./styles-20260924b.css?v=20261001-filtercompact1" />
+  <link rel="stylesheet" href="./styles-20260924b.css?v=20261001-market1" />
 </head>
 <body>
 <div id="login" class="login">
@@ -37,6 +37,7 @@
     <div class="sub">Dulux Sales Management</div>
     <nav class="nav-grid">
       <button class="active" data-page="dashboard">Dashboard</button>
+      <button data-page="marketOpening">Market Opening</button>
       <button data-page="customers">Customers</button>
       <button data-page="sales">Sales / Withdrawals</button>
       <button data-page="reports">Customer Follow-ups & Complaints</button>
@@ -54,6 +55,7 @@
     </div>
 
     <section id="dashboard" class="section active">
+      <div id="marketOpeningDashboardSlot"></div>
       <div class="dashboard-priority-grid">
         <details class="card dashboard-attention management-only dashboard-attention-priority priority-collapsible">
           <summary class="dashboard-head attention-head priority-toggle">
@@ -102,6 +104,10 @@
         <div class="dashboard-head"><h3>Representative Performance</h3><span class="small">Current month</span></div>
         <div id="repPerformance"></div>
       </div>
+    </section>
+
+    <section id="marketOpening" class="section">
+      <div id="marketOpeningRoot"><div class="card"><div class="small">Loading Market Opening...</div></div></div>
     </section>
 
     <section id="customers" class="section">
@@ -322,8 +328,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="./config-20260924b.js?v=20260927-direct4"></script>
-<script src="./app-20260924b.js?v=20260930-nativecollapse1"></script>
+<script src="./app-20260924b.js?v=20261001-market1"></script>
 <script src="./workflows-20260926.js?v=20260930-dashfollow1"></script>
+<script src="./market-opening-20261001.js?v=20261001-market1"></script>
 <script src="./ai-sources-20260927.js?v=20260927-direct4"></script>
 <script src="./ai-opportunities-20260927.js?v=20261001-filterstandard1"></script>
 <script src="./urdu-yaqoub-20260927.js?v=20260929-urdu5"></script>

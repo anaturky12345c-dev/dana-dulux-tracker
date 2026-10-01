@@ -2095,3 +2095,30 @@ html[dir="rtl"] #aiOppPage .ai-filter-field select{
   .mo-card-actions{display:grid;grid-template-columns:1fr 1fr}
   .mo-card-actions .btn{width:100%}
 }
+
+
+/* Market Opening reversibility, audit history and integrity indicators */
+.mo-management-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.mo-disabled-card{display:flex;align-items:center;justify-content:space-between;gap:16px;border-inline-start:4px solid #64748b}
+.mo-disabled-card h2{margin:4px 0 6px}
+.mo-disabled-card p{margin:0;color:#64748b;font-size:12px;line-height:1.65}
+.mo-integrity{margin:0 0 9px;padding:8px 10px;border-radius:9px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10px;line-height:1.5}
+.mo-integrity b{font-size:11px}
+.mo-integrity span{color:inherit}
+.mo-integrity.ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534}
+.mo-integrity.warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+.mo-integrity.neutral{background:#f8fafc;border:1px solid #e2e8f0;color:#64748b}
+.mo-history-list{display:grid;gap:7px;margin-top:10px}
+.mo-history-item{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
+.mo-history-item b{display:block;font-size:12px}
+.mo-history-item small{display:block;color:#64748b;font-size:9px;margin-top:2px}
+.mo-history-meta{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;align-content:flex-start}
+.mo-history-meta span{font-size:9px;padding:3px 6px;border-radius:999px;background:#f1f5f9;color:#475569}
+@media(max-width:760px){
+  .mo-management-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .mo-management-head{align-items:stretch;flex-direction:column}
+  .mo-disabled-card{align-items:stretch;flex-direction:column}
+  .mo-integrity{align-items:flex-start;flex-direction:column}
+  .mo-history-item{flex-direction:column}
+  .mo-history-meta{justify-content:flex-start}
+}

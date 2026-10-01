@@ -87,6 +87,11 @@
     do{d.setUTCDate(d.getUTCDate()+1);}while(d.getUTCDay()===5);
     return d.toISOString().slice(0,10);
   }
+  function workDateOnOrAfter(base){
+    let d=new Date((base||today())+'T00:00:00Z');
+    if(d.getUTCDay()===5)d.setUTCDate(d.getUTCDate()+1);
+    return d.toISOString().slice(0,10);
+  }
 
   async function loadData(force=false){
     if(!state?.profile||!sb)return;
@@ -274,13 +279,16 @@
     const reps=state.profiles.filter(p=>p.role==='rep');
     const defaultDate=m?.scheduled_date||today();
     const radius=Number(m?.radius_m||mo.settings?.default_radius_m||2500);
+    const radiusOptions=[500,1000,1500,2000,2500,3000,4000,5000,7500,10000];
+    if(!radiusOptions.includes(radius))radiusOptions.push(radius);
+    radiusOptions.sort((a,b)=>a-b);
     return '<div class="form-grid mo-mission-form">'+
       (editing?'<div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(fmtDate(m.scheduled_date))+'<br>'+tx('تعديل المنطقة أو الهدف لا يغير المندوب أو تاريخ المهمة.','Editing the zone or target does not change the representative or mission date.')+'</div>':
       '<div><label>'+tx('المندوب','Representative')+'</label><select id="moFRep"><option value="">'+tx('اختر المندوب...','Choose representative...')+'</option>'+reps.map(p=>'<option value="'+safe(p.id)+'">'+safe(p.full_name)+'</option>').join('')+'</select></div><div><label>'+tx('التاريخ','Date')+'</label><input type="date" id="moFDate" value="'+safe(defaultDate)+'" min="'+safe(today())+'"></div>')+
       '<div><label>'+tx('المدينة','City')+'</label><input id="moFCity" value="'+safe(m?.city||'الرياض')+'" autocomplete="off"></div>'+
       '<div><label>'+tx('الحي / المنطقة','District / Area')+'</label><input id="moFArea" value="'+safe(m?.area_name||'')+'" autocomplete="off" placeholder="'+tx('مثال: المونسية','e.g. Al Munsiyah')+'"></div>'+
       '<div><label>'+tx('هدف العملاء الجدد','New-customer target')+'</label><input type="number" id="moFTarget" min="1" max="50" step="1" value="'+safe(m?.target_customers||6)+'"></div>'+
-      '<div><label>'+tx('نطاق المنطقة','Zone radius')+'</label><select id="moFRadius">'+[500,1000,1500,2000,2500,3000,4000,5000,7500,10000].map(v=>'<option value="'+v+'" '+(v===radius?'selected':'')+'>'+((v/1000).toFixed(v<1000?1:0))+' km</option>').join('')+'</select></div>'+
+      '<div><label>'+tx('نطاق المنطقة','Zone radius')+'</label><select id="moFRadius">'+radiusOptions.map(v=>'<option value="'+v+'" '+(v===radius?'selected':'')+'>'+((v/1000).toFixed(v<1000?1:0))+' km</option>').join('')+'</select></div>'+
       '<div class="full"><label>'+tx('ملاحظة للمندوب (اختياري)','Note to representative (optional)')+'</label><textarea id="moFNotes" rows="2">'+safe(m?.notes||'')+'</textarea></div>'+
       '<div class="full"><label>'+tx('حدد منطقة العمل على الخريطة','Select the work zone on the map')+'</label><div class="small">'+tx('اضغط وسط المنطقة. الدائرة هي الحدود التي يسمح النظام بتسجيل العملاء الجدد داخلها.','Tap the center of the area. The circle is where new customers may be registered.')+'</div><div id="marketMissionPickerMap" class="mo-picker-map"></div><input type="hidden" id="moFLat" value="'+safe(m?.center_lat??'')+'"><input type="hidden" id="moFLng" value="'+safe(m?.center_lng??'')+'"><div id="moFLocationText" class="small mo-picker-status"></div></div>'+
       '<div class="full"><button class="btn" type="button" id="moFSave">'+(editing?tx('حفظ التعديل','Save changes'):tx('إنشاء المهمة','Create mission'))+'</button></div>'+
@@ -369,7 +377,7 @@
   }
 
   function openReschedule(m){
-    const suggested=ymd(m.scheduled_date)<today()?today():nextWorkDate(ymd(m.scheduled_date));
+    const suggested=ymd(m.scheduled_date)<today()?workDateOnOrAfter(today()):nextWorkDate(ymd(m.scheduled_date));
     openModal(tx('تأجيل مهمة فتح السوق','Reschedule Market Opening Mission'),
       '<div class="form-grid"><div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(m.area_name)+'<br>'+tx('التقدم الحالي محفوظ','Current progress is preserved')+': '+n(progress(m))+'/'+n(m.target_customers)+'</div><div><label>'+tx('التاريخ الجديد','New date')+'</label><input type="date" id="moRDate" min="'+safe(today())+'" value="'+safe(suggested)+'"></div><div class="full"><label>'+tx('سبب التأجيل','Reason')+'</label><textarea id="moRReason" rows="3"></textarea></div><div class="full"><button class="btn warn" id="moRSave" type="button">'+tx('تأكيد التأجيل','Confirm reschedule')+'</button></div></div>');
     document.getElementById('moRSave').onclick=async()=>{
@@ -411,7 +419,8 @@
       'new date cannot be in the past':tx('لا يمكن اختيار تاريخ سابق.','New date cannot be in the past.'),
       'closed mission cannot be rescheduled':tx('المهمة مغلقة ولا يمكن تأجيلها.','Closed mission cannot be rescheduled.'),
       'closed mission cannot be edited':tx('المهمة مغلقة ولا يمكن تعديلها.','Closed mission cannot be edited.'),
-      'target cannot be below achieved customers':tx('لا يمكن جعل الهدف أقل من عدد العملاء المنجزين.','Target cannot be below achieved customers.')
+      'target cannot be below achieved customers':tx('لا يمكن جعل الهدف أقل من عدد العملاء المنجزين.','Target cannot be below achieved customers.'),
+      'zone cannot change after customer progress':tx('بعد تسجيل أول عميل لا يمكن تغيير مركز المنطقة أو نصف القطر. تقدر تعدل الاسم والهدف أو تؤجل المهمة.','After the first customer is counted, the zone center and radius cannot be changed. You can still edit the label, target, or reschedule the mission.')
     };
     return dict[m]||m;
   }

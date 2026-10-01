@@ -237,6 +237,9 @@ function boot(){
 
     const search=document.getElementById('aiSearchNowBtn');
     if(search)search.classList.toggle('hidden',!isPrimaryAdmin());
+    document.getElementById('aiOppStatusFilter')?.classList.toggle('hidden',isRep());
+    document.getElementById('aiOppGradeFilter')?.classList.toggle('hidden',isRep());
+    document.querySelector('#aiOppPage .ai-agent-timer')?.classList.toggle('hidden',isRep());
     updateLabels();
     startAgentTimer();
   }
@@ -312,7 +315,11 @@ function boot(){
     const available=rows.filter(x=>!x.assigned_rep&&['new','reviewed'].includes(x.status));
     const claimed=isRep()?rows.filter(x=>x.assigned_rep===state.profile.id&&x.status==='assigned'):rows.filter(x=>x.assigned_rep&&x.status==='assigned');
     const overdue=claimed.filter(x=>x.report_due_at&&!x.last_report_at&&new Date(x.report_due_at).getTime()<=Date.now()).length;
-    const cards=[
+    const cards=isRep()?[
+      [ar()?'متاحة':'Available',available.length],
+      [ar()?'مستلمة':'Claimed',claimed.length],
+      [ar()?'تقارير متأخرة':'Overdue',overdue]
+    ]:[
       [ar()?'متاحة للاستلام':'Available',available.length],
       [ar()?'أولوية A':'Priority A',available.filter(x=>x.grade==='A').length],
       [ar()?'مستلمة':'Claimed',claimed.length],
@@ -342,15 +349,16 @@ function boot(){
   function latestReportHtml(x){
     const r=latestReports.get(x.id);
     if(!r)return'';
-    return '<div class="ai-latest-report">'+
-      '<b>'+(ar()?'آخر تقرير للمندوب':'Latest representative report')+'</b>'+
-      '<div class="detail-grid" style="margin-top:7px">'+
-        '<div><b>'+(ar()?'رقم المسؤول':'Responsible contact number')+'</b>'+esc(r.responsible_phone||'-')+'</div>'+
-        '<div><b>'+(ar()?'الموقع':'Location')+'</b>'+esc(r.location_text||'-')+'</div>'+
-        '<div><b>'+(ar()?'وقت التقرير':'Report time')+'</b>'+esc(dateTime(r.created_at))+'</div>'+
-      '</div>'+
-      '<div class="small" style="white-space:pre-wrap">'+esc(r.report_text||'')+'</div>'+
-    '</div>';
+    const meta=[
+      r.responsible_phone?'<span>☎ '+esc(r.responsible_phone)+'</span>':'',
+      r.location_text?'<span>⌖ '+esc(r.location_text)+'</span>':'',
+      r.created_at?'<span>◷ '+esc(dateTime(r.created_at))+'</span>':''
+    ].filter(Boolean).join('');
+    return '<details class="ai-compact-details ai-latest-report">'+
+      '<summary>'+(ar()?'آخر تقرير للمندوب':'Latest representative report')+'<span class="ai-detail-arrow">⌄</span></summary>'+
+      '<div class="ai-report-meta">'+meta+'</div>'+
+      (r.report_text?'<div class="ai-report-text">'+esc(r.report_text)+'</div>':'')+
+    '</details>';
   }
 
   function openOpportunityReport(x){
@@ -388,18 +396,18 @@ function boot(){
   function claimedGuidanceHtml(x){
     if(!x.assigned_rep)return '';
     const g=guidanceByOpportunity.get(x.id);
-    if(!g)return '<div class="notice ai-claim-guidance" style="margin:10px 0"><b>'+(ar()?'دليل استلام المشروع':'Project capture guide')+'</b><br>'+esc(ar()?'الإيجنت يجهز طريقة الوصول وخطة الزيارة لهذا المشروع.':'The agent is preparing the access and visit plan for this opportunity.')+'</div>';
+    if(!g)return '<div class="ai-guide-loading">'+(ar()?'الإيجنت يجهز خطة الزيارة لهذه الفرصة.':'The agent is preparing the visit plan for this opportunity.')+'</div>';
     const accessSrc=safeUrl(g.access_source_url);
-    const block=(title,value)=>'<div class="notice"><b>'+esc(title)+'</b><br><span style="white-space:pre-line">'+esc(value||'-')+'</span></div>';
-    return '<div class="ai-claim-guidance" style="margin:10px 0">'+
-      '<div class="dashboard-head" style="margin-bottom:8px"><div><h4 style="margin:0">'+(ar()?'دليل المندوب لاستلام المشروع':'Representative project capture guide')+'</h4><div class="small">'+(ar()?'هذه المعلومات تظهر بعد استلام المشروع فقط.':'This guidance is visible only after the opportunity is claimed.')+'</div></div></div>'+
-      '<div class="ai-intelligence-grid">'+
-        block(ar()?'كيف توصل للمشروع':'How to reach the opportunity',g.access_plan)+
-        block(ar()?'ماذا تفعل عند الوصول':'What to do on arrival',g.visit_playbook)+
-        block(ar()?'ما الذي قد يطلبونه منك':'What they may ask from you',g.likely_requests)+
-        block(ar()?'خطة استلام المشروع':'How to capture the project',g.capture_plan)+
+    const step=(n,title,value)=>value?'<div class="ai-guide-step"><span>'+n+'</span><div><b>'+esc(title)+'</b><p>'+esc(value)+'</p></div></div>':'';
+    return '<div class="ai-rep-guide">'+
+      '<div class="ai-guide-title"><b>'+(ar()?'خطة الزيارة':'Visit plan')+'</b><span>'+(ar()?'مختصرة وواضحة للمندوب':'Quick rep guide')+'</span></div>'+
+      '<div class="ai-guide-steps">'+
+        step('1',ar()?'كيف توصل':'How to get there',g.access_plan)+
+        step('2',ar()?'وش تسوي أول ما توصل':'What to do on arrival',g.visit_playbook)+
+        step('3',ar()?'الهدف من الزيارة':'Goal of the visit',g.capture_plan)+
       '</div>'+
-      (accessSrc?'<div class="small" style="margin-top:7px"><a href="'+esc(accessSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح مصدر طريقة الوصول':'Open access-route source')+'</a></div>':'')+
+      (g.likely_requests?'<div class="ai-guide-request"><b>'+(ar()?'جهّز معك: ':'Be ready for: ')+'</b>'+esc(g.likely_requests)+'</div>':'')+
+      (accessSrc?'<a class="ai-guide-source" href="'+esc(accessSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'مصدر معلومات الوصول':'Access source')+'</a>':'')+
     '</div>';
   }
 
@@ -411,82 +419,107 @@ function boot(){
 
   function renderOpportunityCard(x,rmap,priorityIndex,repBlocked){
     const src=safeUrl(x.source_url),web=safeUrl(x.website),contractorSrc=safeUrl(x.linked_contractor_source_url),maps=googleMapsSearchUrl(x);
-    const assignedName=rmap.get(x.assigned_rep)||'-';
-    const products=(x.suggested_products||[]).map(p=>'<span class="badge b-gray" style="margin:2px">'+esc(p)+'</span>').join('')||'-';
-    const contactName=x.contact_name||(ar()?'لم يتم العثور على اسم المسؤول':'Responsible contact name not found');
-    const contactPhone=x.phone||(ar()?'لم يتم العثور على رقم المسؤول':'Responsible contact number not found');
-    const contractorName=x.linked_contractor_name||(ar()?'لم يتم العثور على المقاول المرتبط بالمشروع':'Linked contractor not found');
-    const contractorPhone=x.linked_contractor_phone||(ar()?'لم يتم العثور على رقم المقاول':'Contractor phone number not found');
+    const assignedName=rmap.get(x.assigned_rep)||'';
     const due=dueState(x);
+    const type=typeLabel(x.opportunity_type);
+    const reason=String(x.priority_reason||x.recommendation_reason||'').trim();
+    const locationText=String(x.address||x.district||x.city||'').trim();
+    const contactName=String(x.contact_name||'').trim();
+    const contactPhone=String(x.phone||'').trim();
+    const contractorName=String(x.linked_contractor_name||'').trim();
+    const contractorPhone=String(x.linked_contractor_phone||'').trim();
+    const bestRole=String(fallbackRole(x)||'').trim();
+    const products=(x.suggested_products||[]).filter(Boolean).slice(0,6);
     let actions='';
 
     if(isRep()){
       if(x.assigned_rep===state.profile.id&&x.status==='assigned'){
         const cancelState=claimCancelState(x);
-        actions='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">'+
-          '<button class="btn '+(due?.overdue?'bad':'good')+'" data-ai-report="1" data-id="'+esc(x.id)+'">'+(ar()?(due?.done?'إضافة تقرير جديد':'رفع التقرير'):(due?.done?'Add another report':'Submit report'))+'</button>'+
+        actions='<div class="ai-opp-actions">'+
+          '<button class="btn '+(due?.overdue?'bad':'good')+'" data-ai-report="1" data-id="'+esc(x.id)+'">'+(ar()?(due?.done?'إضافة تقرير':'رفع التقرير'):(due?.done?'Add report':'Submit report'))+'</button>'+
           (cancelState.allowed
-            ?'<button class="btn secondary" data-ai-cancel-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'إلغاء الاستلام · متبقي '+cancelState.remainingMinutes+' د':'Cancel claim · '+cancelState.remainingMinutes+' min left')+'</button>'
-            :'<button class="btn secondary" type="button" disabled>'+(ar()?'انتهت مهلة إلغاء الاستلام':'Claim cancellation window ended')+'</button>')+
+            ?'<button class="btn secondary" data-ai-cancel-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'إلغاء الاستلام · '+cancelState.remainingMinutes+' د':'Cancel · '+cancelState.remainingMinutes+' min')+'</button>'
+            :'<button class="btn secondary" type="button" disabled>'+(ar()?'انتهت مهلة الإلغاء':'Cancellation ended')+'</button>')+
         '</div>';
       }else if(!x.assigned_rep&&['new','reviewed'].includes(x.status)){
         actions=repBlocked
-          ?'<button class="btn secondary" type="button" disabled>'+(ar()?'ارفع التقرير المتأخر أولاً':'Submit overdue report first')+'</button>'
-          :'<button class="btn good" data-ai-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'استلام الفرصة':'Claim opportunity')+'</button>';
+          ?'<div class="ai-opp-actions"><button class="btn secondary" type="button" disabled>'+(ar()?'ارفع التقرير المتأخر أولاً':'Submit overdue report first')+'</button></div>'
+          :'<div class="ai-opp-actions"><button class="btn good" data-ai-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'استلام الفرصة':'Claim opportunity')+'</button></div>';
       }
     }else if(isManagement()){
       if(x.assigned_rep&&x.status==='assigned'){
-        actions='<button class="btn secondary" data-ai-cancel-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'إلغاء الاستلام':'Cancel claim')+'</button>';
+        actions='<div class="ai-opp-actions"><button class="btn secondary" data-ai-cancel-claim="1" data-id="'+esc(x.id)+'">'+(ar()?'إلغاء الاستلام':'Cancel claim')+'</button>';
       }else if(!x.assigned_rep&&x.status!=='rejected'&&x.status!=='won'&&x.status!=='lost'){
         const options=['<option value="">'+(ar()?'اختر مندوباً':'Choose representative')+'</option>'].concat((state.profiles||[]).filter(r=>r.role==='rep').map(r=>'<option value="'+esc(r.id)+'">'+esc(r.full_name||r.username)+'</option>')).join('');
-        actions='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">'+
+        actions='<div class="ai-opp-actions">'+
           (x.status==='new'?'<button class="btn good mini" data-id="'+esc(x.id)+'" data-ai-opp-status="reviewed">'+(ar()?'اعتماد':'Approve')+'</button>':'')+
           '<button class="btn secondary mini" data-id="'+esc(x.id)+'" data-ai-opp-status="rejected">'+(ar()?'رفض':'Reject')+'</button>'+
-          '<select data-ai-opp-rep="'+esc(x.id)+'" style="max-width:220px">'+options+'</select>'+
-          '<button class="btn mini" data-id="'+esc(x.id)+'" data-ai-opp-assign="1">'+(ar()?'إسناد للمندوب':'Assign')+'</button>'+
-        '</div>';
+          '<select data-ai-opp-rep="'+esc(x.id)+'">'+options+'</select>'+
+          '<button class="btn mini" data-id="'+esc(x.id)+'" data-ai-opp-assign="1">'+(ar()?'إسناد':'Assign')+'</button>';
+      }else{
+        actions='<div class="ai-opp-actions">';
       }
+      actions+='<button class="btn bad mini" data-ai-delete-opportunity="1" data-id="'+esc(x.id)+'">'+(ar()?'حذف نهائي':'Delete permanently')+'</button></div>';
     }
 
-    if(isManagement()){
-      actions+=(actions?' ':'')+'<button class="btn bad mini" data-ai-delete-opportunity="1" data-id="'+esc(x.id)+'">'+(ar()?'حذف نهائي':'Delete permanently')+'</button>';
-    }
+    const topTags=[
+      '<span class="badge b-gray">'+esc(type)+'</span>',
+      x.city?'<span class="badge b-info">'+esc(x.city)+'</span>':'',
+      x.project_stage?'<span class="ai-opp-chip">'+esc(x.project_stage)+'</span>':'',
+      x.activity?'<span class="ai-opp-chip">'+esc(x.activity)+'</span>':''
+    ].filter(Boolean).join('');
 
-    const priorityBadge=priorityIndex?'<span class="badge b-info">'+(ar()?'أولوية التواصل #'+priorityIndex:'Contact priority #'+priorityIndex)+'</span>':'';
-    const dueHtml=due
-      ?'<div class="'+(due.overdue?'danger-note':due.done?'security-good':'notice')+'" style="margin:8px 0"><b>'+esc(due.text)+'</b>'+(x.report_due_at&&!due.done?'<div class="small" style="margin-top:4px">'+(ar()?'الموعد النهائي: ':'Deadline: ')+esc(dateTime(x.report_due_at))+'</div>':'')+'</div>'
+    const priority=priorityIndex?'<span class="ai-priority-pill">'+(ar()?'أولوية '+priorityIndex:'Priority '+priorityIndex)+'</span>':'';
+    const managementScore=isManagement()?'<span class="badge '+gradeClass(x.grade)+'">'+esc(x.grade||'C')+' · '+Number(x.score||0)+'</span>':'';
+
+    const locationBlock='<div class="ai-opp-key ai-opp-location">'+
+      '<span>'+(ar()?'الموقع':'Location')+'</span>'+
+      '<div class="ai-key-content"><b>'+esc(locationText||x.city||'-')+'</b>'+
+      (maps?'<a class="btn secondary mini" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح الخريطة':'Open map')+'</a>':'')+
+      '</div></div>';
+
+    const contractorBlock=(x.opportunity_type==='project'&&contractorName)
+      ?'<div class="ai-opp-key"><span>'+(ar()?'المقاول':'Contractor')+'</span><div class="ai-key-content"><b>'+esc(contractorName)+'</b>'+
+        (contractorPhone?'<a class="ai-phone-link" href="tel:'+esc(contractorPhone.replace(/[^+0-9]/g,''))+'">☎ '+esc(contractorPhone)+'</a>':'')+
+        '</div></div>'
       :'';
 
+    const contactParts=[
+      bestRole?'<b>'+esc(bestRole)+'</b>':'',
+      contactName?'<span>'+esc(contactName)+'</span>':'',
+      contactPhone?'<a class="ai-phone-link" href="tel:'+esc(contactPhone.replace(/[^+0-9]/g,''))+'">☎ '+esc(contactPhone)+'</a>':''
+    ].filter(Boolean).join('<span class="ai-dot">•</span>');
+    const contactBlock=contactParts?'<div class="ai-opp-key"><span>'+(ar()?'تواصل مع':'Contact')+'</span><div class="ai-key-content ai-inline-contact">'+contactParts+'</div></div>':'';
+
+    const productsHtml=products.length?'<div class="ai-opp-products"><span>'+(ar()?'منتجات مناسبة':'Suggested')+'</span><div>'+products.map(p=>'<span class="badge b-gray">'+esc(p)+'</span>').join('')+'</div></div>':'';
+
+    const dueHtml=due
+      ?'<div class="ai-due-strip '+(due.overdue?'overdue':due.done?'done':'')+'"><b>'+esc(due.text)+'</b>'+(x.report_due_at&&!due.done?'<span>'+esc(dateTime(x.report_due_at))+'</span>':'')+'</div>'
+      :'';
+
+    const moreItems=[
+      isManagement()&&x.administrative_region?'<div><span>'+(ar()?'المنطقة':'Region')+'</span><b>'+esc(x.administrative_region)+'</b></div>':'',
+      isManagement()?'<div><span>'+(ar()?'الحالة':'Status')+'</span><b>'+esc(statusLabel(x.status))+'</b></div>':'',
+      isManagement()&&assignedName?'<div><span>'+(ar()?'المندوب':'Representative')+'</span><b>'+esc(assignedName)+'</b></div>':'',
+      isManagement()&&x.verification_status?'<div><span>'+(ar()?'التحقق':'Verification')+'</span><b>'+esc(verifyLabel(x.verification_status))+'</b></div>':'',
+      x.claimed_at?'<div><span>'+(ar()?'وقت الاستلام':'Claimed at')+'</span><b>'+esc(dateTime(x.claimed_at))+'</b></div>':'',
+      web?'<div><span>'+(ar()?'موقع الجهة':'Website')+'</span><a href="'+esc(web)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح':'Open')+'</a></div>':'',
+      src?'<div><span>'+(ar()?'المصدر':'Source')+'</span><a href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح':'Open')+'</a></div>':'',
+      contractorSrc&&contractorName?'<div><span>'+(ar()?'مصدر المقاول':'Contractor source')+'</span><a href="'+esc(contractorSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح':'Open')+'</a></div>':''
+    ].filter(Boolean).join('');
+
     return '<div class="card ai-opportunity-card" data-opportunity-id="'+esc(x.id)+'">'+
-      '<div class="dashboard-head" style="margin-bottom:8px">'+
-        '<div><b>'+esc(x.name)+'</b> <span class="badge b-gray">'+esc(typeLabel(x.opportunity_type))+'</span> '+(x.city?'<span class="badge b-info">'+esc(x.city)+'</span>':'')+'</div>'+
-        '<div>'+priorityBadge+' <span class="badge '+gradeClass(x.grade)+'">'+esc(x.grade||'C')+' · '+Number(x.score||0)+'</span> <span class="badge '+verifyClass(x.verification_status)+'">'+esc(verifyLabel(x.verification_status))+'</span></div>'+
+      '<div class="ai-opp-top">'+
+        '<div class="ai-opp-heading"><div class="ai-opp-name-row"><b class="ai-opp-name">'+esc(x.name)+'</b>'+priority+managementScore+'</div><div class="ai-opp-tags">'+topTags+'</div></div>'+
       '</div>'+
-      '<div class="detail-grid">'+
-        '<div><b>'+(ar()?'النشاط':'Activity')+'</b>'+esc(x.activity||'-')+'</div>'+
-        '<div><b>'+(ar()?'المنطقة':'Region')+'</b>'+esc(x.administrative_region||'-')+'</div>'+
-        '<div><b>'+(ar()?'المدينة':'City')+'</b>'+esc(x.city||'-')+'</div>'+
-        '<div><b>'+(ar()?'الحي / الموقع':'District / location')+'</b>'+esc(x.district||x.address||'-')+'</div>'+
-        '<div><b>'+(ar()?'الموقع الفعلي':'Physical location')+'</b>'+(maps?'<a class="btn secondary mini" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح الموقع الفعلي':'Open physical location')+'</a>':esc(ar()?'لا يوجد موقع فعلي موثق':'No verified physical location'))+'</div>'+
-        '<div><b>'+(ar()?'مرحلة المشروع':'Project stage')+'</b>'+esc(x.project_stage||'-')+'</div>'+
-        '<div><b>'+(ar()?'الشخص الأنسب للتواصل':'Best role to contact')+'</b>'+esc(fallbackRole(x))+'</div>'+
-        '<div><b>'+(ar()?'اسم المسؤول المنشور':'Published contact name')+'</b>'+esc(contactName)+'</div>'+
-        '<div><b>'+(ar()?'رقم التواصل المنشور':'Published contact number')+'</b>'+esc(contactPhone)+'</div>'+
-        '<div><b>'+(ar()?'الحالة':'Status')+'</b>'+esc(statusLabel(x.status))+'</div>'+
-        '<div><b>'+(ar()?'المندوب':'Representative')+'</b>'+esc(assignedName)+'</div>'+
-        (x.claimed_at?'<div><b>'+(ar()?'وقت الاستلام':'Claimed at')+'</b>'+esc(dateTime(x.claimed_at))+'</div>':'')+
-      '</div>'+
-      '<div class="ai-intelligence-grid">'+
-        '<div class="notice"><b>'+(ar()?'لماذا هذه أولوية الآن':'Why this is a priority now')+'</b><br>'+esc(x.priority_reason||x.recommendation_reason||'-')+'</div>'+
-        '<div class="notice"><b>'+(ar()?'المقاول المرتبط':'Linked contractor')+'</b><br>'+esc(contractorName)+'<br><span class="small">'+esc(contractorPhone)+'</span>'+(contractorSrc?'<br><a href="'+esc(contractorSrc)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'مصدر بيانات المقاول':'Contractor source')+'</a>':'')+'</div>'+
-      '</div>'+
-      '<div class="notice" style="margin:8px 0"><b>'+(ar()?'سبب الترشيح':'Why recommended')+'</b><br>'+esc(x.recommendation_reason||'-')+'</div>'+
-      '<div style="margin-bottom:8px"><b>'+(ar()?'المنتجات المحتملة':'Suggested products')+'</b><div style="margin-top:4px">'+products+'</div></div>'+
+      '<div class="ai-opp-key-grid">'+locationBlock+contractorBlock+contactBlock+'</div>'+
+      (reason?'<div class="ai-opp-reason"><b>'+(ar()?'ليش تستحق التواصل؟':'Why contact this opportunity?')+'</b><span>'+esc(reason)+'</span></div>':'')+
+      productsHtml+
       dueHtml+
       claimedGuidanceHtml(x)+
       latestReportHtml(x)+
-      '<div class="small" style="margin-top:8px">'+(src?'<a href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'فتح المصدر':'Open source')+'</a>':'')+(web?' · <a href="'+esc(web)+'" target="_blank" rel="noopener noreferrer">'+(ar()?'موقع الجهة':'Company website')+'</a>':'')+'</div>'+
-      (actions?'<div style="margin-top:10px">'+actions+'</div>':'')+
+      (moreItems?'<details class="ai-compact-details ai-opp-more"><summary>'+(ar()?'تفاصيل أكثر':'More details')+'<span class="ai-detail-arrow">⌄</span></summary><div class="ai-more-grid">'+moreItems+'</div></details>':'')+
+      actions+
     '</div>';
   }
 

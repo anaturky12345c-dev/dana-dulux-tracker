@@ -6,7 +6,7 @@ function boot(){
   if(!app){setTimeout(boot,150);return;}
 
   const sb=app.sb,state=app.state,esc=app.esc,dateTime=app.dateTime,flash=app.flash,openModal=app.openModal,closeModal=app.closeModal;
-  let refreshTimer=null,agentTimerInterval=null,searching=false,availableOpen=false;
+  let refreshTimer=null,agentTimerInterval=null,searching=false,availableOpen=false;\n  const claimInFlight=new Set();
   let latestReports=new Map(),guidanceByOpportunity=new Map(),opportunityById=new Map();
 
   const ar=()=>app.getLang()==='ar';
@@ -163,13 +163,20 @@ function boot(){
 
         b=ev.target.closest('[data-ai-claim]');
         if(b){
+          const id=b.dataset.id;
+          if(claimInFlight.has(id))return;
+          claimInFlight.add(id);
           b.disabled=true;
-          const {data,error}=await sb.rpc('claim_ai_opportunity',{p_opportunity_id:b.dataset.id});
-          b.disabled=false;
-          if(error)return flash((ar()?'تعذر استلام الفرصة: ':'Could not claim opportunity: ')+error.message,true);
-          if(data!==true)return flash(ar()?'الفرصة أخذها مندوب آخر قبلك.':'Another representative claimed this opportunity first.',true);
-          flash(ar()?'تم استلام الفرصة. أمامك يومان لرفع التقرير.':'Opportunity claimed. You have two days to submit the report.');
-          return loadAll();
+          try{
+            const {data,error}=await sb.rpc('claim_ai_opportunity',{p_opportunity_id:id});
+            if(error)return flash((ar()?'تعذر استلام الفرصة: ':'Could not claim opportunity: ')+error.message,true);
+            if(data!==true)return flash(ar()?'الفرصة أخذها مندوب آخر قبلك.':'Another representative claimed this opportunity first.',true);
+            flash(ar()?'تم استلام الفرصة. أمامك يومان لرفع التقرير.':'Opportunity claimed. You have two days to submit the report.');
+            return loadAll();
+          }finally{
+            claimInFlight.delete(id);
+            if(b?.isConnected)b.disabled=false;
+          }
         }
 
         b=ev.target.closest('[data-ai-cancel-claim]');

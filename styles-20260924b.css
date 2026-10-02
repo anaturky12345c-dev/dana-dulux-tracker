@@ -2575,3 +2575,33 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo-v2-map-panel .mo-v2-map,
   .mo-v2-field-board .mo-v2-map{min-height:430px}
 }
+
+.mo-v3-map-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 10px;
+  border-bottom:1px solid #dbe4ec;
+  background:#f8fafc;
+}
+.mo-v3-map-toolbar>div:first-child b{display:block;font-size:11px;color:#0f172a}
+.mo-v3-map-toolbar>div:first-child span{display:block;font-size:8px;color:#64748b;margin-top:2px}
+.mo-v3-map-toolbar>div:last-child{display:flex;gap:5px;flex-wrap:wrap}
+.mo-v3-ops-head{gap:12px;align-items:center}
+.mo-v3-ops-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#marketOpeningMap:fullscreen{
+  width:100vw!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  border:0!important;
+  background:#e2e8f0;
+}
+#marketOpeningMap:fullscreen .leaflet-control-container{font-size:12px}
+@media(max-width:760px){
+  .mo-v3-map-toolbar{align-items:stretch;flex-direction:column}
+  .mo-v3-map-toolbar>div:last-child{display:grid;grid-template-columns:1fr 1fr}
+  .mo-v3-map-toolbar .btn{width:100%}
+  .mo-v3-ops-head{align-items:stretch;flex-direction:column}
+  .mo-v3-ops-actions{justify-content:flex-start}
+}

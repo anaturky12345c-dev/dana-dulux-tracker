@@ -2306,3 +2306,272 @@ html[dir="rtl"] #aiOppPage .ai-filter-field select{
   .mo-selected-district small{grid-column:1;grid-row:auto;text-align:start}
   .mo-v2-map-panel .mo-v2-map{min-height:470px}
 }
+
+
+/* Market Opening V3 — district GIS control center */
+.mo-v3-form{gap:14px}
+.mo-zone-mode-block{
+  padding:13px;
+  border:1px solid #dbe4ec;
+  border-radius:14px;
+  background:linear-gradient(180deg,#fff,#f8fafc);
+}
+.mo-zone-segmented{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  padding:5px;
+  margin:7px 0 6px;
+  border-radius:12px;
+  background:#e2e8f0;
+}
+.mo-zone-mode{
+  border:0;
+  border-radius:9px;
+  min-height:40px;
+  padding:8px 12px;
+  background:transparent;
+  color:#475569;
+  font:inherit;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+  transition:.18s ease;
+}
+.mo-zone-mode:hover{background:rgba(255,255,255,.65);color:#0f172a}
+.mo-zone-mode.active{
+  background:#fff;
+  color:#0f766e;
+  box-shadow:0 2px 8px rgba(15,23,42,.10);
+}
+.mo-zone-mode:disabled{opacity:.55;cursor:not-allowed}
+.mo-picker-shell{
+  border:1px solid #cbd5e1;
+  border-radius:17px;
+  padding:11px;
+  background:#fff;
+  box-shadow:0 9px 28px rgba(15,23,42,.06);
+}
+.mo-picker-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:7px;
+}
+.mo-picker-head b{display:block;font-size:13px;color:#0f172a}
+.mo-picker-head span:not(.mo-live-chip){
+  display:block;
+  margin-top:3px;
+  color:#64748b;
+  font-size:9px;
+  line-height:1.55;
+}
+.mo-live-chip{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 8px;
+  border:1px solid #99f6e4;
+  border-radius:999px;
+  background:#f0fdfa;
+  color:#0f766e;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.05em;
+}
+.mo-live-chip:before{
+  content:"";
+  width:7px;height:7px;border-radius:50%;
+  background:#14b8a6;
+  box-shadow:0 0 0 4px rgba(20,184,166,.13);
+}
+.mo-picker-map-v3{
+  height:520px;
+  border-radius:13px;
+  border:1px solid #cbd5e1;
+  overflow:hidden;
+}
+.mo-district-tooltip{
+  border:0!important;
+  border-radius:8px!important;
+  background:#0f172a!important;
+  color:#fff!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  box-shadow:0 5px 16px rgba(15,23,42,.24)!important;
+}
+.mo-district-tooltip:before{display:none!important}
+#moDistrictSearch{
+  min-height:42px;
+  border:1px solid #cbd5e1;
+  background:#fff;
+}
+.mo-district-results{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+  gap:5px;
+  margin-top:6px;
+}
+.mo-district-results:empty{display:none}
+.mo-district-results button{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:38px;
+  padding:7px 9px;
+  border:1px solid #e2e8f0;
+  border-radius:9px;
+  background:#fff;
+  color:#0f172a;
+  text-align:start;
+  cursor:pointer;
+}
+.mo-district-results button:hover{
+  border-color:#5eead4;
+  background:#f0fdfa;
+}
+.mo-district-results b{font-size:10px}
+.mo-district-results span{font-size:8px;color:#64748b}
+.mo-district-status{margin-top:7px}
+.mo-selected-district{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:7px;
+  align-items:center;
+  padding:8px 10px;
+  border:1px solid #99f6e4;
+  border-radius:10px;
+  background:#f0fdfa;
+}
+.mo-selected-district>span{
+  font-size:8px;
+  font-weight:900;
+  color:#0f766e;
+}
+.mo-selected-district>b{font-size:12px;color:#134e4a}
+.mo-selected-district>small{font-size:8px;color:#64748b}
+.mo-v3-zone-preview{
+  margin-top:9px;
+  padding:0;
+  border:0;
+  background:transparent;
+}
+.mo-v3-loading{
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #e2e8f0;
+  background:#f8fafc;
+  color:#475569;
+  font-size:10px;
+}
+.mo-v3-analysis-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  margin-bottom:8px;
+}
+.mo-v3-analysis-card{
+  min-height:94px;
+  padding:10px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#fff;
+}
+.mo-v3-analysis-card>span{
+  display:block;
+  font-size:8px;
+  color:#64748b;
+  font-weight:800;
+}
+.mo-v3-analysis-card>b{
+  display:block;
+  margin-top:4px;
+  font-size:11px;
+  color:#0f172a;
+}
+.mo-v3-analysis-card>strong{
+  display:block;
+  margin-top:3px;
+  font-size:25px;
+  line-height:1;
+  color:#0f172a;
+}
+.mo-v3-analysis-card>small{
+  display:block;
+  margin-top:5px;
+  color:#64748b;
+  font-size:8px;
+  line-height:1.4;
+}
+.mo-v3-analysis-card.coverage{border-color:#bfdbfe;background:#eff6ff}
+.mo-v3-analysis-card.recent{border-color:#d8b4fe;background:#faf5ff}
+.mo-v3-analysis-card.conflict.ok{border-color:#bbf7d0;background:#f0fdf4}
+.mo-v3-analysis-card.conflict.warn{border-color:#fed7aa;background:#fff7ed}
+.mo-v3-conflicts{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin:7px 0;
+  padding:8px;
+  border-radius:9px;
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+}
+.mo-v3-conflicts>b{font-size:9px;color:#9a3412;margin-inline-end:3px}
+.mo-v3-conflicts>span{
+  padding:4px 6px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid #fed7aa;
+  color:#7c2d12;
+  font-size:8px;
+}
+.mo-v3-save{
+  min-height:48px;
+  min-width:210px;
+  font-weight:900;
+  box-shadow:0 7px 18px rgba(37,99,235,.16);
+}
+.mo-save-row{
+  display:flex;
+  justify-content:flex-end;
+  padding-top:2px;
+}
+.mo-v2-map-panel .mo-v2-map,
+.mo-v2-field-board .mo-v2-map{
+  min-height:570px;
+}
+.mo-v2-map-panel{
+  border-radius:17px;
+  box-shadow:0 7px 24px rgba(15,23,42,.05);
+}
+.mo-v2-control-head{
+  background:
+    radial-gradient(circle at 15% 10%,rgba(20,184,166,.24),transparent 28%),
+    linear-gradient(135deg,#0f172a,#172554);
+}
+.mo-v2-lane-actions .btn{font-weight:800}
+.mo-v2-health{border-radius:13px}
+.mo-v2-coverage{border-radius:13px}
+.mo-v2-map-panel .leaflet-control-layers,
+.mo-picker-shell .leaflet-control-layers{
+  border:1px solid #cbd5e1!important;
+  border-radius:10px!important;
+  box-shadow:0 5px 16px rgba(15,23,42,.10)!important;
+}
+html[dir="rtl"] .mo-district-results button,
+html[dir="rtl"] .mo-selected-district{text-align:right}
+@media(max-width:760px){
+  .mo-zone-segmented{grid-template-columns:1fr}
+  .mo-picker-map-v3{height:420px}
+  .mo-v3-analysis-grid{grid-template-columns:1fr}
+  .mo-selected-district{grid-template-columns:1fr}
+  .mo-save-row{display:block}
+  .mo-v3-save{width:100%;min-width:0}
+  .mo-v2-map-panel .mo-v2-map,
+  .mo-v2-field-board .mo-v2-map{min-height:430px}
+}

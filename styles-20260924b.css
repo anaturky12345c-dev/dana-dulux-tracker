@@ -3470,3 +3470,12 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo4-plan-result>div:last-child>div{grid-template-columns:95px 1fr}
   .mo4-plan-result small{grid-column:1/-1}
 }
+
+#moPlannerCoverageText{
+  display:block;
+  margin-top:3px;
+  color:#67e8f9;
+  font-size:9px;
+  font-weight:800;
+  line-height:1.5;
+}

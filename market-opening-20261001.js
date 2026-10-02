@@ -17,6 +17,8 @@
   const openCustomerForm=app.openCustomerForm;
   const addBaseMap=app.addBaseMap;
 
+  const RIYADH_DISTRICTS_URL='https://namaa-gis.kharetatalenmaa.sa/server/rest/services/Riyadh/RiyadhPMS_DistrictsPI/FeatureServer/5/query?where=1%3D1&outFields=DISTRICT_NAME%2CDISTRICT_NAME_EN%2CDISTRICT_NO%2CMUNIC_NAME%2CMUNIC_NO%2CZONE_&returnGeometry=true&outSR=4326&f=geojson';
+
   const mo={
     settings:null,
     missions:[],
@@ -27,6 +29,11 @@
     pickerMap:null,
     pickerMarker:null,
     pickerCircle:null,
+    pickerDistrictLayer:null,
+    pickerSelectedLayer:null,
+    districtData:null,
+    districtDataPromise:null,
+    selectedDistrict:null,
     loading:false,
     loadSeq:0,
     lastLoadedAt:0
@@ -119,7 +126,7 @@
     try{
       const [s,m,l]=await Promise.all([
         sb.from('market_opening_settings').select('enabled,strict_rep_customer_creation,default_radius_m,updated_at').eq('id',true).maybeSingle(),
-        sb.from('market_opening_missions').select('id,rep_id,scheduled_date,original_date,city,area_name,target_customers,center_lat,center_lng,radius_m,status,notes,reschedule_count,started_at,completed_at,cancelled_at,created_at,updated_at').order('scheduled_date',{ascending:false}).order('created_at',{ascending:false}),
+        sb.from('market_opening_missions').select('id,rep_id,scheduled_date,original_date,city,area_name,target_customers,center_lat,center_lng,radius_m,zone_type,district_no,municipality_name,zone_geojson,status,notes,reschedule_count,started_at,completed_at,cancelled_at,created_at,updated_at').order('scheduled_date',{ascending:false}).order('created_at',{ascending:false}),
         sb.from('market_opening_mission_customers').select('mission_id,customer_id,rep_id,customer_status_at_creation,distance_m,created_at').order('created_at',{ascending:false})
       ]);
       if(seq!==mo.loadSeq)return;
@@ -204,6 +211,50 @@
     }else destroyMap();
   }
 
+
+
+  function zoneSummary(m){
+    return m?.zone_type==='district_polygon'
+      ?tx('حدود الحي كاملة','Full district boundary')
+      :n(Math.round(Number(m?.radius_m||0)/100)/10)+' '+tx('كم','km');
+  }
+
+  function pointInRing(lng,lat,ring){
+    let inside=false;
+    if(!Array.isArray(ring)||ring.length<3)return false;
+    for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      const xi=Number(ring[i]?.[0]),yi=Number(ring[i]?.[1]);
+      const xj=Number(ring[j]?.[0]),yj=Number(ring[j]?.[1]);
+      if(!Number.isFinite(xi)||!Number.isFinite(yi)||!Number.isFinite(xj)||!Number.isFinite(yj))continue;
+      const hit=((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/((yj-yi)||1e-12)+xi);
+      if(hit)inside=!inside;
+    }
+    return inside;
+  }
+
+  function pointInZoneGeojson(geom,lat,lng){
+    if(!geom||!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng)))return false;
+    const polys=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
+    return polys.some(poly=>{
+      if(!Array.isArray(poly)||!pointInRing(Number(lng),Number(lat),poly[0]))return false;
+      for(let i=1;i<poly.length;i++)if(pointInRing(Number(lng),Number(lat),poly[i]))return false;
+      return true;
+    });
+  }
+
+  async function loadDistrictData(){
+    if(mo.districtData)return mo.districtData;
+    if(mo.districtDataPromise)return mo.districtDataPromise;
+    mo.districtDataPromise=fetch(RIYADH_DISTRICTS_URL,{mode:'cors',credentials:'omit'})
+      .then(r=>{if(!r.ok)throw new Error('districts '+r.status);return r.json();})
+      .then(g=>{
+        const out={type:'FeatureCollection',features:(g?.features||[]).filter(x=>x?.geometry&&x?.properties?.DISTRICT_NO)};
+        mo.districtData=out;
+        return out;
+      })
+      .finally(()=>{mo.districtDataPromise=null;});
+    return mo.districtDataPromise;
+  }
 
   function missionNowText(m){
     if(!m)return '';
@@ -423,16 +474,27 @@
     const radiusOptions=[500,1000,1500,2000,2500,3000,4000,5000,7500,10000];
     if(!radiusOptions.includes(radius))radiusOptions.push(radius);
     radiusOptions.sort((a,b)=>a-b);
-    return '<div class="form-grid mo-mission-form">'+
-      (editing?'<div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(fmtDate(m.scheduled_date))+'<br>'+tx('تعديل المنطقة أو الهدف لا يغير المندوب أو تاريخ المهمة.','Editing the zone or target does not change the representative or mission date.')+'</div>':
+    const locked=editing&&progress(m)>0;
+    const mode=m?.zone_type==='district_polygon'?'district_polygon':'district_polygon';
+    const savedGeo=m?.zone_geojson?JSON.stringify(m.zone_geojson):'';
+    return '<div class="form-grid mo-mission-form mo-v3-form">'+
+      (editing?'<div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(fmtDate(m.scheduled_date))+'<br>'+tx('تعديل المنطقة أو الهدف لا يغير المندوب أو تاريخ المهمة.','Editing the zone or target does not change the representative or mission date.')+(locked?'<br><b>'+tx('حدود المنطقة مقفلة بعد تسجيل أول عميل.','The zone boundary is locked after the first customer is counted.')+'</b>':'')+'</div>':
       '<div><label>'+tx('المندوب','Representative')+'</label><select id="moFRep"><option value="">'+tx('اختر المندوب...','Choose representative...')+'</option>'+reps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===prefillRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('')+'</select></div><div><label>'+tx('التاريخ','Date')+'</label><input type="date" id="moFDate" value="'+safe(defaultDate)+'" min="'+safe(today())+'"></div>')+
       '<div><label>'+tx('المدينة','City')+'</label><input id="moFCity" value="'+safe(m?.city||'الرياض')+'" autocomplete="off"></div>'+
       '<div><label>'+tx('الحي / المنطقة','District / Area')+'</label><input id="moFArea" value="'+safe(m?.area_name||'')+'" autocomplete="off" placeholder="'+tx('مثال: المونسية','e.g. Al Munsiyah')+'"></div>'+
       '<div><label>'+tx('هدف العملاء الجدد','New-customer target')+'</label><input type="number" id="moFTarget" min="1" max="50" step="1" value="'+safe(m?.target_customers||6)+'"></div>'+
-      '<div><label>'+tx('نطاق المنطقة','Zone radius')+'</label><select id="moFRadius">'+radiusOptions.map(v=>'<option value="'+v+'" '+(v===radius?'selected':'')+'>'+((v/1000).toFixed(v<1000?1:0))+' km</option>').join('')+'</select></div>'+
+      '<div id="moRadiusWrap" class="'+(m?.zone_type==='radius'?'':'hidden')+'"><label>'+tx('نطاق الدائرة الاحتياطية','Fallback circle radius')+'</label><select id="moFRadius">'+radiusOptions.map(v=>'<option value="'+v+'" '+(v===radius?'selected':'')+'>'+((v/1000).toFixed(v<1000?1:0))+' km</option>').join('')+'</select></div>'+
+      '<div class="full mo-zone-mode-block"><label>'+tx('طريقة تحديد منطقة العمل','Work-zone selection')+'</label><div class="mo-zone-segmented">'+
+        '<button type="button" class="mo-zone-mode active" data-mo-zone-mode="district_polygon" '+(locked?'disabled':'')+'>'+tx('اختيار حي كامل','Select full district')+'</button>'+
+        '<button type="button" class="mo-zone-mode" data-mo-zone-mode="radius" '+(locked?'disabled':'')+'>'+tx('تحديد يدوي بالدائرة','Manual circle')+'</button>'+
+      '</div><div class="small">'+tx('الوضع الافتراضي يحدد حدود الحي الرسمية بالكامل. الدائرة تبقى خياراً احتياطياً للمناطق غير الموجودة في طبقة الأحياء.','Default mode selects the complete district boundary. Circle mode remains a fallback for areas outside the district layer.')+'</div></div>'+
+      '<div class="full" id="moDistrictTools"><label>'+tx('ابحث عن الحي أو اضغط عليه مباشرة في الخريطة','Search for a district or click it directly on the map')+'</label><input id="moDistrictSearch" autocomplete="off" placeholder="'+tx('اكتب اسم الحي...','Type district name...')+'"><div id="moDistrictResults" class="mo-district-results"></div><div id="moDistrictStatus" class="mo-district-status">'+(m?.zone_type==='district_polygon'?'<b>'+safe(m.area_name)+'</b>'+(m.municipality_name?' · '+safe(m.municipality_name):''):tx('اختر حي من الخريطة.','Choose a district from the map.'))+'</div></div>'+
       '<div class="full"><label>'+tx('ملاحظة للمندوب (اختياري)','Note to representative (optional)')+'</label><textarea id="moFNotes" rows="2">'+safe(m?.notes||'')+'</textarea></div>'+
-      '<div class="full"><label>'+tx('حدد منطقة العمل على الخريطة','Select the work zone on the map')+'</label><div class="small">'+tx('اضغط وسط المنطقة. الدائرة هي الحدود التي يسمح النظام بتسجيل العملاء الجدد داخلها.','Tap the center of the area. The circle is where new customers may be registered.')+'</div><div id="marketMissionPickerMap" class="mo-picker-map"></div><input type="hidden" id="moFLat" value="'+safe(m?.center_lat??'')+'"><input type="hidden" id="moFLng" value="'+safe(m?.center_lng??'')+'"><div id="moFLocationText" class="small mo-picker-status"></div><div id="moFZonePreview" class="mo-v2-zone-preview"></div></div>'+
-      '<div class="full"><button class="btn" type="button" id="moFSave">'+(editing?tx('حفظ التعديل','Save changes'):tx('إنشاء المهمة','Create mission'))+'</button></div>'+
+      '<div class="full mo-picker-shell"><div class="mo-picker-head"><div><b>'+tx('خريطة اختيار المنطقة','Zone selection map')+'</b><span>'+tx('مرّر على أي حي لمعرفة اسمه واضغط لتحديد حدوده كاملة.','Hover a district to see its name; click to select its full boundary.')+'</span></div><span class="mo-live-chip">'+tx('GIS مباشر','LIVE GIS')+'</span></div><div id="marketMissionPickerMap" class="mo-picker-map mo-picker-map-v3"></div>'+
+      '<input type="hidden" id="moFLat" value="'+safe(m?.center_lat??'')+'"><input type="hidden" id="moFLng" value="'+safe(m?.center_lng??'')+'">'+
+      '<input type="hidden" id="moFZoneType" value="'+safe(m?.zone_type||mode)+'"><input type="hidden" id="moFDistrictNo" value="'+safe(m?.district_no||'')+'"><input type="hidden" id="moFMunicipality" value="'+safe(m?.municipality_name||'')+'"><textarea id="moFZoneGeojson" class="hidden">'+safe(savedGeo)+'</textarea>'+
+      '<div id="moFLocationText" class="small mo-picker-status"></div><div id="moFZonePreview" class="mo-v2-zone-preview mo-v3-zone-preview"></div></div>'+
+      '<div class="full mo-save-row"><button class="btn mo-v3-save" type="button" id="moFSave">'+(editing?tx('حفظ التعديل','Save changes'):tx('اعتماد المهمة','Approve mission'))+'</button></div>'+
     '</div>';
   }
 
@@ -441,25 +503,147 @@
     openModal(m?tx('تعديل مهمة فتح السوق','Edit Market Opening Mission'):tx('مهمة فتح سوق جديدة','New Market Opening Mission'),missionFormHtml(m,prefillRep));
     setTimeout(()=>{
       initMissionPicker(m);
-      document.getElementById('moFRadius')?.addEventListener('change',updatePickerCircle);
+      document.getElementById('moFRadius')?.addEventListener('change',()=>{updatePickerCircle();scheduleZonePreview();});
+      document.getElementById('moFRep')?.addEventListener('change',scheduleZonePreview);
+      document.getElementById('moFDate')?.addEventListener('change',scheduleZonePreview);
+      document.getElementById('moDistrictSearch')?.addEventListener('input',renderDistrictSearchResults);
+      document.querySelectorAll('[data-mo-zone-mode]').forEach(b=>b.addEventListener('click',()=>setZoneMode(b.dataset.moZoneMode)));
       document.getElementById('moFSave')?.addEventListener('click',()=>saveMissionForm(m));
     },80);
   }
 
-  function initMissionPicker(m){
+  function addPickerMapLayers(map){
+    try{
+      const imagery=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery © Esri'});
+      L.control.layers(null,{[tx('صور جوية','Satellite imagery')]:imagery},{collapsed:true,position:'topright'}).addTo(map);
+    }catch(_){}
+  }
+
+  async function initMissionPicker(m){
     const el=document.getElementById('marketMissionPickerMap');
     if(!el||!window.L)return;
     if(mo.pickerMap){try{mo.pickerMap.remove()}catch(_){}}
-    mo.pickerMap=null;mo.pickerMarker=null;mo.pickerCircle=null;
+    mo.pickerMap=null;mo.pickerMarker=null;mo.pickerCircle=null;mo.pickerDistrictLayer=null;mo.pickerSelectedLayer=null;mo.selectedDistrict=null;mo.pickerDistrictLayer=null;mo.pickerSelectedLayer=null;mo.selectedDistrict=null;
     const center=m?[Number(m.center_lat),Number(m.center_lng)]:[24.7136,46.6753];
-    mo.pickerMap=L.map(el,{zoomControl:true}).setView(center,m?13:11);
+    mo.pickerMap=L.map(el,{zoomControl:true,preferCanvas:true}).setView(center,m?13:11);
     addBaseMap(mo.pickerMap);
-    mo.pickerMap.on('click',e=>setPickerCenter(e.latlng.lat,e.latlng.lng,true));
-    if(m)setPickerCenter(center[0],center[1],false);
+    addPickerMapLayers(mo.pickerMap);
+    mo.pickerMap.on('click',e=>{
+      if(document.getElementById('moFZoneType')?.value==='radius')setPickerCenter(e.latlng.lat,e.latlng.lng,true);
+    });
+
+    const existingPolygon=m?.zone_type==='district_polygon'&&m?.zone_geojson;
+    if(existingPolygon){
+      setSelectedGeometry({
+        type:'Feature',
+        properties:{
+          DISTRICT_NAME:m.area_name,
+          DISTRICT_NO:m.district_no,
+          MUNIC_NAME:m.municipality_name
+        },
+        geometry:m.zone_geojson
+      },false);
+    }else if(m){
+      setZoneMode('radius',true);
+      setPickerCenter(center[0],center[1],false);
+    }else{
+      setZoneMode('district_polygon',true);
+    }
+
+    try{
+      const districts=await loadDistrictData();
+      if(!mo.pickerMap)return;
+      mo.pickerDistrictLayer=L.geoJSON(districts,{
+        style:()=>({color:'#64748b',weight:1,fillColor:'#94a3b8',fillOpacity:.025}),
+        onEachFeature:(feature,layer)=>{
+          const p=feature.properties||{};
+          const name=p.DISTRICT_NAME||p.DISTRICT_NAME_EN||p.DISTRICT_NO||'-';
+          layer.bindTooltip(safe(name),{sticky:true,direction:'top',className:'mo-district-tooltip'});
+          layer.on({
+            mouseover:()=>{if(document.getElementById('moFZoneType')?.value==='district_polygon')layer.setStyle({weight:2,color:'#2563eb',fillColor:'#60a5fa',fillOpacity:.13});},
+            mouseout:()=>{if(mo.pickerDistrictLayer&&layer!==mo.pickerSelectedLayer)mo.pickerDistrictLayer.resetStyle(layer);},
+            click:e=>{
+              if(document.getElementById('moFZoneType')?.value!=='district_polygon')return;
+              if(e?.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
+              setSelectedGeometry(feature,true);
+            }
+          });
+        }
+      }).addTo(mo.pickerMap);
+      renderDistrictSearchResults();
+    }catch(err){
+      console.error('district layer',err);
+      const box=document.getElementById('moDistrictStatus');
+      if(box)box.innerHTML='<span class="bad">'+tx('تعذر تحميل حدود الأحياء الآن. استخدم التحديد الدائري الاحتياطي.','District boundaries could not be loaded. Use fallback circle mode.')+'</span>';
+    }
     setTimeout(()=>mo.pickerMap?.invalidateSize(),120);
   }
 
+  function setZoneMode(mode,silent=false){
+    if(!['district_polygon','radius'].includes(mode))return;
+    const inp=document.getElementById('moFZoneType');if(inp)inp.value=mode;
+    document.querySelectorAll('[data-mo-zone-mode]').forEach(b=>b.classList.toggle('active',b.dataset.moZoneMode===mode));
+    document.getElementById('moDistrictTools')?.classList.toggle('hidden',mode!=='district_polygon');
+    document.getElementById('moRadiusWrap')?.classList.toggle('hidden',mode!=='radius');
+
+    if(mode==='radius'){
+      if(mo.pickerSelectedLayer){try{mo.pickerSelectedLayer.remove()}catch(_){} mo.pickerSelectedLayer=null;}
+      mo.selectedDistrict=null;
+      const g=document.getElementById('moFZoneGeojson');if(g)g.value='';
+      const d=document.getElementById('moFDistrictNo');if(d)d.value='';
+      const mu=document.getElementById('moFMunicipality');if(mu)mu.value='';
+      const lat=Number(document.getElementById('moFLat')?.value),lng=Number(document.getElementById('moFLng')?.value);
+      if(Number.isFinite(lat)&&Number.isFinite(lng))setPickerCenter(lat,lng,false);
+      else if(mo.pickerMap){const c=mo.pickerMap.getCenter();setPickerCenter(c.lat,c.lng,false);}
+    }else{
+      if(mo.pickerCircle){try{mo.pickerCircle.remove()}catch(_){} mo.pickerCircle=null;}
+      if(mo.pickerMarker){try{mo.pickerMarker.remove()}catch(_){} mo.pickerMarker=null;}
+    }
+    if(!silent)scheduleZonePreview();
+  }
+
+  function setSelectedGeometry(feature,fit=true){
+    if(!feature?.geometry||!mo.pickerMap)return;
+    setZoneMode('district_polygon',true);
+    if(mo.pickerSelectedLayer){try{mo.pickerSelectedLayer.remove()}catch(_){}}
+    mo.pickerSelectedLayer=L.geoJSON(feature,{
+      style:{color:'#0f766e',weight:4,fillColor:'#14b8a6',fillOpacity:.16}
+    }).addTo(mo.pickerMap);
+
+    const bounds=mo.pickerSelectedLayer.getBounds();
+    const center=bounds.getCenter();
+    const p=feature.properties||{};
+    mo.selectedDistrict=feature;
+    document.getElementById('moFLat').value=Number(center.lat).toFixed(6);
+    document.getElementById('moFLng').value=Number(center.lng).toFixed(6);
+    document.getElementById('moFZoneGeojson').value=JSON.stringify(feature.geometry);
+    document.getElementById('moFDistrictNo').value=p.DISTRICT_NO||'';
+    document.getElementById('moFMunicipality').value=p.MUNIC_NAME||'';
+    const area=document.getElementById('moFArea');if(area&&p.DISTRICT_NAME)area.value=p.DISTRICT_NAME;
+    const status=document.getElementById('moDistrictStatus');
+    if(status)status.innerHTML='<div class="mo-selected-district"><span>'+tx('الحي المحدد','Selected district')+'</span><b>'+safe(p.DISTRICT_NAME||p.DISTRICT_NAME_EN||'-')+'</b><small>'+safe(p.MUNIC_NAME||'')+(p.DISTRICT_NO?' · '+tx('كود','Code')+' '+safe(p.DISTRICT_NO):'')+'</small></div>';
+    const box=document.getElementById('moFLocationText');
+    if(box)box.textContent=tx('تم اعتماد حدود الحي كاملة، وسيتم منع تسجيل أي عميل خارجها.','Full district boundary selected; customers outside it will be blocked.');
+    if(fit&&bounds.isValid())mo.pickerMap.fitBounds(bounds,{padding:[24,24]});
+    scheduleZonePreview();
+  }
+
+  function renderDistrictSearchResults(){
+    const box=document.getElementById('moDistrictResults');if(!box)return;
+    const q=(document.getElementById('moDistrictSearch')?.value||'').trim().toLowerCase();
+    const rows=(mo.districtData?.features||[]).filter(f=>{
+      const p=f.properties||{};
+      return !q||String(p.DISTRICT_NAME||'').toLowerCase().includes(q)||String(p.DISTRICT_NAME_EN||'').toLowerCase().includes(q)||String(p.MUNIC_NAME||'').toLowerCase().includes(q);
+    }).slice(0,q?10:0);
+    box.innerHTML=rows.map((f,i)=>{
+      const p=f.properties||{};
+      return '<button type="button" data-mo-district-index="'+i+'"><b>'+safe(p.DISTRICT_NAME||p.DISTRICT_NAME_EN||'-')+'</b><span>'+safe(p.MUNIC_NAME||'')+'</span></button>';
+    }).join('');
+    [...box.querySelectorAll('[data-mo-district-index]')].forEach((b,i)=>b.onclick=()=>setSelectedGeometry(rows[i],true));
+  }
+
   function setPickerCenter(lat,lng,pan){
+    if(document.getElementById('moFZoneType'))document.getElementById('moFZoneType').value='radius';
     document.getElementById('moFLat').value=Number(lat).toFixed(6);
     document.getElementById('moFLng').value=Number(lng).toFixed(6);
     const ll=[Number(lat),Number(lng)];
@@ -469,61 +653,82 @@
     updatePickerCircle();
     if(pan)mo.pickerMap.panTo(ll);
     const box=document.getElementById('moFLocationText');
-    if(box)box.textContent=tx('تم تحديد مركز المنطقة.','Zone center selected.')+' '+Number(lat).toFixed(5)+', '+Number(lng).toFixed(5);
+    if(box)box.textContent=tx('تم تحديد مركز الدائرة الاحتياطية.','Fallback circle center selected.')+' '+Number(lat).toFixed(5)+', '+Number(lng).toFixed(5);
     scheduleZonePreview();
   }
-
 
   let moZonePreviewTimer=null,moZonePreviewSeq=0;
   function scheduleZonePreview(){
     if(!isManagementUser())return;
     clearTimeout(moZonePreviewTimer);
-    moZonePreviewTimer=setTimeout(loadZonePreview,250);
+    moZonePreviewTimer=setTimeout(loadZonePreview,300);
   }
+
   async function loadZonePreview(){
     const box=document.getElementById('moFZonePreview');if(!box)return;
-    const lat=Number(document.getElementById('moFLat')?.value),lng=Number(document.getElementById('moFLng')?.value),radius=Number(document.getElementById('moFRadius')?.value||0);
-    if(!Number.isFinite(lat)||!Number.isFinite(lng)||!radius){box.innerHTML='';return;}
+    const lat=Number(document.getElementById('moFLat')?.value),lng=Number(document.getElementById('moFLng')?.value),radius=Number(document.getElementById('moFRadius')?.value||2500);
+    const zoneType=document.getElementById('moFZoneType')?.value||'radius';
+    let geo=null;
+    try{geo=JSON.parse(document.getElementById('moFZoneGeojson')?.value||'null');}catch(_){}
+    if(!Number.isFinite(lat)||!Number.isFinite(lng)||!radius||(zoneType==='district_polygon'&&!geo)){box.innerHTML='<span>'+tx('حدد الحي أولاً لعرض تحليل المنطقة.','Select a district first to analyze the zone.')+'</span>';return;}
     const seq=++moZonePreviewSeq;
-    box.innerHTML='<span>'+tx('جاري قراءة تغطيتنا الحالية...','Reading current coverage...')+'</span>';
-    const {data,error}=await sb.rpc('market_opening_zone_preview',{p_center_lat:lat,p_center_lng:lng,p_radius_m:radius});
+    box.innerHTML='<div class="mo-v3-loading">'+tx('جاري تحليل المنطقة والتعارضات...','Analyzing coverage and conflicts...')+'</div>';
+    const date=document.getElementById('moFDate')?.value||today();
+    const rep=document.getElementById('moFRep')?.value||null;
+    const missionId=mo.missions.find(x=>x.id===mo.selectedMissionId)?.id||null;
+    const [preview,conflicts]=await Promise.all([
+      sb.rpc('market_opening_zone_preview_v2',{p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_zone_type:zoneType,p_zone_geojson:geo}),
+      sb.rpc('market_opening_zone_conflicts_v2',{p_scheduled_date:date,p_rep_id:rep,p_zone_type:zoneType,p_zone_geojson:geo,p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_exclude_mission_id:missionId})
+    ]);
     if(seq!==moZonePreviewSeq)return;
-    if(error){box.innerHTML='<span>'+tx('تعذر تحليل المنطقة الآن.','Could not analyze the area right now.')+'</span>';return;}
-    const x=data?.[0]||{};
+    if(preview.error){box.innerHTML='<span>'+tx('تعذر تحليل المنطقة الآن.','Could not analyze the area right now.')+'</span>';return;}
+    const x=preview.data?.[0]||{};
     const total=Number(x.existing_customers||0),recent=Number(x.recent_30d_customers||0);
     const density=total<=3?tx('تغطيتنا ضعيفة','Low current coverage'):total<=10?tx('تغطيتنا متوسطة','Medium current coverage'):tx('تغطيتنا مرتفعة','High current coverage');
-    box.innerHTML='<div class="mo-v2-preview-head"><b>'+density+'</b><span>'+tx('داخل الدائرة يوجد ','There are ')+n(total)+tx(' عميل مسجل لدينا حالياً.',' customers currently in our data inside the zone.')+'</span></div>'+
-      '<div class="mo-v2-preview-stats"><span>'+tx('نشط','Active')+' <b>'+n(x.active_customers)+'</b></span><span>'+tx('متردد','Hesitant')+' <b>'+n(x.hesitant_customers)+'</b></span><span>'+tx('رافض','Rejected')+' <b>'+n(x.rejected_customers)+'</b></span><span>'+tx('متفق','Agreed')+' <b>'+n(x.agreed_customers)+'</b></span><span>'+tx('جدد آخر 30 يوم','New in 30d')+' <b>'+n(recent)+'</b></span></div>'+
-      '<small>'+tx('هذا مؤشر لتغطيتنا نحن، وليس عدداً تقديرياً لكل محلات السوق.','This measures our existing coverage, not the total number of shops in the market.')+'</small>';
+    const conflictRows=conflicts.error?[]:(conflicts.data||[]);
+    box.innerHTML='<div class="mo-v3-analysis-grid">'+
+      '<div class="mo-v3-analysis-card coverage"><span>'+tx('تغطيتنا الحالية','Current coverage')+'</span><b>'+density+'</b><strong>'+n(total)+'</strong><small>'+tx('عميل مسجل داخل الحدود','registered customers inside the boundary')+'</small></div>'+
+      '<div class="mo-v3-analysis-card recent"><span>'+tx('حركة 30 يوم','30-day movement')+'</span><strong>'+n(recent)+'</strong><small>'+tx('عميل جديد آخر 30 يوم','new customers in the last 30 days')+'</small></div>'+
+      '<div class="mo-v3-analysis-card conflict '+(conflictRows.length?'warn':'ok')+'"><span>'+tx('تعارض المهام','Mission overlap')+'</span><strong>'+n(conflictRows.length)+'</strong><small>'+(conflictRows.length?tx('منطقة متداخلة تحتاج انتباه','overlapping zones need attention'):tx('لا يوجد تعارض في هذا اليوم','no overlap on this date'))+'</small></div>'+
+    '</div>'+
+    '<div class="mo-v2-preview-stats"><span>'+tx('نشط','Active')+' <b>'+n(x.active_customers)+'</b></span><span>'+tx('متردد','Hesitant')+' <b>'+n(x.hesitant_customers)+'</b></span><span>'+tx('رافض','Rejected')+' <b>'+n(x.rejected_customers)+'</b></span><span>'+tx('متفق','Agreed')+' <b>'+n(x.agreed_customers)+'</b></span></div>'+
+    (conflictRows.length?'<div class="mo-v3-conflicts"><b>'+tx('تداخلات نفس اليوم','Same-day overlaps')+'</b>'+conflictRows.slice(0,6).map(c=>'<span>'+safe(c.rep_name)+' · '+safe(c.area_name)+' <strong>'+safe(c.overlap_pct||0)+'%</strong></span>').join('')+'</div>':'')+
+    '<small>'+tx('الأرقام مبنية على بيانات العملاء المسجلين لدينا داخل حدود المنطقة المختارة.','Figures are based on customers already registered in our system inside the selected boundary.')+'</small>';
   }
 
   function updatePickerCircle(){
-    if(!mo.pickerMap)return;
+    if(!mo.pickerMap||document.getElementById('moFZoneType')?.value!=='radius')return;
     const lat=Number(document.getElementById('moFLat')?.value),lng=Number(document.getElementById('moFLng')?.value),radius=Number(document.getElementById('moFRadius')?.value||2500);
     if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
     if(mo.pickerCircle)mo.pickerCircle.remove();
-    mo.pickerCircle=L.circle([lat,lng],{radius,weight:2,fillOpacity:.08}).addTo(mo.pickerMap);
-    scheduleZonePreview();
+    mo.pickerCircle=L.circle([lat,lng],{radius,weight:3,color:'#2563eb',fillColor:'#60a5fa',fillOpacity:.10}).addTo(mo.pickerMap);
   }
 
   async function saveMissionForm(existing){
     const city=document.getElementById('moFCity')?.value.trim()||'';
     const area=document.getElementById('moFArea')?.value.trim()||'';
     const target=Number(document.getElementById('moFTarget')?.value||0);
-    const radius=Number(document.getElementById('moFRadius')?.value||0);
+    const radius=Number(document.getElementById('moFRadius')?.value||2500);
     const lat=Number(document.getElementById('moFLat')?.value),lng=Number(document.getElementById('moFLng')?.value);
     const notes=document.getElementById('moFNotes')?.value.trim()||null;
+    const zoneType=document.getElementById('moFZoneType')?.value||'radius';
+    const districtNo=document.getElementById('moFDistrictNo')?.value||null;
+    const municipality=document.getElementById('moFMunicipality')?.value||null;
+    let geo=null;try{geo=JSON.parse(document.getElementById('moFZoneGeojson')?.value||'null');}catch(_){}
+
     if(city.length<2)return flash(tx('اكتب المدينة.','Enter the city.'),true);
     if(area.length<2)return flash(tx('اكتب الحي أو المنطقة.','Enter the area.'),true);
     if(!(target>=1&&target<=50))return flash(tx('الهدف يجب أن يكون من 1 إلى 50.','Target must be between 1 and 50.'),true);
     if(!Number.isFinite(lat)||!Number.isFinite(lng))return flash(tx('حدد المنطقة على الخريطة.','Select the zone on the map.'),true);
+    if(zoneType==='district_polygon'&&(!districtNo||!geo))return flash(tx('اختر الحي من الخريطة حتى يتم حفظ حدوده كاملة.','Choose the district on the map so its full boundary can be saved.'),true);
 
     const btn=document.getElementById('moFSave');if(btn)btn.disabled=true;
     let res;
     if(existing){
-      res=await sb.rpc('admin_update_market_mission',{
+      res=await sb.rpc('admin_update_market_mission_v2',{
         p_mission_id:existing.id,p_city:city,p_area_name:area,p_target_customers:target,
-        p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_notes:notes
+        p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_notes:notes,
+        p_zone_type:zoneType,p_district_no:districtNo,p_municipality_name:municipality,p_zone_geojson:geo
       });
     }else{
       const rep=document.getElementById('moFRep')?.value||'';
@@ -532,18 +737,19 @@
       if(!date){if(btn)btn.disabled=false;return flash(tx('اختر التاريخ.','Choose the date.'),true);}
       const dow=new Date(date+'T00:00:00Z').getUTCDay();
       if(dow===5){if(btn)btn.disabled=false;return flash(tx('الجمعة ليس يوم عمل.','Friday is not a working day.'),true);}
-      res=await sb.rpc('admin_create_market_mission',{
+      res=await sb.rpc('admin_create_market_mission_v2',{
         p_rep_id:rep,p_scheduled_date:date,p_city:city,p_area_name:area,p_target_customers:target,
-        p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_notes:notes
+        p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_notes:notes,
+        p_zone_type:zoneType,p_district_no:districtNo,p_municipality_name:municipality,p_zone_geojson:geo
       });
     }
     if(btn)btn.disabled=false;
     if(res.error)return flash(tx('تعذر حفظ المهمة: ','Could not save mission: ')+friendlyError(res.error.message),true);
-    closeModal();cleanupPicker();flash(existing?tx('تم تعديل المهمة.','Mission updated.'):tx('تم إنشاء المهمة.','Mission created.'));
+    closeModal();cleanupPicker();flash(existing?tx('تم تعديل المهمة.','Mission updated.'):tx('تم إنشاء المهمة بحدود المنطقة المعتمدة.','Mission created with the selected zone boundary.'));
     await loadData(true);
   }
 
-  function openReschedule(m){
+    function openReschedule(m){
     const suggested=ymd(m.scheduled_date)<today()?workDateOnOrAfter(today()):nextWorkDate(ymd(m.scheduled_date));
     openModal(tx('تأجيل مهمة فتح السوق','Reschedule Market Opening Mission'),
       '<div class="form-grid"><div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(m.area_name)+'<br>'+tx('التقدم الحالي محفوظ','Current progress is preserved')+': '+n(progress(m))+'/'+n(m.target_customers)+'</div><div><label>'+tx('التاريخ الجديد','New date')+'</label><input type="date" id="moRDate" min="'+safe(today())+'" value="'+safe(suggested)+'"></div><div class="full"><label>'+tx('سبب التأجيل','Reason')+'</label><textarea id="moRReason" rows="3"></textarea></div><div class="full"><button class="btn warn" id="moRSave" type="button">'+tx('تأكيد التأجيل','Confirm reschedule')+'</button></div></div>');
@@ -626,7 +832,10 @@
       'closed mission cannot be rescheduled':tx('المهمة مغلقة ولا يمكن تأجيلها.','Closed mission cannot be rescheduled.'),
       'closed mission cannot be edited':tx('المهمة مغلقة ولا يمكن تعديلها.','Closed mission cannot be edited.'),
       'target cannot be below achieved customers':tx('لا يمكن جعل الهدف أقل من عدد العملاء المنجزين.','Target cannot be below achieved customers.'),
-      'zone cannot change after customer progress':tx('بعد تسجيل أول عميل لا يمكن تغيير مركز المنطقة أو نصف القطر. تقدر تعدل الاسم والهدف أو تؤجل المهمة.','After the first customer is counted, the zone center and radius cannot be changed. You can still edit the label, target, or reschedule the mission.')
+      'zone cannot change after customer progress':tx('بعد تسجيل أول عميل لا يمكن تغيير حدود المنطقة. تقدر تعدل الاسم والهدف أو تؤجل المهمة.','After the first customer is counted, the zone boundary cannot be changed. You can still edit the label, target, or reschedule the mission.'),
+      'district polygon required':tx('اختر الحي من الخريطة حتى يتم حفظ حدوده كاملة.','Choose a district on the map so its full boundary is saved.'),
+      'invalid district polygon':tx('حدود الحي غير صالحة. أعد اختيار الحي.','The district boundary is invalid. Select the district again.'),
+      'invalid zone':tx('منطقة العمل غير صالحة.','The work zone is invalid.')
     };
     return dict[m]||m;
   }
@@ -637,14 +846,38 @@
     mo.selectedMissionId=m.id;
     destroyMap();
     el.innerHTML='';
-    mo.map=L.map(el,{zoomControl:true}).setView([Number(m.center_lat),Number(m.center_lng)],13);
+    mo.map=L.map(el,{zoomControl:true,preferCanvas:true}).setView([Number(m.center_lat),Number(m.center_lng)],13);
     addBaseMap(mo.map);
-    const circle=L.circle([Number(m.center_lat),Number(m.center_lng)],{radius:Number(m.radius_m),weight:3,fillOpacity:.03,color:'#2563eb'}).addTo(mo.map);
-    L.circleMarker([Number(m.center_lat),Number(m.center_lng)],{radius:5,weight:2,fillOpacity:1,color:'#0f172a',fillColor:'#fff'}).addTo(mo.map).bindTooltip(safe(m.area_name));
-    mo.map.fitBounds(circle.getBounds(),{padding:[20,20]});
+
+    let primaryBounds=null;
+    if(m.zone_type==='district_polygon'&&m.zone_geojson){
+      const zone=L.geoJSON({type:'Feature',properties:{},geometry:m.zone_geojson},{
+        style:{color:'#0f766e',weight:4,fillColor:'#14b8a6',fillOpacity:.10}
+      }).addTo(mo.map).bindTooltip(safe(m.area_name)+' · '+tx('حدود المهمة','Mission boundary'));
+      primaryBounds=zone.getBounds();
+    }else{
+      const circle=L.circle([Number(m.center_lat),Number(m.center_lng)],{radius:Number(m.radius_m),weight:3,fillOpacity:.05,color:'#2563eb'}).addTo(mo.map);
+      primaryBounds=circle.getBounds();
+    }
+
+    if(isManagementUser()){
+      mo.missions.filter(x=>x.id!==m.id&&x.scheduled_date===m.scheduled_date&&x.status!=='cancelled').forEach(x=>{
+        try{
+          let layer;
+          if(x.zone_type==='district_polygon'&&x.zone_geojson){
+            layer=L.geoJSON({type:'Feature',properties:{},geometry:x.zone_geojson},{style:{color:'#94a3b8',weight:2,dashArray:'6 6',fillOpacity:.015}});
+          }else{
+            layer=L.circle([Number(x.center_lat),Number(x.center_lng)],{radius:Number(x.radius_m),color:'#94a3b8',weight:2,dashArray:'6 6',fillOpacity:.01});
+          }
+          layer.addTo(mo.map).bindTooltip(safe(repName(x.rep_id))+' · '+safe(x.area_name));
+        }catch(_){}
+      });
+    }
+
+    if(primaryBounds?.isValid())mo.map.fitBounds(primaryBounds,{padding:[24,24]});
 
     const text=document.getElementById('moSelectedMissionText');
-    if(text)text.textContent=repName(m.rep_id)+' · '+m.area_name+' · '+m.city+' · '+fmtDate(m.scheduled_date);
+    if(text)text.textContent=repName(m.rep_id)+' · '+m.area_name+' · '+m.city+' · '+fmtDate(m.scheduled_date)+' · '+zoneSummary(m);
 
     const [pointsRes,healthRes]=await Promise.all([
       sb.rpc('market_opening_map_points',{p_mission_id:m.id}),
@@ -658,7 +891,7 @@
     mo.mapPoints=pointsRes.data||[];
     const stats=renderCoverageCompass(m,mo.mapPoints);
 
-    if(stats){
+    if(stats&&m.zone_type!=='district_polygon'){
       const ranges={north:[315,405],east:[45,135],south:[135,225],west:[225,315]};
       Object.entries(ranges).forEach(([k,range])=>{
         const poly=sectorPolygon(m,range[0],range[1]);
@@ -683,7 +916,7 @@
           const score=Number(q.review_score||0);
           const tone=score===0?'ok':score<=30?'watch':'warn';
           const title=score===0?tx('التسجيلات طبيعية','Registrations look normal'):score<=30?tx('مؤشرات بسيطة للمراجعة','Minor review indicators'):tx('تحتاج مراجعة الإدارة','Management review recommended');
-          box.innerHTML='<div class="mo-v2-health '+tone+'"><div><span>'+tx('مؤشر المراجعة','Review indicator')+'</span><b>'+title+'</b></div><strong>'+n(score)+'</strong><div class="mo-v2-health-details"><span>'+tx('نفس الموقع','Repeated location')+' '+n(q.repeated_location_groups)+'</span><span>'+tx('إدخال سريع','Rapid entry')+' '+n(q.rapid_entry_pairs)+'</span><span>'+tx('رقم مكرر','Duplicate phone')+' '+n(q.duplicate_phone_groups)+'</span><span>'+tx('نقاط متقاربة جداً','Very close points')+' '+n(q.close_location_pairs)+'</span><span>'+tx('خارج النطاق','Outside zone')+' '+n(q.outside_zone_rows)+'</span></div></div>';
+          box.innerHTML='<div class="mo-v2-health '+tone+'"><div><span>'+tx('مؤشر المراجعة','Review indicator')+'</span><b>'+title+'</b></div><strong>'+n(score)+'</strong><div class="mo-v2-health-details"><span>'+tx('نفس الموقع','Repeated location')+' '+n(q.repeated_location_groups)+'</span><span>'+tx('إدخال سريع','Rapid entry')+' '+n(q.rapid_entry_pairs)+'</span><span>'+tx('رقم مكرر','Duplicate phone')+' '+n(q.duplicate_phone_groups)+'</span><span>'+tx('نقاط متقاربة جداً','Very close points')+' '+n(q.close_location_pairs)+'</span><span>'+tx('خارج الحدود','Outside boundary')+' '+n(q.outside_zone_rows)+'</span></div></div>';
         }else box.innerHTML='';
       }
     }
@@ -703,11 +936,11 @@
     });
     const count=document.getElementById('moMapCount');if(count)count.textContent=n(mo.mapPoints.length);
     const legend=document.getElementById('moMapLegend');
-    if(legend)legend.innerHTML='<span><i class="new"></i>'+tx('جدد في المهمة','New in mission')+' <b>'+n(missionCount)+'</b></span><span><i class="existing"></i>'+tx('عملاؤنا الحاليون','Existing customers')+' <b>'+n(existingCount)+'</b></span><span>'+tx('النطاق','Radius')+': <b>'+n(Math.round(m.radius_m/100)/10)+' كم</b></span>';
+    if(legend)legend.innerHTML='<span><i class="new"></i>'+tx('جدد في المهمة','New in mission')+' <b>'+n(missionCount)+'</b></span><span><i class="existing"></i>'+tx('عملاؤنا الحاليون','Existing customers')+' <b>'+n(existingCount)+'</b></span><span>'+tx('حدود العمل','Work zone')+': <b>'+safe(zoneSummary(m))+'</b></span>'+(m.municipality_name?'<span>'+tx('البلدية','Municipality')+': <b>'+safe(m.municipality_name)+'</b></span>':'');
     setTimeout(()=>mo.map?.invalidateSize(),80);
   }
 
-  function destroyMap(){
+    function destroyMap(){
     if(mo.map){try{mo.map.remove()}catch(_){}}
     mo.map=null;
   }
@@ -729,14 +962,22 @@
       return;
     }
     notice.classList.add('ok');
-    notice.innerHTML='<b>'+tx('مهمة فتح السوق','Market-opening mission')+': '+safe(m.area_name)+' · '+safe(m.city)+'</b><div>'+tx('اختر موقع العميل داخل الدائرة المحددة. جميع الحالات الأولية تُحسب في الهدف.','Choose the customer location inside the mission circle. All initial statuses count toward the target.')+'</div><div id="moCustomerZoneStatus" class="small"></div>';
+    notice.innerHTML='<b>'+tx('مهمة فتح السوق','Market-opening mission')+': '+safe(m.area_name)+' · '+safe(m.city)+'</b><div>'+safe(m.zone_type==='district_polygon'?tx('التسجيل مسموح داخل حدود الحي المحددة فقط. جميع الحالات الأولية تُحسب في الهدف.','Registration is allowed only inside the selected district boundary. All initial statuses count toward the target.'):tx('اختر موقع العميل داخل دائرة المهمة. جميع الحالات الأولية تُحسب في الهدف.','Choose the customer location inside the mission circle. All initial statuses count toward the target.'))+'</div><div id="moCustomerZoneStatus" class="small"></div>';
     form.prepend(notice);
     const area=document.getElementById('fArea');if(area&&!area.value)area.value=m.area_name;
     const save=document.getElementById('saveCustomerBtn');if(save)save.disabled=true;
 
     if(state.pickerMap&&window.L){
-      const circle=L.circle([Number(m.center_lat),Number(m.center_lng)],{radius:Number(m.radius_m),weight:3,fillOpacity:.06}).addTo(state.pickerMap);
-      state.pickerMap.fitBounds(circle.getBounds(),{padding:[15,15]});
+      try{
+        let zone;
+        if(m.zone_type==='district_polygon'&&m.zone_geojson){
+          zone=L.geoJSON({type:'Feature',properties:{},geometry:m.zone_geojson},{style:{color:'#0f766e',weight:4,fillColor:'#14b8a6',fillOpacity:.10}}).addTo(state.pickerMap);
+          state.pickerMap.fitBounds(zone.getBounds(),{padding:[18,18]});
+        }else{
+          zone=L.circle([Number(m.center_lat),Number(m.center_lng)],{radius:Number(m.radius_m),weight:3,fillOpacity:.06}).addTo(state.pickerMap);
+          state.pickerMap.fitBounds(zone.getBounds(),{padding:[15,15]});
+        }
+      }catch(_){}
     }
   }
 
@@ -744,18 +985,27 @@
     if(!isRepUser()||!mo.settings?.enabled||!mo.settings?.strict_rep_customer_creation)return;
     const m=missionForToday(),save=document.getElementById('saveCustomerBtn'),box=document.getElementById('moCustomerZoneStatus');
     if(!m){if(save)save.disabled=true;return;}
-    const dist=haversine(Number(m.center_lat),Number(m.center_lng),Number(lat),Number(lng));
-    const inside=dist<=Number(m.radius_m);
-    if(save)save.disabled=!inside;
-    if(box){
-      box.className='small '+(inside?'ok':'bad');
-      box.textContent=inside
+    let inside=false,detail='';
+    if(m.zone_type==='district_polygon'&&m.zone_geojson){
+      inside=pointInZoneGeojson(m.zone_geojson,Number(lat),Number(lng));
+      detail=inside
+        ?tx('الموقع داخل حدود الحي — يُسمح بالحفظ.','Location is inside the district boundary — saving is allowed.')
+        :tx('الموقع خارج حدود الحي المحدد للمهمة.','Location is outside the district boundary assigned to this mission.');
+    }else{
+      const dist=haversine(Number(m.center_lat),Number(m.center_lng),Number(lat),Number(lng));
+      inside=dist<=Number(m.radius_m);
+      detail=inside
         ?tx('الموقع داخل منطقة المهمة — يُسمح بالحفظ.','Location is inside the mission zone — saving is allowed.')
         :tx('الموقع خارج منطقة المهمة بحوالي ','Location is outside the mission zone by about ')+n(Math.max(0,Math.round(dist-m.radius_m)))+tx(' متر.',' m.');
     }
+    if(save)save.disabled=!inside;
+    if(box){
+      box.className='small '+(inside?'ok':'bad');
+      box.textContent=detail;
+    }
   }
 
-  function handleGlobalClicks(e){
+    function handleGlobalClicks(e){
     const b=e.target.closest('[data-mo-open-page]');
     if(b){gotoPage('marketOpening');setTimeout(()=>renderPage(),20);}
   }

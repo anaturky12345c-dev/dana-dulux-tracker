@@ -460,7 +460,8 @@
       '</div>';
     }
 
-    const isOver=!!over&&!m;
+    const isOver=preview?ymd(active.scheduled_date)<today():(!!over&&!m);
+    const isFuture=preview?ymd(active.scheduled_date)>today():false;
     const b=statusBreakdown(active),done=progress(active),left=remaining(active),pending=pendingRequestForMission(active.id);
     const disabled=preview?' disabled aria-disabled="true"':'';
     const actionStart=!isOver&&active.status==='scheduled'
@@ -475,7 +476,7 @@
 
     return '<div class="mo5-shell mo5-rep">'+previewBanner+
       (mo.demoPreview?'<div class="mo5-demo-banner"><b>🧪 '+tx('بيانات تجريبية','Demo data')+'</b><span>'+safe(mo.demoPreview.label)+' · '+tx('لن تُحفظ أي نتيجة','Nothing will be saved')+'</span></div>':'')+
-      '<section class="mo5-rep-hero '+statusClass(active)+'"><div><span class="mo5-kicker">'+(isOver?tx('مهمة تحتاج قرار','Mission needs action'):tx('مهمة اليوم','Today’s mission'))+'</span><h1>'+safe(active.area_name)+'</h1><p>'+safe(active.city)+' · '+safe(fmtDate(active.scheduled_date))+'</p><div class="mo5-zone-chip">'+safe(zoneSummary(active))+'</div></div>'+
+      '<section class="mo5-rep-hero '+statusClass(active)+'"><div><span class="mo5-kicker">'+(isOver?tx('مهمة تحتاج قرار','Mission needs action'):(isFuture?tx('مهمة قادمة — معاينة','Upcoming mission — preview'):tx('مهمة اليوم','Today’s mission')))+'</span><h1>'+safe(active.area_name)+'</h1><p>'+safe(active.city)+' · '+safe(fmtDate(active.scheduled_date))+'</p><div class="mo5-zone-chip">'+safe(zoneSummary(active))+'</div></div>'+
         '<div class="mo5-progress-summary"><strong>'+n(done)+' <small>/ '+n(active.target_customers)+'</small></strong><span>'+tx('عميل مسجل','customers registered')+'</span><div class="mo-progress"><i style="width:'+pct(active)+'%"></i></div><b>'+n(left)+' '+tx('متبقي','remaining')+'</b></div></section>'+
       '<section class="mo5-rep-steps"><div class="mo5-section-head"><div><span>'+tx('نفّذها بهذا الترتيب','Follow these steps in order')+'</span><h3>'+tx('ثلاث خطوات فقط','Only three steps')+'</h3></div></div>'+
         '<article><em>1</em><div><b>'+tx('ابدأ المهمة','Start the mission')+'</b><span>'+tx('اضغط مرة واحدة عند وصولك للمنطقة.','Tap once when you reach the assigned area.')+'</span></div>'+actionStart+'</article>'+

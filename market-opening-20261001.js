@@ -500,6 +500,7 @@
 
   function openMissionForm(m=null,prefillRep=''){
     if(!isManagementUser())return;
+    if(m?.id)mo.selectedMissionId=m.id;
     openModal(m?tx('تعديل مهمة فتح السوق','Edit Market Opening Mission'):tx('مهمة فتح سوق جديدة','New Market Opening Mission'),missionFormHtml(m,prefillRep));
     setTimeout(()=>{
       initMissionPicker(m);

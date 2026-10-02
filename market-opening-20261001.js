@@ -245,14 +245,23 @@
   async function loadDistrictData(){
     if(mo.districtData)return mo.districtData;
     if(mo.districtDataPromise)return mo.districtDataPromise;
-    mo.districtDataPromise=fetch(RIYADH_DISTRICTS_URL,{mode:'cors',credentials:'omit'})
-      .then(r=>{if(!r.ok)throw new Error('districts '+r.status);return r.json();})
-      .then(g=>{
-        const out={type:'FeatureCollection',features:(g?.features||[]).filter(x=>x?.geometry&&x?.properties?.DISTRICT_NO)};
-        mo.districtData=out;
-        return out;
-      })
-      .finally(()=>{mo.districtDataPromise=null;});
+    mo.districtDataPromise=(async()=>{
+      let g=null;
+      try{
+        const edge=await sb.functions.invoke('riyadh-districts',{method:'POST',body:{scope:'riyadh_districts'}});
+        if(edge.error)throw edge.error;
+        g=edge.data;
+      }catch(edgeErr){
+        console.warn('district edge fallback',edgeErr);
+        const r=await fetch(RIYADH_DISTRICTS_URL,{mode:'cors',credentials:'omit'});
+        if(!r.ok)throw new Error('districts '+r.status);
+        g=await r.json();
+      }
+      const out={type:'FeatureCollection',features:(g?.features||[]).filter(x=>x?.geometry&&x?.properties?.DISTRICT_NO)};
+      if(!out.features.length)throw new Error('empty district layer');
+      mo.districtData=out;
+      return out;
+    })().finally(()=>{mo.districtDataPromise=null;});
     return mo.districtDataPromise;
   }
 

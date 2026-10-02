@@ -2605,3 +2605,5 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo-v3-ops-head{align-items:stretch;flex-direction:column}
   .mo-v3-ops-actions{justify-content:flex-start}
 }
+
+.mo-v3-form input[readonly]{background:#f8fafc;color:#475569;border-color:#dbe4ec;cursor:default}

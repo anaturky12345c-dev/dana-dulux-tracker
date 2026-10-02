@@ -1,4 +1,22 @@
 (function(){
+  'use strict';
+  const app=window.DANA_APP;
+  if(!app||!app.sb||!app.state)return;
+  const sb=app.sb;
+  const state=app.state;
+  const canManage=app.canManage;
+  const esc=app.esc;
+  const todayRiyadh=app.todayRiyadh;
+  const dateOnly=app.dateOnly;
+  const dateTime=app.dateTime;
+  const statusLabel=app.statusLabel;
+  const openModal=app.openModal;
+  const closeModal=app.closeModal;
+  const flash=app.flash;
+  const gotoPage=app.gotoPage;
+  const openCustomerForm=app.openCustomerForm;
+  const addBaseMap=app.addBaseMap;
+
   const mo={
     settings:null,
     missions:[],
@@ -14,7 +32,7 @@
     lastLoadedAt:0
   };
 
-  const ar=()=>typeof lang!=='undefined'&&lang==='ar';
+  const ar=()=>app.getLang()==='ar';
   const isRepUser=()=>state?.profile?.role==='rep';
   const isManagementUser=()=>typeof canManage==='function'&&canManage();
   const tx=(a,e)=>ar()?a:e;

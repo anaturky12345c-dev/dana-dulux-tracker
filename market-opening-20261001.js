@@ -513,8 +513,8 @@
     return '<div class="form-grid mo-mission-form mo-v3-form">'+
       (editing?'<div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(fmtDate(m.scheduled_date))+'<br>'+tx('تعديل المنطقة أو الهدف لا يغير المندوب أو تاريخ المهمة.','Editing the zone or target does not change the representative or mission date.')+(locked?'<br><b>'+tx('حدود المنطقة مقفلة بعد تسجيل أول عميل.','The zone boundary is locked after the first customer is counted.')+'</b>':'')+'</div>':
       '<div><label>'+tx('المندوب','Representative')+'</label><select id="moFRep"><option value="">'+tx('اختر المندوب...','Choose representative...')+'</option>'+reps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===prefillRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('')+'</select></div><div><label>'+tx('التاريخ','Date')+'</label><input type="date" id="moFDate" value="'+safe(defaultDate)+'" min="'+safe(today())+'"></div>')+
-      '<div><label>'+tx('المدينة','City')+'</label><input id="moFCity" value="'+safe(m?.city||'الرياض')+'" autocomplete="off"></div>'+
-      '<div><label>'+tx('الحي / المنطقة','District / Area')+'</label><input id="moFArea" value="'+safe(m?.area_name||'')+'" autocomplete="off" placeholder="'+tx('مثال: المونسية','e.g. Al Munsiyah')+'"></div>'+
+      '<div><label>'+tx('المدينة','City')+'</label><input id="moFCity" value="'+safe(m?.city||'الرياض')+'" autocomplete="off" '+(m?.zone_type==='radius'?'':'readonly')+'></div>'+
+      '<div><label>'+tx('الحي / المنطقة','District / Area')+'</label><input id="moFArea" value="'+safe(m?.area_name||'')+'" autocomplete="off" placeholder="'+tx('مثال: المونسية','e.g. Al Munsiyah')+'" '+(m?.zone_type==='radius'?'':'readonly')+'></div>'+
       '<div><label>'+tx('هدف العملاء الجدد','New-customer target')+'</label><input type="number" id="moFTarget" min="1" max="50" step="1" value="'+safe(m?.target_customers||6)+'"></div>'+
       '<div id="moRadiusWrap" class="'+(m?.zone_type==='radius'?'':'hidden')+'"><label>'+tx('نطاق الدائرة الاحتياطية','Fallback circle radius')+'</label><select id="moFRadius">'+radiusOptions.map(v=>'<option value="'+v+'" '+(v===radius?'selected':'')+'>'+((v/1000).toFixed(v<1000?1:0))+' km</option>').join('')+'</select></div>'+
       '<div class="full mo-zone-mode-block"><label>'+tx('طريقة تحديد منطقة العمل','Work-zone selection')+'</label><div class="mo-zone-segmented">'+
@@ -623,6 +623,12 @@
     document.querySelectorAll('[data-mo-zone-mode]').forEach(b=>b.classList.toggle('active',b.dataset.moZoneMode===mode));
     document.getElementById('moDistrictTools')?.classList.toggle('hidden',mode!=='district_polygon');
     document.getElementById('moRadiusWrap')?.classList.toggle('hidden',mode!=='radius');
+    const areaInput=document.getElementById('moFArea'),cityInput=document.getElementById('moFCity');
+    if(areaInput)areaInput.readOnly=mode==='district_polygon';
+    if(cityInput){
+      cityInput.readOnly=mode==='district_polygon';
+      if(mode==='district_polygon')cityInput.value='الرياض';
+    }
 
     if(mode==='radius'){
       if(mo.pickerSelectedLayer){try{mo.pickerSelectedLayer.remove()}catch(_){} mo.pickerSelectedLayer=null;}
@@ -658,6 +664,7 @@
     document.getElementById('moFDistrictNo').value=p.DISTRICT_NO||'';
     document.getElementById('moFMunicipality').value=p.MUNIC_NAME||'';
     const area=document.getElementById('moFArea');if(area&&p.DISTRICT_NAME)area.value=p.DISTRICT_NAME;
+    const city=document.getElementById('moFCity');if(city)city.value='الرياض';
     const status=document.getElementById('moDistrictStatus');
     if(status)status.innerHTML='<div class="mo-selected-district"><span>'+tx('الحي المحدد','Selected district')+'</span><b>'+safe(p.DISTRICT_NAME||p.DISTRICT_NAME_EN||'-')+'</b><small>'+safe(p.MUNIC_NAME||'')+(p.DISTRICT_NO?' · '+tx('كود','Code')+' '+safe(p.DISTRICT_NO):'')+'</small></div>';
     const box=document.getElementById('moFLocationText');

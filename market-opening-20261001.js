@@ -538,18 +538,19 @@
 
   function missionFormHtml(m,prefillRep=''){
     const editing=!!m;
-    const reps=state.profiles.filter(p=>p.role==='rep');
+    const reps=state.profiles.filter(p=>p.role==='rep'&&p.active!==false);
     const defaultDate=m?.scheduled_date||today();
     const radius=Number(m?.radius_m||mo.settings?.default_radius_m||2500);
     const radiusOptions=[500,1000,1500,2000,2500,3000,4000,5000,7500,10000];
     if(!radiusOptions.includes(radius))radiusOptions.push(radius);
     radiusOptions.sort((a,b)=>a-b);
-    const locked=editing&&progress(m)>0;
+    const locked=false;
+    const selectedRep=m?.rep_id||prefillRep||'';
     const mode=m?.zone_type==='district_polygon'?'district_polygon':'district_polygon';
     const savedGeo=m?.zone_geojson?JSON.stringify(m.zone_geojson):'';
     return '<div class="form-grid mo-mission-form mo-v3-form">'+
-      (editing?'<div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(fmtDate(m.scheduled_date))+'<br>'+tx('تعديل المنطقة أو الهدف لا يغير المندوب أو تاريخ المهمة.','Editing the zone or target does not change the representative or mission date.')+(locked?'<br><b>'+tx('حدود المنطقة مقفلة بعد تسجيل أول عميل.','The zone boundary is locked after the first customer is counted.')+'</b>':'')+'</div>':
-      '<div><label>'+tx('المندوب','Representative')+'</label><select id="moFRep"><option value="">'+tx('اختر المندوب...','Choose representative...')+'</option>'+reps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===prefillRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('')+'</select></div><div><label>'+tx('التاريخ','Date')+'</label><input type="date" id="moFDate" value="'+safe(defaultDate)+'" min="'+safe(today())+'"></div>')+
+      (editing?'<div class="full notice"><b>'+tx('تعديل إداري كامل للخطة','Full management plan editing')+'</b><br>'+tx('تقدر تغيّر المندوب، التاريخ، الحي، الهدف والملاحظات. العملاء المسجلون سابقًا يبقون في السجل التاريخي حتى لو غيرت المندوب أو المنطقة.','You can change the rep, date, zone, target and notes. Previously recorded customers remain in history even if the rep or zone changes.')+'</div>':'')+
+      '<div><label>'+tx('المندوب','Representative')+'</label><select id="moFRep"><option value="">'+tx('اختر المندوب...','Choose representative...')+'</option>'+reps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===selectedRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('')+'</select></div><div><label>'+tx('التاريخ','Date')+'</label><input type="date" id="moFDate" value="'+safe(defaultDate)+'"></div>'+
       '<div><label>'+tx('المدينة','City')+'</label><input id="moFCity" value="'+safe(m?.city||'الرياض')+'" autocomplete="off" '+(m?.zone_type==='radius'?'':'readonly')+'></div>'+
       '<div><label>'+tx('الحي / المنطقة','District / Area')+'</label><input id="moFArea" value="'+safe(m?.area_name||'')+'" autocomplete="off" placeholder="'+tx('مثال: المونسية','e.g. Al Munsiyah')+'" '+(m?.zone_type==='radius'?'':'readonly')+'></div>'+
       '<div><label>'+tx('هدف العملاء الجدد','New-customer target')+'</label><input type="number" id="moFTarget" min="1" max="50" step="1" value="'+safe(m?.target_customers||6)+'"></div>'+
@@ -789,6 +790,8 @@
   }
 
   async function saveMissionForm(existing){
+    const rep=document.getElementById('moFRep')?.value||'';
+    const date=document.getElementById('moFDate')?.value||'';
     const city=document.getElementById('moFCity')?.value.trim()||'';
     const area=document.getElementById('moFArea')?.value.trim()||'';
     const target=Number(document.getElementById('moFTarget')?.value||0);
@@ -800,6 +803,12 @@
     const municipality=document.getElementById('moFMunicipality')?.value||null;
     let geo=null;try{geo=JSON.parse(document.getElementById('moFZoneGeojson')?.value||'null');}catch(_){}
 
+    if(!rep)return flash(tx('اختر المندوب.','Choose representative.'),true);
+    if(!date)return flash(tx('اختر التاريخ.','Choose the date.'),true);
+    const dow=new Date(date+'T00:00:00Z').getUTCDay();
+    if(dow===5)return flash(tx('الجمعة ليس يوم عمل.','Friday is not a working day.'),true);
+    if(existing&&date!==ymd(existing.scheduled_date)&&date<today())return flash(tx('لا يمكن نقل المهمة إلى تاريخ سابق.','Mission cannot be moved to a past date.'),true);
+    if(!existing&&date<today())return flash(tx('لا يمكن اختيار تاريخ سابق.','Mission date cannot be in the past.'),true);
     if(city.length<2)return flash(tx('اكتب المدينة.','Enter the city.'),true);
     if(area.length<2)return flash(tx('اكتب الحي أو المنطقة.','Enter the area.'),true);
     if(!(target>=1&&target<=50))return flash(tx('الهدف يجب أن يكون من 1 إلى 50.','Target must be between 1 and 50.'),true);
@@ -809,18 +818,13 @@
     const btn=document.getElementById('moFSave');if(btn)btn.disabled=true;
     let res;
     if(existing){
-      res=await sb.rpc('admin_update_market_mission_v2',{
-        p_mission_id:existing.id,p_city:city,p_area_name:area,p_target_customers:target,
+      res=await sb.rpc('admin_update_market_mission_full',{
+        p_mission_id:existing.id,p_rep_id:rep,p_scheduled_date:date,
+        p_city:city,p_area_name:area,p_target_customers:target,
         p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_notes:notes,
         p_zone_type:zoneType,p_district_no:districtNo,p_municipality_name:municipality,p_zone_geojson:geo
       });
     }else{
-      const rep=document.getElementById('moFRep')?.value||'';
-      const date=document.getElementById('moFDate')?.value||'';
-      if(!rep){if(btn)btn.disabled=false;return flash(tx('اختر المندوب.','Choose representative.'),true);}
-      if(!date){if(btn)btn.disabled=false;return flash(tx('اختر التاريخ.','Choose the date.'),true);}
-      const dow=new Date(date+'T00:00:00Z').getUTCDay();
-      if(dow===5){if(btn)btn.disabled=false;return flash(tx('الجمعة ليس يوم عمل.','Friday is not a working day.'),true);}
       res=await sb.rpc('admin_create_market_mission_v2',{
         p_rep_id:rep,p_scheduled_date:date,p_city:city,p_area_name:area,p_target_customers:target,
         p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_notes:notes,
@@ -829,7 +833,14 @@
     }
     if(btn)btn.disabled=false;
     if(res.error)return flash(tx('تعذر حفظ المهمة: ','Could not save mission: ')+friendlyError(res.error.message),true);
-    closeModal();cleanupPicker();flash(existing?tx('تم تعديل المهمة.','Mission updated.'):tx('تم إنشاء المهمة بحدود المنطقة المعتمدة.','Mission created with the selected zone boundary.'));
+    if(existing&&res.data?.ok===false)return flash(tx('المهمة غير موجودة.','Mission not found.'),true);
+    const outside=Number(existing?res.data?.customers_outside_new_zone||0:0);
+    const rejected=Number(existing?res.data?.pending_requests_auto_rejected||0:0);
+    closeModal();cleanupPicker();
+    let savedMsg=existing?tx('تم حفظ التعديل الكامل للخطة.','Full plan changes saved.'):tx('تم إنشاء المهمة بحدود المنطقة المعتمدة.','Mission created with the selected zone boundary.');
+    if(outside>0)savedMsg+=' '+tx('تنبيه: ','Note: ')+n(outside)+tx(' عميل مسجل سابقًا خارج المنطقة الجديدة وبقي في السجل التاريخي.',' previously recorded customer(s) are outside the new zone and remain in history.');
+    if(rejected>0)savedMsg+=' '+tx('تم إلغاء طلب التأجيل المعلق تلقائيًا.','The pending reschedule request was automatically closed.');
+    flash(savedMsg);
     await loadData(true);
   }
 
@@ -1110,7 +1121,13 @@
         const actor=state.profiles?.find(p=>p.id===x.actor_id)?.full_name||'-';
         const dates=(x.old_date||x.new_date)?'<span>'+safe(x.old_date||'-')+(x.new_date?' → '+safe(x.new_date):'')+'</span>':'';
         const customerId=x.details?.customer_id?'<span>'+tx('عميل #','Customer #')+safe(x.details.customer_id)+'</span>':'';
-        return '<div class="mo-history-item"><div><b>'+safe(eventLabel(x.event_type))+'</b><small>'+safe(typeof dateTime==='function'?dateTime(x.created_at):x.created_at)+' · '+safe(actor)+'</small></div><div class="mo-history-meta">'+dates+customerId+(x.reason?'<span>'+safe(x.reason)+'</span>':'')+'</div></div>';
+        const before=x.details?.before||{},after=x.details?.after||{};
+        const editBits=[];
+        if(before.rep_id&&after.rep_id&&before.rep_id!==after.rep_id)editBits.push(tx('المندوب: ','Rep: ')+repName(before.rep_id)+' → '+repName(after.rep_id));
+        if(before.area_name&&after.area_name&&before.area_name!==after.area_name)editBits.push(tx('المنطقة: ','Zone: ')+before.area_name+' → '+after.area_name);
+        if(before.target_customers!=null&&after.target_customers!=null&&before.target_customers!==after.target_customers)editBits.push(tx('الهدف: ','Target: ')+before.target_customers+' → '+after.target_customers);
+        const editDetails=editBits.length?'<span>'+safe(editBits.join(' · '))+'</span>':'';
+        return '<div class="mo-history-item"><div><b>'+safe(eventLabel(x.event_type))+'</b><small>'+safe(typeof dateTime==='function'?dateTime(x.created_at):x.created_at)+' · '+safe(actor)+'</small></div><div class="mo-history-meta">'+dates+customerId+editDetails+(x.reason?'<span>'+safe(x.reason)+'</span>':'')+'</div></div>';
       }).join(''):'<div class="empty">'+tx('لا يوجد سجل.','No history.')+'</div>')+'</div>';
     openModal(tx('سجل مهمة فتح السوق','Market Opening Mission History'),html);
   }
@@ -1124,6 +1141,8 @@
     const m=String(msg||'');
     const dict={
       'representative already has a mission on this date':tx('المندوب عنده مهمة في هذا اليوم.','Representative already has a mission on this date.'),
+      'district already assigned on this date':tx('هذا الحي موزع بالفعل في نفس اليوم على مهمة أخرى. غيّر التاريخ أو الحي.','This district is already assigned to another mission on the same date. Change the date or district.'),
+      'mission date required':tx('اختر تاريخ المهمة.','Choose the mission date.'),
       'representative has overdue mission':tx('عند المندوب مهمة قديمة لم تُغلق. انقل موعدها أولاً قبل إنشاء خطة جديدة.','The representative has an unfinished overdue mission. Reschedule it before creating a new plan.'),
       'friday is not a working day':tx('الجمعة ليس يوم عمل.','Friday is not a working day.'),
       'mission date cannot be in the past':tx('لا يمكن اختيار تاريخ سابق.','Mission date cannot be in the past.'),
@@ -1131,7 +1150,7 @@
       'closed mission cannot be rescheduled':tx('المهمة مغلقة ولا يمكن تأجيلها.','Closed mission cannot be rescheduled.'),
       'closed mission cannot be edited':tx('المهمة مغلقة ولا يمكن تعديلها.','Closed mission cannot be edited.'),
       'target cannot be below achieved customers':tx('لا يمكن جعل الهدف أقل من عدد العملاء المنجزين.','Target cannot be below achieved customers.'),
-      'zone cannot change after customer progress':tx('بعد تسجيل أول عميل لا يمكن تغيير حدود المنطقة. تقدر تعدل الاسم والهدف أو تؤجل المهمة.','After the first customer is counted, the zone boundary cannot be changed. You can still edit the label, target, or reschedule the mission.'),
+      'zone cannot change after customer progress':tx('استخدم التعديل الكامل للخطة لتغيير المنطقة.','Use full plan editing to change the zone.'),
       'district polygon required':tx('اختر الحي من الخريطة حتى يتم حفظ حدوده كاملة.','Choose a district on the map so its full boundary is saved.'),
       'invalid district polygon':tx('حدود الحي غير صالحة. أعد اختيار الحي.','The district boundary is invalid. Select the district again.'),
       'invalid zone':tx('منطقة العمل غير صالحة.','The work zone is invalid.'),

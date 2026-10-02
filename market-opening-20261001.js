@@ -903,10 +903,10 @@
     mo.plannerActiveRepId=reps[0].id;
     openModal(tx('توزيع المناطق وبناء الخطة تلقائيًا','Territory Assignment & Auto Planner'),
       '<div class="mo4-planner">'+
-        '<div class="mo4-planner-intro"><span class="mo4-eyebrow">'+tx('AUTO TERRITORY ENGINE','AUTO TERRITORY ENGINE')+'</span><h3>'+tx('اختر المندوب ثم اضغط الأحياء التابعة له','Choose a rep, then click the districts assigned to them')+'</h3><p>'+tx('بعد الاعتماد، النظام يرتب أحياء كل مندوب تلقائيًا من الأقل تغطية إلى الأعلى، ويتجاوز الجمعة والأيام المشغولة.','After approval, the system orders each rep’s districts from least-covered to most-covered and skips Fridays and occupied dates.')+'</p></div>'+
+        '<div class="mo4-planner-intro"><span class="mo4-eyebrow">'+tx('AUTO TERRITORY ENGINE','AUTO TERRITORY ENGINE')+'</span><h3>'+tx('وزّع كل أحياء الرياض على المناديب','Distribute all Riyadh districts across representatives')+'</h3><p>'+tx('لا يوجد حد لعدد الأحياء. تقدر توزع جميع الأحياء الظاهرة في طبقة الرياض، وبعد الاعتماد يرتب النظام أحياء كل مندوب تلقائيًا من الأقل تغطية إلى الأعلى ويتجاوز الجمعة والأيام المشغولة.','There is no district limit. You can assign every Riyadh district in the GIS layer; the system then orders each rep’s districts from least-covered to most-covered and skips Fridays and occupied dates.')+'</p></div>'+
         '<div class="mo4-planner-settings"><div><label>'+tx('بداية الخطة','Plan start')+'</label><input type="date" id="moPlanStart" min="'+safe(today())+'" value="'+safe(workDateOnOrAfter(today()))+'"></div><div><label>'+tx('هدف كل مهمة','Target per mission')+'</label><input type="number" id="moPlanTarget" min="1" max="50" value="6"></div><div><label>'+tx('ملاحظة عامة','General note')+'</label><input id="moPlanNotes" placeholder="'+tx('اختياري','Optional')+'"></div></div>'+
         '<div id="moPlannerRepPalette" class="mo4-rep-palette">'+reps.map((p,i)=>'<button type="button" data-mo-plan-rep="'+safe(p.id)+'" class="'+(i===0?'active':'')+'" style="--rep-color:'+plannerColor(p.id)+'"><i></i><b>'+safe(p.full_name)+'</b><span data-mo-plan-count="'+safe(p.id)+'">0</span></button>').join('')+'</div>'+
-        '<div class="mo4-planner-workspace"><div class="mo4-planner-map-wrap"><div class="mo4-planner-search"><input id="moPlannerSearch" placeholder="'+tx('ابحث عن حي...','Search district...')+'"><div id="moPlannerSearchResults"></div></div><div id="moAutoPlannerMap"></div></div><aside><div class="mo4-selected-head"><span>'+tx('المناطق الموزعة','Assigned territories')+'</span><strong id="moPlannerTotal">0</strong></div><div id="moPlannerSelection" class="mo4-selected-zones"></div></aside></div>'+
+        '<div class="mo4-planner-workspace"><div class="mo4-planner-map-wrap"><div class="mo4-planner-search"><input id="moPlannerSearch" placeholder="'+tx('ابحث عن حي...','Search district...')+'"><div id="moPlannerSearchResults"></div></div><div id="moAutoPlannerMap"></div></div><aside><div class="mo4-selected-head"><div><span>'+tx('المناطق الموزعة','Assigned territories')+'</span><small id="moPlannerCoverageText"></small></div><strong id="moPlannerTotal">0</strong></div><div id="moPlannerSelection" class="mo4-selected-zones"></div></aside></div>'+
         '<div class="mo4-planner-footer"><div><b>'+tx('الترتيب تلقائي','Automatic ordering')+'</b><span>'+tx('الأقل تغطية أولًا · الجمعة مستثناة · لا يوجد تعارض يومي للمندوب','Least-covered first · Friday skipped · no rep day conflicts')+'</span></div><button class="btn good" id="moPlannerSave" type="button">'+tx('ابنِ الخطة تلقائيًا','Build automatic plan')+'</button></div>'+
       '</div>');
     setTimeout(()=>initAutoPlannerMap(),80);
@@ -956,7 +956,6 @@
     if(current&&current.repId===mo.plannerActiveRepId){
       mo.plannerAssignments.delete(key);
     }else{
-      if(mo.plannerAssignments.size>=30)return flash(tx('الحد الأقصى 30 حي في خطة واحدة.','Maximum 30 districts per plan.'),true);
       const center=layer.getBounds().getCenter();
       mo.plannerAssignments.set(key,{
         repId:mo.plannerActiveRepId,
@@ -990,6 +989,14 @@
   function renderPlannerSelection(){
     const reps=plannerReps(),box=document.getElementById('moPlannerSelection'),total=document.getElementById('moPlannerTotal');
     if(total)total.textContent=n(mo.plannerAssignments.size);
+    const coverageText=document.getElementById('moPlannerCoverageText');
+    const allDistricts=(mo.districtData?.features||[]).filter(f=>f?.properties?.DISTRICT_NO).length;
+    if(coverageText){
+      const left=Math.max(0,allDistricts-mo.plannerAssignments.size);
+      coverageText.textContent=allDistricts
+        ?tx('تم توزيع ','Assigned ')+n(mo.plannerAssignments.size)+tx(' من ',' of ')+n(allDistricts)+tx(' · باقي ',' · remaining ')+n(left)
+        :'';
+    }
     reps.forEach(rep=>{
       const c=[...mo.plannerAssignments.values()].filter(x=>x.repId===rep.id).length;
       const el=document.querySelector('[data-mo-plan-count="'+rep.id+'"]');if(el)el.textContent=n(c);
@@ -1132,7 +1139,7 @@
       'request already reviewed':tx('تم اتخاذ قرار على هذا الطلب مسبقًا.','This request has already been reviewed.'),
       'requested date is now in the past':tx('التاريخ المطلوب أصبح في الماضي. اختر تاريخًا جديدًا.','The requested date is now in the past. Choose a new date.'),
       'permanent delete not allowed':tx('الحذف النهائي متاح فقط للحساب الأساسي ومحسن.','Permanent deletion is limited to the primary account and Mohsen.'),
-      'choose between 1 and 40 zones':tx('اختر من 1 إلى 40 منطقة لكل مندوب.','Choose between 1 and 40 zones per representative.'),
+      'choose at least one zone':tx('اختر منطقة واحدة على الأقل للمندوب.','Choose at least one zone for the representative.'),
       'invalid assignment count':tx('توزيع المناطق غير صالح.','Invalid territory assignment.'),
       'invalid representative assignment':tx('يوجد توزيع غير صالح لأحد المناديب.','One representative assignment is invalid.'),
       'invalid zone in planner':tx('إحدى المناطق المحددة غير صالحة. أعد تحديدها من الخريطة.','One selected zone is invalid. Re-select it on the map.')

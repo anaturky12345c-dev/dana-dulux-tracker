@@ -204,64 +204,177 @@
     }else destroyMap();
   }
 
-  function repHtml(){
-    const m=missionForToday(),over=overdueForRep(),next=nextForRep();
-    let hero='';
-    if(m){
-      const done=progress(m),left=remaining(m),b=statusBreakdown(m);
-      hero='<div class="mo-hero '+statusClass(m)+'">'+
-        '<div class="mo-hero-head"><div><span class="mo-eyebrow">'+tx('مهمتك اليوم','Your mission today')+'</span><h2>'+safe(m.area_name)+'</h2><div class="mo-hero-city">'+safe(m.city)+' · '+safe(fmtDate(m.scheduled_date))+'</div></div>'+
-        '<div class="mo-big-count"><strong>'+n(done)+'</strong><span>/ '+n(m.target_customers)+'</span></div></div>'+
-        '<div class="mo-progress large"><i style="width:'+pct(m)+'%"></i></div>'+
-        '<div class="mo-kpis"><div><span>'+tx('أنجزت','Done')+'</span><b>'+n(done)+'</b></div><div><span>'+tx('باقي','Remaining')+'</span><b>'+n(left)+'</b></div><div><span>'+tx('نطاق المهمة','Mission radius')+'</span><b>'+n(Math.round(m.radius_m/100)/10)+' كم</b></div><div><span>'+tx('الحالة','Status')+'</span><b>'+safe(statusText(m))+'</b></div></div>'+
-        '<div class="mo-status-breakdown"><span>'+tx('يُحسب ضمن الهدف','Counts toward target')+':</span><b>'+tx('نشط','Active')+' '+n(b.active)+'</b><b>'+tx('متردد','Hesitant')+' '+n(b.hesitant)+'</b><b>'+tx('رافض','Rejected')+' '+n(b.rejected)+'</b><b>'+tx('متفق','Agreed')+' '+n(b.agreed_pending)+'</b></div>'+
-        (m.notes?'<div class="mo-mission-note"><b>'+tx('ملاحظة الإدارة','Management note')+':</b> '+safe(m.notes)+'</div>':'')+
-        '<div class="mo-hero-actions">'+
-          (m.status==='scheduled'?'<button class="btn" type="button" data-mo-start="'+safe(m.id)+'">'+tx('ابدأ المهمة','Start mission')+'</button>':'')+
-          '<button class="btn good" type="button" data-mo-add-customer="1">'+(m.status==='completed'?tx('إضافة عميل آخر','Add another customer'):tx('إضافة عميل جديد','Add new customer'))+'</button>'+
-        '</div>'+
-      '</div>';
-    }else if(over){
-      hero='<div class="mo-hero mo-status-overdue"><span class="mo-eyebrow">'+tx('لم تُنفذ المهمة في موعدها','Mission was not completed on its date')+'</span><h2>'+safe(over.area_name)+' · '+safe(over.city)+'</h2><p>'+tx('لا يتم نقلها تلقائياً حتى لا تتغير خطة الإدارة. الإدارة تستطيع تأجيلها لك مع الحفاظ على التقدم الحالي.','It is not moved automatically. Management can reschedule it while preserving current progress.')+'</p><div class="mo-big-count inline"><strong>'+n(progress(over))+'</strong><span>/ '+n(over.target_customers)+'</span></div></div>';
-    }else{
-      hero='<div class="mo-hero neutral"><span class="mo-eyebrow">'+tx('فتح السوق','Market Opening')+'</span><h2>'+tx('ما عندك مهمة اليوم','No mission assigned today')+'</h2><p>'+tx('إضافة عميل جديد من حساب المندوب تتطلب مهمة محددة لليوم.','A representative needs a mission for today before adding a new customer.')+'</p>'+(next?'<div class="notice">'+tx('مهمتك القادمة','Next mission')+': <b>'+safe(next.area_name)+' · '+safe(next.city)+'</b> — '+safe(fmtDate(next.scheduled_date))+'</div>':'')+'</div>';
-    }
-    return '<div class="mo-page">'+hero+
-      '<div class="card mo-map-card"><div class="dashboard-head"><div><h3>'+tx('خريطة المهمة','Mission map')+'</h3><div class="small">'+tx('الدائرة تحدد المنطقة المسموح تسجيل العملاء داخلها. العملاء الموجودون مسبقاً يظهرون لتجنب التكرار.','The circle is the allowed zone. Existing customers are shown to avoid duplicates.')+'</div></div><span class="badge b-info" id="moMapCount">0</span></div><div id="marketOpeningMap" class="mo-map"></div><div id="moMapLegend" class="mo-map-legend"></div></div>'+
-    '</div>';
+
+  function missionNowText(m){
+    if(!m)return '';
+    if(m.status==='completed')return tx('الهدف مكتمل — أي عميل إضافي يزيد تغطية المنطقة.','Target completed — extra customers improve area coverage.');
+    if(m.status==='scheduled')return tx('ابدأ المهمة، ثم ركّز على الجزء الأقل تغطية في بياناتنا.','Start the mission, then focus on the least-covered part in our data.');
+    const left=remaining(m);
+    return left>0
+      ?tx('باقي ','Remaining ')+n(left)+tx(' عميل للوصول للهدف.',' customers to hit the target.')
+      :tx('وصلت للهدف.','Target reached.');
   }
 
+  function missionRing(m){
+    return '<div class="mo-v2-ring" style="--mo-p:'+pct(m)+'%"><div><strong>'+n(progress(m))+'</strong><span>/ '+n(m.target_customers)+'</span><small>'+pct(m)+'%</small></div></div>';
+  }
+
+  function sectorKey(m,p){
+    const lat1=Number(m.center_lat),lng1=Number(m.center_lng);
+    const lat2=Number(p.lat),lng2=Number(p.lng);
+    const dx=(lng2-lng1)*Math.cos(lat1*Math.PI/180);
+    const dy=lat2-lat1;
+    const a=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
+    if(a>=315||a<45)return'north';
+    if(a<135)return'east';
+    if(a<225)return'south';
+    return'west';
+  }
+
+  function sectorLabel(k){
+    return {
+      north:tx('شمال المنطقة','North'),
+      east:tx('شرق المنطقة','East'),
+      south:tx('جنوب المنطقة','South'),
+      west:tx('غرب المنطقة','West')
+    }[k]||k;
+  }
+
+  function sectorStats(m,points){
+    const out={
+      north:{existing:0,newCount:0},
+      east:{existing:0,newCount:0},
+      south:{existing:0,newCount:0},
+      west:{existing:0,newCount:0}
+    };
+    (points||[]).forEach(p=>{
+      const s=out[sectorKey(m,p)];if(!s)return;
+      if(p.is_mission_customer)s.newCount++;else s.existing++;
+    });
+    const entries=Object.entries(out);
+    entries.sort((a,b)=>(a[1].existing+a[1].newCount)-(b[1].existing+b[1].newCount));
+    return {rows:out,recommended:entries[0]?.[0]||'north'};
+  }
+
+  function destinationPoint(lat,lng,bearingDeg,meters){
+    const R=6371000,b=bearingDeg*Math.PI/180,p1=lat*Math.PI/180,l1=lng*Math.PI/180,d=meters/R;
+    const p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(b));
+    const l2=l1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(p1),Math.cos(d)-Math.sin(p1)*Math.sin(p2));
+    return [p2*180/Math.PI,l2*180/Math.PI];
+  }
+
+  function sectorPolygon(m,startDeg,endDeg){
+    const pts=[[Number(m.center_lat),Number(m.center_lng)]];
+    for(let a=startDeg;a<=endDeg;a+=15)pts.push(destinationPoint(Number(m.center_lat),Number(m.center_lng),a,Number(m.radius_m)));
+    if((endDeg-startDeg)%15!==0)pts.push(destinationPoint(Number(m.center_lat),Number(m.center_lng),endDeg,Number(m.radius_m)));
+    return pts;
+  }
+
+  function renderCoverageCompass(m,points){
+    const el=document.getElementById('moCoverageCompass');if(!el)return;
+    const stats=sectorStats(m,points);
+    const keys=['north','east','south','west'];
+    el.innerHTML='<div class="mo-v2-coverage-head"><div><b>'+tx('بوصلة التغطية','Coverage compass')+'</b><span>'+tx('تعتمد على عملائنا المسجلين داخل المهمة، وليست تقديراً لعدد المحلات في السوق.','Based on customers in our data, not an estimate of all shops in the market.')+'</span></div><div class="mo-v2-next-zone">'+tx('ابدأ بالأقل تغطية','Start with least covered')+': <b>'+sectorLabel(stats.recommended)+'</b></div></div>'+
+      '<div class="mo-v2-sector-grid">'+keys.map(k=>{
+        const x=stats.rows[k],recommended=k===stats.recommended;
+        return '<div class="mo-v2-sector '+(recommended?'recommended':'')+'"><span>'+sectorLabel(k)+'</span><b>'+n(x.newCount)+'</b><small>'+tx('جدد','new')+' · '+n(x.existing)+' '+tx('موجود','existing')+'</small></div>';
+      }).join('')+'</div>';
+    return stats;
+  }
+
+  function repHtml(){
+    const m=missionForToday(),over=overdueForRep(),next=nextForRep();
+    if(!m){
+      const box=over
+        ?'<div class="mo-v2-empty overdue"><span class="mo-v2-kicker">'+tx('المهمة السابقة لم تُنفذ','Previous mission was not completed')+'</span><h2>'+safe(over.area_name)+' · '+safe(over.city)+'</h2><p>'+tx('التقدم محفوظ. الإدارة تقدر تأجل نفس المهمة ليوم آخر بدون ما يبدأ النظام مهمة بديلة من نفسه.','Progress is preserved. Management can move the same mission to another day without the system silently replacing it.')+'</p><div class="mo-v2-empty-progress">'+n(progress(over))+' / '+n(over.target_customers)+'</div></div>'
+        :'<div class="mo-v2-empty"><span class="mo-v2-kicker">'+tx('فتح السوق','Market opening')+'</span><h2>'+tx('ما عندك مهمة اليوم','No mission today')+'</h2><p>'+tx('ما راح يطلب منك النظام تفتح منطقة من نفسك. تنتظر المنطقة والهدف المحددين من الإدارة.','The system will not ask you to choose an area yourself. Wait for the area and target assigned by management.')+'</p>'+(next?'<div class="notice">'+tx('المهمة القادمة','Next mission')+': <b>'+safe(next.area_name)+' · '+safe(next.city)+'</b> — '+safe(fmtDate(next.scheduled_date))+'</div>':'')+'</div>';
+      return '<div class="mo-v2-rep-page">'+box+'</div>';
+    }
+
+    const b=statusBreakdown(m),done=progress(m),left=remaining(m);
+    return '<div class="mo-v2-rep-page">'+
+      '<section class="mo-v2-cockpit '+statusClass(m)+'">'+
+        '<div class="mo-v2-cockpit-main">'+
+          '<div class="mo-v2-mission-copy"><span class="mo-v2-kicker">'+tx('مهمة اليوم','TODAY MISSION')+'</span><h2>'+safe(m.area_name)+'</h2><div class="mo-v2-place">'+safe(m.city)+' · '+safe(fmtDate(m.scheduled_date))+'</div><p class="mo-v2-now">'+safe(missionNowText(m))+'</p></div>'+
+          missionRing(m)+
+        '</div>'+
+        '<div class="mo-v2-command-strip">'+
+          '<div><span>'+tx('الهدف','Target')+'</span><b>'+n(m.target_customers)+'</b></div>'+
+          '<div><span>'+tx('الباقي','Remaining')+'</span><b>'+n(left)+'</b></div>'+
+          '<div><span>'+tx('نطاق العمل','Work radius')+'</span><b>'+n(Math.round(m.radius_m/100)/10)+' كم</b></div>'+
+          '<div><span>'+tx('الحالة','Status')+'</span><b>'+safe(statusText(m))+'</b></div>'+
+        '</div>'+
+        '<div class="mo-v2-status-row"><span>'+tx('كل هؤلاء يدخلون في هدف العملاء الجدد','All of these count toward the new-customer target')+'</span>'+
+          '<b>'+tx('نشط','Active')+' '+n(b.active)+'</b><b>'+tx('متردد','Hesitant')+' '+n(b.hesitant)+'</b><b>'+tx('رافض','Rejected')+' '+n(b.rejected)+'</b><b>'+tx('متفق','Agreed')+' '+n(b.agreed_pending)+'</b></div>'+
+        (m.notes?'<div class="mo-v2-manager-note"><span>'+tx('ملاحظة الإدارة','Management note')+'</span><b>'+safe(m.notes)+'</b></div>':'')+
+        '<div class="mo-v2-primary-actions">'+
+          (m.status==='scheduled'?'<button class="btn mo-v2-start" type="button" data-mo-start="'+safe(m.id)+'">'+tx('ابدأ يوم فتح السوق','Start market-opening day')+'</button>':'')+
+          '<button class="btn good mo-v2-add" type="button" data-mo-add-customer="1">+ '+tx('سجل عميل جديد','Register new customer')+'</button>'+
+        '</div>'+
+      '</section>'+
+      '<section class="card mo-v2-field-board">'+
+        '<div class="mo-v2-field-head"><div><span class="mo-v2-kicker">'+tx('لوحة الميدان','FIELD BOARD')+'</span><h3>'+tx('وين أركز الآن؟','Where should I focus now?')+'</h3></div><div class="mo-v2-live-count"><b>'+n(done)+'</b><span>'+tx('عميل محسوب','counted customers')+'</span></div></div>'+
+        '<div id="moCoverageCompass" class="mo-v2-coverage"><div class="small">'+tx('جاري تحليل تغطية المنطقة...','Analyzing area coverage...')+'</div></div>'+
+        '<div class="mo-v2-map-shell"><div id="marketOpeningMap" class="mo-map mo-v2-map"></div><div id="moMapLegend" class="mo-map-legend"></div></div>'+
+      '</section>'+
+    '</div>';
+  }
   function managementHtml(){
     const filterDate=document.getElementById('moDateFilter')?.value||today();
     const filterRep=document.getElementById('moRepFilter')?.value||'';
+    const activeReps=state.profiles.filter(p=>p.role==='rep'&&p.active!==false);
     const dateRows=mo.missions.filter(m=>ymd(m.scheduled_date)===filterDate&&m.status!=='cancelled'&&(!filterRep||m.rep_id===filterRep));
     const overdue=mo.missions.filter(m=>ymd(m.scheduled_date)<today()&&['scheduled','in_progress'].includes(m.status)&&(!filterRep||m.rep_id===filterRep));
     const target=dateRows.reduce((s,m)=>s+Number(m.target_customers||0),0);
     const done=dateRows.reduce((s,m)=>s+progress(m),0);
-    const complete=dateRows.filter(m=>m.status==='completed').length;
-    const notStarted=dateRows.filter(m=>m.status==='scheduled').length;
+    const completed=dateRows.filter(m=>m.status==='completed').length;
+    const underway=dateRows.filter(m=>m.status==='in_progress').length;
+    const assignedIds=new Set(dateRows.map(m=>m.rep_id));
+    const noMission=activeReps.filter(r=>(!filterRep||r.id===filterRep)&&!assignedIds.has(r.id));
 
-    const repOptionsHtml='<option value="">'+tx('كل المناديب','All representatives')+'</option>'+state.profiles.filter(p=>p.role==='rep').map(p=>'<option value="'+safe(p.id)+'" '+(p.id===filterRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('');
+    const repOptionsHtml='<option value="">'+tx('كل المناديب','All representatives')+'</option>'+activeReps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===filterRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('');
 
-    return '<div class="mo-page management">'+
-      '<div class="card mo-management-head"><div><span class="mo-eyebrow">'+tx('إدارة فتح السوق','Market Opening Management')+'</span><h2>'+tx('وزّع المنطقة والهدف، والنظام يتابع التنفيذ','Assign the zone and target; the system tracks execution')+'</h2></div><div class="mo-management-actions"><button class="btn" type="button" data-mo-new="1">+ '+tx('مهمة جديدة','New mission')+'</button><button class="btn secondary" type="button" data-mo-disable="1">'+tx('إيقاف النظام','Disable system')+'</button></div></div>'+
-      '<div class="toolbar mo-toolbar"><input type="date" id="moDateFilter" value="'+safe(filterDate)+'"><select id="moRepFilter">'+repOptionsHtml+'</select></div>'+
-      '<div class="grid cards mo-summary"><div class="card metric-card"><div class="label">'+tx('المهام','Missions')+'</div><div class="metric">'+n(dateRows.length)+'</div></div><div class="card metric-card"><div class="label">'+tx('الهدف','Target')+'</div><div class="metric">'+n(target)+'</div></div><div class="card metric-card"><div class="label">'+tx('المنجز','Done')+'</div><div class="metric">'+n(done)+'</div></div><div class="card metric-card"><div class="label">'+tx('مكتملة','Completed')+'</div><div class="metric">'+n(complete)+'</div></div><div class="card metric-card"><div class="label">'+tx('لم تبدأ','Not started')+'</div><div class="metric">'+n(notStarted)+'</div></div></div>'+
-      (overdue.length?'<div class="card mo-overdue-box"><div class="dashboard-head"><div><h3>'+tx('مهام فات موعدها','Overdue missions')+'</h3><div class="small">'+tx('لا تنتقل تلقائياً؛ أجّلها للموعد المناسب.','They do not roll over automatically; reschedule them explicitly.')+'</div></div><span class="attention-count">'+n(overdue.length)+'</span></div><div class="mo-mission-list">'+overdue.map(m=>missionCard(m,true)).join('')+'</div></div>':'')+
-      '<div class="card"><div class="dashboard-head"><div><h3>'+tx('مهام اليوم المحدد','Missions for selected date')+'</h3><div class="small">'+safe(fmtDate(filterDate))+'</div></div></div><div class="mo-mission-list">'+(dateRows.length?dateRows.map(m=>missionCard(m,false)).join(''):'<div class="empty">'+tx('لا توجد مهام في هذا اليوم.','No missions on this date.')+'</div>')+'</div></div>'+
-      '<div class="card mo-map-card"><div class="dashboard-head"><div><h3>'+tx('خريطة المهمة المحددة','Selected mission map')+'</h3><div class="small" id="moSelectedMissionText">'+tx('اختر «عرض الخريطة» من إحدى المهام.','Choose “View map” on a mission.')+'</div></div><span class="badge b-info" id="moMapCount">0</span></div><div id="moIntegrityBox"></div><div id="marketOpeningMap" class="mo-map"></div><div id="moMapLegend" class="mo-map-legend"></div></div>'+
+    const boardRows=(filterRep?activeReps.filter(r=>r.id===filterRep):activeReps).map(rep=>{
+      const m=dateRows.find(x=>x.rep_id===rep.id);
+      if(!m){
+        return '<div class="mo-v2-rep-lane empty"><div class="mo-v2-lane-head"><div><span>'+safe(rep.full_name)+'</span><b>'+tx('بدون مهمة','No mission')+'</b></div><button class="btn secondary mini" type="button" data-mo-new-rep="'+safe(rep.id)+'">+ '+tx('تكليف','Assign')+'</button></div><div class="mo-v2-lane-empty">'+tx('ما حددت له منطقة في هذا اليوم.','No area assigned for this date.')+'</div></div>';
+      }
+      return missionCard(m,ymd(m.scheduled_date)<today());
+    }).join('');
+
+    return '<div class="mo-v2-management">'+
+      '<section class="mo-v2-control-head">'+
+        '<div><span class="mo-v2-kicker">'+tx('مركز قيادة فتح السوق','MARKET OPENING CONTROL CENTER')+'</span><h2>'+tx('كل مندوب يعرف وين يروح وكم لازم يجيب','Every rep knows where to go and how many customers to bring')+'</h2><p>'+tx('الخريطة الأصلية للعملاء ما تغيرت. هذا نظام مستقل وتقدر توقفه بدون حذف بياناته.','The original customer map is unchanged. This is a separate system that can be disabled without deleting its data.')+'</p></div>'+
+        '<div class="mo-v2-head-actions"><button class="btn" type="button" data-mo-new="1">+ '+tx('مهمة جديدة','New mission')+'</button><button class="btn secondary" type="button" data-mo-disable="1">'+tx('إيقاف النظام','Disable system')+'</button></div>'+
+      '</section>'+
+      '<section class="card mo-v2-daybar">'+
+        '<div class="toolbar mo-v2-toolbar"><input type="date" id="moDateFilter" value="'+safe(filterDate)+'"><select id="moRepFilter">'+repOptionsHtml+'</select></div>'+
+        '<div class="mo-v2-day-kpis">'+
+          '<div><span>'+tx('مكلفين','Assigned')+'</span><b>'+n(dateRows.length)+'</b></div>'+
+          '<div><span>'+tx('بدون مهمة','Unassigned')+'</span><b>'+n(noMission.length)+'</b></div>'+
+          '<div><span>'+tx('جاري التنفيذ','In progress')+'</span><b>'+n(underway)+'</b></div>'+
+          '<div><span>'+tx('مكتملة','Completed')+'</span><b>'+n(completed)+'</b></div>'+
+          '<div class="wide"><span>'+tx('عملاء اليوم','Customers today')+'</span><b>'+n(done)+' <small>/ '+n(target)+'</small></b></div>'+
+        '</div>'+
+      '</section>'+
+      (overdue.length?'<section class="mo-v2-alert"><div><span class="mo-v2-kicker">'+tx('تحتاج قرار','ACTION REQUIRED')+'</span><h3>'+tx('مهام فات يومها','Missions missed their date')+'</h3><p>'+tx('لا ننقلها تلقائياً. أنت تقرر: تأجيل نفس المهمة أو إلغاؤها. التقدم الحالي لا يضيع عند التأجيل.','They never roll over silently. You decide whether to reschedule or cancel; progress is preserved when rescheduled.')+'</p></div><strong>'+n(overdue.length)+'</strong><div class="mo-v2-overdue-list">'+overdue.map(m=>missionCard(m,true)).join('')+'</div></section>':'')+
+      '<section class="mo-v2-board"><div class="mo-v2-board-head"><div><span class="mo-v2-kicker">'+tx('خطة اليوم','DAY PLAN')+'</span><h3>'+safe(fmtDate(filterDate))+'</h3></div><span>'+tx('اضغط «الخريطة» على أي مندوب لمراجعة منطقته.','Open a rep map to inspect the assigned area.')+'</span></div><div class="mo-v2-lanes">'+boardRows+'</div></section>'+
+      '<section class="card mo-v2-map-panel"><div class="dashboard-head"><div><h3>'+tx('غرفة عمليات المنطقة','Area operations map')+'</h3><div class="small" id="moSelectedMissionText">'+tx('اختر مهمة من الأعلى.','Choose a mission above.')+'</div></div><span class="badge b-info" id="moMapCount">0</span></div><div id="moIntegrityBox"></div><div id="moCoverageCompass" class="mo-v2-coverage"></div><div id="marketOpeningMap" class="mo-map mo-v2-map"></div><div id="moMapLegend" class="mo-map-legend"></div></section>'+
     '</div>';
   }
 
   function missionCard(m,isOverdue){
-    const done=progress(m),left=remaining(m);
-    return '<div class="mo-mission-card '+statusClass(m)+'" data-mo-mission-card="'+safe(m.id)+'">'+
-      '<div class="mo-mission-top"><div><b>'+safe(repName(m.rep_id))+'</b><h4>'+safe(m.area_name)+' · '+safe(m.city)+'</h4><div class="small">'+safe(fmtDate(m.scheduled_date))+(m.reschedule_count?' · '+tx('تأجلت','Rescheduled')+' '+n(m.reschedule_count)+'×':'')+'</div></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
-      '<div class="mo-mini-progress"><div><span>'+tx('الهدف','Target')+'</span><b>'+n(m.target_customers)+'</b></div><div><span>'+tx('المنجز','Done')+'</span><b>'+n(done)+'</b></div><div><span>'+tx('الباقي','Remaining')+'</span><b>'+n(left)+'</b></div><div><span>'+tx('النطاق','Radius')+'</span><b>'+n(Math.round(m.radius_m/100)/10)+' كم</b></div></div>'+
-      '<div class="mo-progress"><i style="width:'+pct(m)+'%"></i></div>'+
-      '<div class="mo-card-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('عرض الخريطة','View map')+'</button><button class="btn secondary mini" type="button" data-mo-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
-      ((!['completed','cancelled'].includes(m.status))?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(m.id)+'">'+tx('تأجيل','Reschedule')+'</button><button class="btn bad mini" type="button" data-mo-cancel="'+safe(m.id)+'">'+tx('إلغاء','Cancel')+'</button>':'')+'</div>'+
-    '</div>';
+    const done=progress(m),left=remaining(m),percent=pct(m);
+    return '<article class="mo-v2-rep-lane '+statusClass(m)+'" data-mo-mission-card="'+safe(m.id)+'">'+
+      '<div class="mo-v2-lane-head"><div><span>'+safe(repName(m.rep_id))+'</span><b>'+safe(m.area_name)+' · '+safe(m.city)+'</b><small>'+safe(fmtDate(m.scheduled_date))+(m.reschedule_count?' · '+tx('تأجلت ','Rescheduled ')+n(m.reschedule_count)+'×':'')+'</small></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
+      '<div class="mo-v2-lane-body">'+
+        '<div class="mo-v2-lane-progress"><div><span>'+tx('التقدم','Progress')+'</span><b>'+n(done)+' / '+n(m.target_customers)+'</b></div><strong>'+percent+'%</strong></div>'+
+        '<div class="mo-progress"><i style="width:'+percent+'%"></i></div>'+
+        '<div class="mo-v2-lane-stats"><span>'+tx('باقي','Remaining')+' <b>'+n(left)+'</b></span><span>'+tx('النطاق','Radius')+' <b>'+n(Math.round(m.radius_m/100)/10)+' كم</b></span></div>'+
+      '</div>'+
+      '<div class="mo-v2-lane-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button><button class="btn secondary mini" type="button" data-mo-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
+      ((!['completed','cancelled'].includes(m.status))?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(m.id)+'">'+(isOverdue?tx('أجّل لليوم المناسب','Reschedule'):tx('تأجيل','Reschedule'))+'</button><button class="btn bad mini" type="button" data-mo-cancel="'+safe(m.id)+'">'+tx('إلغاء','Cancel')+'</button>':'')+'</div>'+
+    '</article>';
   }
 
   function selectedManagementMission(){
@@ -280,6 +393,7 @@
       let b=e.target.closest('[data-mo-enable]');if(b){await setSystemEnabled(true);return;}
       b=e.target.closest('[data-mo-disable]');if(b){await setSystemEnabled(false);return;}
       b=e.target.closest('[data-mo-new]');if(b){openMissionForm();return;}
+      b=e.target.closest('[data-mo-new-rep]');if(b){openMissionForm(null,b.dataset.moNewRep);return;}
       b=e.target.closest('[data-mo-history]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moHistory);if(m)await openMissionHistory(m);return;}
       b=e.target.closest('[data-mo-start]');if(b){await startMission(b.dataset.moStart);return;}
       b=e.target.closest('[data-mo-add-customer]');if(b){openCustomerForm();return;}
@@ -301,7 +415,7 @@
     await loadData(true);
   }
 
-  function missionFormHtml(m){
+  function missionFormHtml(m,prefillRep=''){
     const editing=!!m;
     const reps=state.profiles.filter(p=>p.role==='rep');
     const defaultDate=m?.scheduled_date||today();
@@ -311,20 +425,20 @@
     radiusOptions.sort((a,b)=>a-b);
     return '<div class="form-grid mo-mission-form">'+
       (editing?'<div class="full notice"><b>'+safe(repName(m.rep_id))+'</b> · '+safe(fmtDate(m.scheduled_date))+'<br>'+tx('تعديل المنطقة أو الهدف لا يغير المندوب أو تاريخ المهمة.','Editing the zone or target does not change the representative or mission date.')+'</div>':
-      '<div><label>'+tx('المندوب','Representative')+'</label><select id="moFRep"><option value="">'+tx('اختر المندوب...','Choose representative...')+'</option>'+reps.map(p=>'<option value="'+safe(p.id)+'">'+safe(p.full_name)+'</option>').join('')+'</select></div><div><label>'+tx('التاريخ','Date')+'</label><input type="date" id="moFDate" value="'+safe(defaultDate)+'" min="'+safe(today())+'"></div>')+
+      '<div><label>'+tx('المندوب','Representative')+'</label><select id="moFRep"><option value="">'+tx('اختر المندوب...','Choose representative...')+'</option>'+reps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===prefillRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('')+'</select></div><div><label>'+tx('التاريخ','Date')+'</label><input type="date" id="moFDate" value="'+safe(defaultDate)+'" min="'+safe(today())+'"></div>')+
       '<div><label>'+tx('المدينة','City')+'</label><input id="moFCity" value="'+safe(m?.city||'الرياض')+'" autocomplete="off"></div>'+
       '<div><label>'+tx('الحي / المنطقة','District / Area')+'</label><input id="moFArea" value="'+safe(m?.area_name||'')+'" autocomplete="off" placeholder="'+tx('مثال: المونسية','e.g. Al Munsiyah')+'"></div>'+
       '<div><label>'+tx('هدف العملاء الجدد','New-customer target')+'</label><input type="number" id="moFTarget" min="1" max="50" step="1" value="'+safe(m?.target_customers||6)+'"></div>'+
       '<div><label>'+tx('نطاق المنطقة','Zone radius')+'</label><select id="moFRadius">'+radiusOptions.map(v=>'<option value="'+v+'" '+(v===radius?'selected':'')+'>'+((v/1000).toFixed(v<1000?1:0))+' km</option>').join('')+'</select></div>'+
       '<div class="full"><label>'+tx('ملاحظة للمندوب (اختياري)','Note to representative (optional)')+'</label><textarea id="moFNotes" rows="2">'+safe(m?.notes||'')+'</textarea></div>'+
-      '<div class="full"><label>'+tx('حدد منطقة العمل على الخريطة','Select the work zone on the map')+'</label><div class="small">'+tx('اضغط وسط المنطقة. الدائرة هي الحدود التي يسمح النظام بتسجيل العملاء الجدد داخلها.','Tap the center of the area. The circle is where new customers may be registered.')+'</div><div id="marketMissionPickerMap" class="mo-picker-map"></div><input type="hidden" id="moFLat" value="'+safe(m?.center_lat??'')+'"><input type="hidden" id="moFLng" value="'+safe(m?.center_lng??'')+'"><div id="moFLocationText" class="small mo-picker-status"></div></div>'+
+      '<div class="full"><label>'+tx('حدد منطقة العمل على الخريطة','Select the work zone on the map')+'</label><div class="small">'+tx('اضغط وسط المنطقة. الدائرة هي الحدود التي يسمح النظام بتسجيل العملاء الجدد داخلها.','Tap the center of the area. The circle is where new customers may be registered.')+'</div><div id="marketMissionPickerMap" class="mo-picker-map"></div><input type="hidden" id="moFLat" value="'+safe(m?.center_lat??'')+'"><input type="hidden" id="moFLng" value="'+safe(m?.center_lng??'')+'"><div id="moFLocationText" class="small mo-picker-status"></div><div id="moFZonePreview" class="mo-v2-zone-preview"></div></div>'+
       '<div class="full"><button class="btn" type="button" id="moFSave">'+(editing?tx('حفظ التعديل','Save changes'):tx('إنشاء المهمة','Create mission'))+'</button></div>'+
     '</div>';
   }
 
-  function openMissionForm(m=null){
+  function openMissionForm(m=null,prefillRep=''){
     if(!isManagementUser())return;
-    openModal(m?tx('تعديل مهمة فتح السوق','Edit Market Opening Mission'):tx('مهمة فتح سوق جديدة','New Market Opening Mission'),missionFormHtml(m));
+    openModal(m?tx('تعديل مهمة فتح السوق','Edit Market Opening Mission'):tx('مهمة فتح سوق جديدة','New Market Opening Mission'),missionFormHtml(m,prefillRep));
     setTimeout(()=>{
       initMissionPicker(m);
       document.getElementById('moFRadius')?.addEventListener('change',updatePickerCircle);
@@ -356,6 +470,31 @@
     if(pan)mo.pickerMap.panTo(ll);
     const box=document.getElementById('moFLocationText');
     if(box)box.textContent=tx('تم تحديد مركز المنطقة.','Zone center selected.')+' '+Number(lat).toFixed(5)+', '+Number(lng).toFixed(5);
+    scheduleZonePreview();
+  }
+
+
+  let moZonePreviewTimer=null,moZonePreviewSeq=0;
+  function scheduleZonePreview(){
+    if(!isManagementUser())return;
+    clearTimeout(moZonePreviewTimer);
+    moZonePreviewTimer=setTimeout(loadZonePreview,250);
+  }
+  async function loadZonePreview(){
+    const box=document.getElementById('moFZonePreview');if(!box)return;
+    const lat=Number(document.getElementById('moFLat')?.value),lng=Number(document.getElementById('moFLng')?.value),radius=Number(document.getElementById('moFRadius')?.value||0);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng)||!radius){box.innerHTML='';return;}
+    const seq=++moZonePreviewSeq;
+    box.innerHTML='<span>'+tx('جاري قراءة تغطيتنا الحالية...','Reading current coverage...')+'</span>';
+    const {data,error}=await sb.rpc('market_opening_zone_preview',{p_center_lat:lat,p_center_lng:lng,p_radius_m:radius});
+    if(seq!==moZonePreviewSeq)return;
+    if(error){box.innerHTML='<span>'+tx('تعذر تحليل المنطقة الآن.','Could not analyze the area right now.')+'</span>';return;}
+    const x=data?.[0]||{};
+    const total=Number(x.existing_customers||0),recent=Number(x.recent_30d_customers||0);
+    const density=total<=3?tx('تغطيتنا ضعيفة','Low current coverage'):total<=10?tx('تغطيتنا متوسطة','Medium current coverage'):tx('تغطيتنا مرتفعة','High current coverage');
+    box.innerHTML='<div class="mo-v2-preview-head"><b>'+density+'</b><span>'+tx('داخل الدائرة يوجد ','There are ')+n(total)+tx(' عميل مسجل لدينا حالياً.',' customers currently in our data inside the zone.')+'</span></div>'+
+      '<div class="mo-v2-preview-stats"><span>'+tx('نشط','Active')+' <b>'+n(x.active_customers)+'</b></span><span>'+tx('متردد','Hesitant')+' <b>'+n(x.hesitant_customers)+'</b></span><span>'+tx('رافض','Rejected')+' <b>'+n(x.rejected_customers)+'</b></span><span>'+tx('متفق','Agreed')+' <b>'+n(x.agreed_customers)+'</b></span><span>'+tx('جدد آخر 30 يوم','New in 30d')+' <b>'+n(recent)+'</b></span></div>'+
+      '<small>'+tx('هذا مؤشر لتغطيتنا نحن، وليس عدداً تقديرياً لكل محلات السوق.','This measures our existing coverage, not the total number of shops in the market.')+'</small>';
   }
 
   function updatePickerCircle(){
@@ -364,6 +503,7 @@
     if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
     if(mo.pickerCircle)mo.pickerCircle.remove();
     mo.pickerCircle=L.circle([lat,lng],{radius,weight:2,fillOpacity:.08}).addTo(mo.pickerMap);
+    scheduleZonePreview();
   }
 
   async function saveMissionForm(existing){
@@ -499,52 +639,71 @@
     el.innerHTML='';
     mo.map=L.map(el,{zoomControl:true}).setView([Number(m.center_lat),Number(m.center_lng)],13);
     addBaseMap(mo.map);
-    const circle=L.circle([Number(m.center_lat),Number(m.center_lng)],{radius:Number(m.radius_m),weight:3,fillOpacity:.06}).addTo(mo.map);
-    const center=L.circleMarker([Number(m.center_lat),Number(m.center_lng)],{radius:5,weight:2,fillOpacity:1}).addTo(mo.map);
-    center.bindTooltip(safe(m.area_name));
+    const circle=L.circle([Number(m.center_lat),Number(m.center_lng)],{radius:Number(m.radius_m),weight:3,fillOpacity:.03,color:'#2563eb'}).addTo(mo.map);
+    L.circleMarker([Number(m.center_lat),Number(m.center_lng)],{radius:5,weight:2,fillOpacity:1,color:'#0f172a',fillColor:'#fff'}).addTo(mo.map).bindTooltip(safe(m.area_name));
     mo.map.fitBounds(circle.getBounds(),{padding:[20,20]});
 
     const text=document.getElementById('moSelectedMissionText');
     if(text)text.textContent=repName(m.rep_id)+' · '+m.area_name+' · '+m.city+' · '+fmtDate(m.scheduled_date);
 
-    const [pointsRes,integrityRes]=await Promise.all([
+    const [pointsRes,healthRes]=await Promise.all([
       sb.rpc('market_opening_map_points',{p_mission_id:m.id}),
-      isManagementUser()?sb.rpc('market_opening_mission_integrity',{p_mission_id:m.id}):Promise.resolve({data:null,error:null})
+      isManagementUser()?sb.rpc('market_opening_mission_health',{p_mission_id:m.id}):Promise.resolve({data:null,error:null})
     ]);
     if(pointsRes.error){
-      document.getElementById('moMapLegend').textContent=tx('تعذر تحميل العملاء على الخريطة.','Could not load customers on the map.');
+      const legend=document.getElementById('moMapLegend');if(legend)legend.textContent=tx('تعذر تحميل العملاء على الخريطة.','Could not load customers on the map.');
       return;
     }
+
     mo.mapPoints=pointsRes.data||[];
+    const stats=renderCoverageCompass(m,mo.mapPoints);
+
+    if(stats){
+      const ranges={north:[315,405],east:[45,135],south:[135,225],west:[225,315]};
+      Object.entries(ranges).forEach(([k,range])=>{
+        const poly=sectorPolygon(m,range[0],range[1]);
+        L.polygon(poly,{
+          color:k===stats.recommended?'#f59e0b':'#94a3b8',
+          weight:k===stats.recommended?2:1,
+          dashArray:k===stats.recommended?'5 5':null,
+          fillColor:k===stats.recommended?'#fef3c7':'#f8fafc',
+          fillOpacity:k===stats.recommended?.12:.025,
+          interactive:true
+        }).addTo(mo.map).bindTooltip(sectorLabel(k)+(k===stats.recommended?' · '+tx('الأقل تغطية','least covered'):''));
+      });
+    }
+
     if(isManagementUser()){
       const box=document.getElementById('moIntegrityBox');
-      const q=integrityRes?.data?.[0]||null;
+      const q=healthRes?.data?.[0]||null;
       if(box){
-        if(integrityRes?.error){
-          box.innerHTML='<div class="small mo-integrity neutral">'+tx('تعذر فحص مؤشرات التحقق الآن.','Integrity indicators are temporarily unavailable.')+'</div>';
+        if(healthRes?.error){
+          box.innerHTML='<div class="mo-v2-health neutral">'+tx('تعذر فحص مؤشرات التسجيل الآن.','Could not check registration indicators right now.')+'</div>';
         }else if(q){
-          const repeated=Number(q.repeated_location_groups||0),rapid=Number(q.rapid_entry_pairs||0),outside=Number(q.outside_zone_rows||0);
-          const warning=repeated>0||rapid>0||outside>0;
-          box.innerHTML='<div class="mo-integrity '+(warning?'warn':'ok')+'"><b>'+(warning?tx('مراجعة سريعة مطلوبة','Quick review suggested'):tx('مؤشرات التسجيل طبيعية','Registration indicators look normal'))+'</b><span>'+tx('عملاء محسوبون','Counted')+': '+n(q.counted_customers)+' · '+tx('مواقع متكررة','Repeated locations')+': '+n(repeated)+' · '+tx('إدخالات سريعة','Rapid entries')+': '+n(rapid)+' · '+tx('خارج النطاق','Outside zone')+': '+n(outside)+'</span></div>';
+          const score=Number(q.review_score||0);
+          const tone=score===0?'ok':score<=30?'watch':'warn';
+          const title=score===0?tx('التسجيلات طبيعية','Registrations look normal'):score<=30?tx('مؤشرات بسيطة للمراجعة','Minor review indicators'):tx('تحتاج مراجعة الإدارة','Management review recommended');
+          box.innerHTML='<div class="mo-v2-health '+tone+'"><div><span>'+tx('مؤشر المراجعة','Review indicator')+'</span><b>'+title+'</b></div><strong>'+n(score)+'</strong><div class="mo-v2-health-details"><span>'+tx('نفس الموقع','Repeated location')+' '+n(q.repeated_location_groups)+'</span><span>'+tx('إدخال سريع','Rapid entry')+' '+n(q.rapid_entry_pairs)+'</span><span>'+tx('رقم مكرر','Duplicate phone')+' '+n(q.duplicate_phone_groups)+'</span><span>'+tx('نقاط متقاربة جداً','Very close points')+' '+n(q.close_location_pairs)+'</span><span>'+tx('خارج النطاق','Outside zone')+' '+n(q.outside_zone_rows)+'</span></div></div>';
         }else box.innerHTML='';
       }
     }
+
     let missionCount=0,existingCount=0;
     mo.mapPoints.forEach(p=>{
       const isNew=!!p.is_mission_customer;
       if(isNew)missionCount++;else existingCount++;
       const marker=L.circleMarker([Number(p.lat),Number(p.lng)],{
-        radius:isNew?8:6,
+        radius:isNew?8:5,
         weight:isNew?3:1,
-        fillOpacity:isNew?.9:.55,
+        fillOpacity:isNew?.95:.45,
         color:isNew?'#047857':'#64748b',
         fillColor:isNew?'#10b981':'#cbd5e1'
       }).addTo(mo.map);
-      marker.bindPopup('<b>'+safe(p.customer_name)+'</b><br>'+safe(typeof statusLabel==='function'?statusLabel(p.customer_status):p.customer_status)+'<br>'+safe(isNew?tx('عميل محسوب في المهمة','Counted in mission'):tx('عميل موجود مسبقاً','Existing customer')));
+      marker.bindPopup('<b>'+safe(p.customer_name)+'</b><br>'+safe(typeof statusLabel==='function'?statusLabel(p.customer_status):p.customer_status)+'<br>'+safe(isNew?tx('عميل جديد محسوب','New customer counted'):tx('عميل موجود مسبقاً','Existing customer')));
     });
     const count=document.getElementById('moMapCount');if(count)count.textContent=n(mo.mapPoints.length);
     const legend=document.getElementById('moMapLegend');
-    if(legend)legend.innerHTML='<span><i class="new"></i>'+tx('عملاء المهمة','Mission customers')+' <b>'+n(missionCount)+'</b></span><span><i class="existing"></i>'+tx('موجودون مسبقاً داخل النطاق','Existing in zone')+' <b>'+n(existingCount)+'</b></span><span>'+tx('نطاق','Radius')+': <b>'+n(Math.round(m.radius_m/100)/10)+' كم</b></span>';
+    if(legend)legend.innerHTML='<span><i class="new"></i>'+tx('جدد في المهمة','New in mission')+' <b>'+n(missionCount)+'</b></span><span><i class="existing"></i>'+tx('عملاؤنا الحاليون','Existing customers')+' <b>'+n(existingCount)+'</b></span><span>'+tx('النطاق','Radius')+': <b>'+n(Math.round(m.radius_m/100)/10)+' كم</b></span>';
     setTimeout(()=>mo.map?.invalidateSize(),80);
   }
 

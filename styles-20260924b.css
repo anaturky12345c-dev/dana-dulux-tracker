@@ -2122,3 +2122,104 @@ html[dir="rtl"] #aiOppPage .ai-filter-field select{
   .mo-history-item{flex-direction:column}
   .mo-history-meta{justify-content:flex-start}
 }
+
+
+/* Market Opening V2 — field-command experience */
+.mo-v2-kicker{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;color:#64748b;margin-bottom:5px}
+.mo-v2-rep-page,.mo-v2-management{display:grid;gap:12px}
+.mo-v2-cockpit{border:1px solid #dbe4ec;border-radius:18px;background:#fff;overflow:hidden;border-inline-start:6px solid #2563eb}
+.mo-v2-cockpit.mo-status-completed{border-inline-start-color:#15803d}
+.mo-v2-cockpit.mo-status-overdue{border-inline-start-color:#b91c1c}
+.mo-v2-cockpit-main{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:18px}
+.mo-v2-mission-copy h2{font-size:28px;margin:0 0 3px;color:#0f172a}
+.mo-v2-place{font-size:12px;color:#64748b}
+.mo-v2-now{font-size:13px;line-height:1.7;color:#334155;margin:12px 0 0;max-width:620px}
+.mo-v2-ring{--mo-p:0%;width:112px;height:112px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#0f766e var(--mo-p),#e5e7eb 0);padding:9px}
+.mo-v2-ring>div{width:100%;height:100%;border-radius:50%;background:#fff;display:flex;align-items:baseline;justify-content:center;align-content:center;flex-wrap:wrap;gap:2px;padding:18px 7px}
+.mo-v2-ring strong{font-size:30px;line-height:1;color:#0f172a}
+.mo-v2-ring span{font-size:12px;color:#64748b}
+.mo-v2-ring small{width:100%;text-align:center;font-size:10px;color:#0f766e;font-weight:900;margin-top:3px}
+.mo-v2-command-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;background:#f8fafc}
+.mo-v2-command-strip>div{padding:10px 13px;border-inline-end:1px solid #e5e7eb}
+.mo-v2-command-strip>div:last-child{border-inline-end:0}
+.mo-v2-command-strip span{display:block;font-size:9px;color:#64748b;margin-bottom:3px}
+.mo-v2-command-strip b{font-size:14px;color:#0f172a}
+.mo-v2-status-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 14px}
+.mo-v2-status-row>span{font-size:10px;font-weight:800;color:#475569;margin-inline-end:4px}
+.mo-v2-status-row>b{font-size:10px;background:#f1f5f9;color:#334155;border-radius:999px;padding:5px 8px}
+.mo-v2-manager-note{margin:0 14px 10px;padding:9px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;font-size:11px;line-height:1.6}
+.mo-v2-manager-note span{font-weight:900;color:#92400e;margin-inline-end:5px}
+.mo-v2-primary-actions{display:flex;gap:8px;padding:0 14px 14px}
+.mo-v2-start,.mo-v2-add{min-height:46px;font-weight:900}
+.mo-v2-add{flex:1}
+.mo-v2-field-board{padding:14px}
+.mo-v2-field-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}
+.mo-v2-field-head h3{margin:0;font-size:18px}
+.mo-v2-live-count{text-align:center;min-width:90px;padding:8px 12px;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:12px}
+.mo-v2-live-count b{display:block;font-size:24px;color:#166534}
+.mo-v2-live-count span{font-size:9px;color:#166534}
+.mo-v2-coverage{margin-bottom:10px}
+.mo-v2-coverage-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:7px}
+.mo-v2-coverage-head b{font-size:12px;color:#0f172a}
+.mo-v2-coverage-head span{display:block;font-size:9px;color:#64748b;margin-top:2px;max-width:560px}
+.mo-v2-next-zone{font-size:10px;padding:6px 8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;color:#9a3412;white-space:nowrap}
+.mo-v2-sector-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.mo-v2-sector{padding:8px 9px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
+.mo-v2-sector.recommended{background:#fffbeb;border-color:#f59e0b}
+.mo-v2-sector>span{display:block;font-size:9px;color:#64748b}
+.mo-v2-sector>b{display:block;font-size:18px;margin:3px 0;color:#0f172a}
+.mo-v2-sector>small{font-size:9px;color:#64748b}
+.mo-v2-map-shell{border:1px solid #dbe4ec;border-radius:14px;overflow:hidden;background:#f8fafc}
+.mo-v2-map{height:520px;border:0;border-radius:0}
+.mo-v2-empty{padding:24px;border:1px solid #dbe4ec;border-radius:16px;background:#fff}
+.mo-v2-empty.overdue{border-inline-start:5px solid #b91c1c;background:#fffafa}
+.mo-v2-empty h2{margin:3px 0 8px}.mo-v2-empty p{margin:0;color:#475569;line-height:1.7;font-size:12px}
+.mo-v2-empty-progress{font-size:28px;font-weight:900;margin-top:12px}
+.mo-v2-control-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px;border-radius:18px;background:#0f172a;color:#fff}
+.mo-v2-control-head .mo-v2-kicker{color:#94a3b8}
+.mo-v2-control-head h2{margin:2px 0 5px;font-size:22px}.mo-v2-control-head p{margin:0;color:#cbd5e1;font-size:11px;line-height:1.6}
+.mo-v2-head-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.mo-v2-daybar{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:12px}
+.mo-v2-toolbar{margin:0}.mo-v2-toolbar input,.mo-v2-toolbar select{width:190px}
+.mo-v2-day-kpis{display:grid;grid-template-columns:repeat(5,minmax(95px,1fr));gap:7px}
+.mo-v2-day-kpis>div{padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
+.mo-v2-day-kpis span{display:block;font-size:9px;color:#64748b;margin-bottom:3px}.mo-v2-day-kpis b{font-size:18px}.mo-v2-day-kpis small{font-size:10px;color:#64748b}
+.mo-v2-alert{border:1px solid #fecaca;background:#fffafa;border-radius:16px;padding:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.mo-v2-alert h3{margin:2px 0 4px}.mo-v2-alert p{margin:0;font-size:11px;color:#7f1d1d}.mo-v2-alert>strong{font-size:34px;color:#b91c1c}.mo-v2-overdue-list{grid-column:1/-1;display:grid;gap:8px}
+.mo-v2-board{background:#fff;border:1px solid #dbe4ec;border-radius:16px;padding:13px}
+.mo-v2-board-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:10px}.mo-v2-board-head h3{margin:0}.mo-v2-board-head>span{font-size:9px;color:#64748b}
+.mo-v2-lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px}
+.mo-v2-rep-lane{border:1px solid #dbe4ec;border-radius:13px;background:#fff;overflow:hidden;border-top:4px solid #64748b}
+.mo-v2-rep-lane.mo-status-progress{border-top-color:#2563eb}.mo-v2-rep-lane.mo-status-completed{border-top-color:#15803d}.mo-v2-rep-lane.mo-status-overdue{border-top-color:#b91c1c}
+.mo-v2-rep-lane.empty{border-top-color:#cbd5e1;background:#fafafa}
+.mo-v2-lane-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:10px 11px;border-bottom:1px solid #eef2f7}
+.mo-v2-lane-head>div{min-width:0}.mo-v2-lane-head span{display:block;font-size:9px;color:#64748b}.mo-v2-lane-head b{display:block;font-size:13px;line-height:1.45;margin-top:2px}.mo-v2-lane-head small{display:block;font-size:9px;color:#64748b;margin-top:2px}
+.mo-v2-lane-body{padding:9px 11px}.mo-v2-lane-progress{display:flex;justify-content:space-between;gap:8px}.mo-v2-lane-progress span{display:block;font-size:9px;color:#64748b}.mo-v2-lane-progress b{font-size:13px}.mo-v2-lane-progress strong{font-size:16px;color:#0f766e}
+.mo-v2-lane-stats{display:flex;gap:10px;flex-wrap:wrap;font-size:9px;color:#64748b}.mo-v2-lane-stats b{color:#334155}
+.mo-v2-lane-actions{display:flex;gap:5px;flex-wrap:wrap;padding:9px 11px;border-top:1px solid #eef2f7}
+.mo-v2-lane-empty{padding:15px 11px;font-size:10px;color:#64748b}
+.mo-v2-map-panel{padding:14px}
+.mo-v2-health{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px;border-radius:11px;margin-bottom:9px;border:1px solid #e2e8f0}
+.mo-v2-health.ok{background:#ecfdf5;border-color:#bbf7d0;color:#166534}.mo-v2-health.watch{background:#fffbeb;border-color:#fde68a;color:#92400e}.mo-v2-health.warn{background:#fff1f2;border-color:#fecaca;color:#991b1b}.mo-v2-health.neutral{background:#f8fafc;color:#64748b}
+.mo-v2-health span{display:block;font-size:9px}.mo-v2-health b{font-size:12px}.mo-v2-health>strong{font-size:24px}.mo-v2-health-details{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}.mo-v2-health-details span{padding:4px 6px;background:rgba(255,255,255,.65);border-radius:999px}
+.mo-v2-zone-preview{margin-top:8px;padding:10px;border:1px solid #dbe4ec;border-radius:10px;background:#f8fafc}
+.mo-v2-preview-head{display:flex;justify-content:space-between;gap:8px;align-items:center}.mo-v2-preview-head b{font-size:12px}.mo-v2-preview-head span{font-size:10px;color:#475569}
+.mo-v2-preview-stats{display:flex;gap:5px;flex-wrap:wrap;margin:7px 0}.mo-v2-preview-stats span{font-size:9px;padding:4px 6px;border-radius:999px;background:#fff;border:1px solid #e2e8f0}.mo-v2-zone-preview small{font-size:9px;color:#64748b}
+@media(max-width:760px){
+  .mo-v2-cockpit-main{grid-template-columns:minmax(0,1fr) 86px;padding:13px;gap:10px}
+  .mo-v2-mission-copy h2{font-size:22px}.mo-v2-ring{width:82px;height:82px;padding:6px}.mo-v2-ring>div{padding:11px 4px}.mo-v2-ring strong{font-size:24px}
+  .mo-v2-command-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.mo-v2-command-strip>div:nth-child(2){border-inline-end:0}
+  .mo-v2-primary-actions{display:grid;grid-template-columns:1fr}.mo-v2-primary-actions .btn{width:100%}
+  .mo-v2-field-head{align-items:flex-start}.mo-v2-live-count{min-width:72px}
+  .mo-v2-coverage-head{display:block}.mo-v2-next-zone{display:inline-block;margin-top:6px}
+  .mo-v2-sector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mo-v2-map{height:430px}
+  .mo-v2-control-head{display:block;padding:14px}.mo-v2-head-actions{justify-content:flex-start;margin-top:10px}.mo-v2-head-actions .btn{flex:1}
+  .mo-v2-daybar{grid-template-columns:1fr}.mo-v2-toolbar input,.mo-v2-toolbar select{width:100%}
+  .mo-v2-day-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.mo-v2-day-kpis .wide{grid-column:1/-1}
+  .mo-v2-alert{grid-template-columns:1fr auto}
+  .mo-v2-board-head{display:block}.mo-v2-board-head>span{display:block;margin-top:3px}
+  .mo-v2-lanes{grid-template-columns:1fr}
+  .mo-v2-lane-actions{display:grid;grid-template-columns:1fr 1fr}.mo-v2-lane-actions .btn{width:100%}
+  .mo-v2-preview-head{display:block}.mo-v2-preview-head span{display:block;margin-top:3px}
+}

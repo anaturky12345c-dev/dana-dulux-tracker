@@ -492,7 +492,7 @@
       '<div class="full"><label>'+tx('ملاحظة للمندوب (اختياري)','Note to representative (optional)')+'</label><textarea id="moFNotes" rows="2">'+safe(m?.notes||'')+'</textarea></div>'+
       '<div class="full mo-picker-shell"><div class="mo-picker-head"><div><b>'+tx('خريطة اختيار المنطقة','Zone selection map')+'</b><span>'+tx('مرّر على أي حي لمعرفة اسمه واضغط لتحديد حدوده كاملة.','Hover a district to see its name; click to select its full boundary.')+'</span></div><span class="mo-live-chip">'+tx('GIS مباشر','LIVE GIS')+'</span></div><div id="marketMissionPickerMap" class="mo-picker-map mo-picker-map-v3"></div>'+
       '<input type="hidden" id="moFLat" value="'+safe(m?.center_lat??'')+'"><input type="hidden" id="moFLng" value="'+safe(m?.center_lng??'')+'">'+
-      '<input type="hidden" id="moFZoneType" value="'+safe(m?.zone_type||mode)+'"><input type="hidden" id="moFDistrictNo" value="'+safe(m?.district_no||'')+'"><input type="hidden" id="moFMunicipality" value="'+safe(m?.municipality_name||'')+'"><textarea id="moFZoneGeojson" class="hidden">'+safe(savedGeo)+'</textarea>'+
+      '<input type="hidden" id="moFEditingMissionId" value="'+safe(m?.id||'')+'"><input type="hidden" id="moFZoneLocked" value="'+(locked?'1':'0')+'"><input type="hidden" id="moFZoneType" value="'+safe(m?.zone_type||mode)+'"><input type="hidden" id="moFDistrictNo" value="'+safe(m?.district_no||'')+'"><input type="hidden" id="moFMunicipality" value="'+safe(m?.municipality_name||'')+'"><textarea id="moFZoneGeojson" class="hidden">'+safe(savedGeo)+'</textarea>'+
       '<div id="moFLocationText" class="small mo-picker-status"></div><div id="moFZonePreview" class="mo-v2-zone-preview mo-v3-zone-preview"></div></div>'+
       '<div class="full mo-save-row"><button class="btn mo-v3-save" type="button" id="moFSave">'+(editing?tx('حفظ التعديل','Save changes'):tx('اعتماد المهمة','Approve mission'))+'</button></div>'+
     '</div>';
@@ -565,6 +565,10 @@
             click:e=>{
               if(document.getElementById('moFZoneType')?.value!=='district_polygon')return;
               if(e?.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
+              if(document.getElementById('moFZoneLocked')?.value==='1'){
+                flash(tx('حدود المنطقة مقفلة بعد تسجيل أول عميل.','The zone boundary is locked after the first customer is counted.'),true);
+                return;
+              }
               setSelectedGeometry(feature,true);
             }
           });
@@ -635,6 +639,7 @@
       const p=f.properties||{};
       return !q||String(p.DISTRICT_NAME||'').toLowerCase().includes(q)||String(p.DISTRICT_NAME_EN||'').toLowerCase().includes(q)||String(p.MUNIC_NAME||'').toLowerCase().includes(q);
     }).slice(0,q?10:0);
+    if(document.getElementById('moFZoneLocked')?.value==='1'){box.innerHTML='';return;}
     box.innerHTML=rows.map((f,i)=>{
       const p=f.properties||{};
       return '<button type="button" data-mo-district-index="'+i+'"><b>'+safe(p.DISTRICT_NAME||p.DISTRICT_NAME_EN||'-')+'</b><span>'+safe(p.MUNIC_NAME||'')+'</span></button>';
@@ -675,7 +680,7 @@
     box.innerHTML='<div class="mo-v3-loading">'+tx('جاري تحليل المنطقة والتعارضات...','Analyzing coverage and conflicts...')+'</div>';
     const date=document.getElementById('moFDate')?.value||today();
     const rep=document.getElementById('moFRep')?.value||null;
-    const missionId=mo.missions.find(x=>x.id===mo.selectedMissionId)?.id||null;
+    const missionId=document.getElementById('moFEditingMissionId')?.value||null;
     const [preview,conflicts]=await Promise.all([
       sb.rpc('market_opening_zone_preview_v2',{p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_zone_type:zoneType,p_zone_geojson:geo}),
       sb.rpc('market_opening_zone_conflicts_v2',{p_scheduled_date:date,p_rep_id:rep,p_zone_type:zoneType,p_zone_geojson:geo,p_center_lat:lat,p_center_lng:lng,p_radius_m:radius,p_exclude_mission_id:missionId})
@@ -818,7 +823,7 @@
 
   function cleanupPicker(){
     if(mo.pickerMap){try{mo.pickerMap.remove()}catch(_){}}
-    mo.pickerMap=null;mo.pickerMarker=null;mo.pickerCircle=null;
+    mo.pickerMap=null;mo.pickerMarker=null;mo.pickerCircle=null;mo.pickerDistrictLayer=null;mo.pickerSelectedLayer=null;mo.selectedDistrict=null;
   }
 
   function friendlyError(msg){

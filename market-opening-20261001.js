@@ -18,6 +18,8 @@
   const addBaseMap=app.addBaseMap;
 
   const RIYADH_DISTRICTS_URL='https://namaa-gis.kharetatalenmaa.sa/server/rest/services/Riyadh/RiyadhPMS_DistrictsPI/FeatureServer/5/query?where=1%3D1&outFields=DISTRICT_NAME%2CDISTRICT_NAME_EN%2CDISTRICT_NO%2CMUNIC_NAME%2CMUNIC_NO%2CZONE_&returnGeometry=true&outSR=4326&geometryPrecision=5&f=geojson';
+  const DISTRICT_CACHE_KEY='dana_riyadh_districts_geojson_v1';
+  const DISTRICT_CACHE_TTL=12*60*60*1000;
 
   const mo={
     settings:null,
@@ -249,6 +251,18 @@
   async function loadDistrictData(){
     if(mo.districtData)return mo.districtData;
     if(mo.districtDataPromise)return mo.districtDataPromise;
+
+    try{
+      const raw=localStorage.getItem(DISTRICT_CACHE_KEY);
+      if(raw){
+        const cached=JSON.parse(raw);
+        if(cached?.savedAt&&Date.now()-Number(cached.savedAt)<DISTRICT_CACHE_TTL&&Array.isArray(cached?.data?.features)&&cached.data.features.length){
+          mo.districtData=cached.data;
+          return mo.districtData;
+        }
+      }
+    }catch(_){}
+
     mo.districtDataPromise=(async()=>{
       let g=null;
       try{
@@ -264,6 +278,7 @@
       const out={type:'FeatureCollection',features:(g?.features||[]).filter(x=>x?.geometry&&x?.properties?.DISTRICT_NO)};
       if(!out.features.length)throw new Error('empty district layer');
       mo.districtData=out;
+      try{localStorage.setItem(DISTRICT_CACHE_KEY,JSON.stringify({savedAt:Date.now(),data:out}));}catch(_){}
       return out;
     })().finally(()=>{mo.districtDataPromise=null;});
     return mo.districtDataPromise;

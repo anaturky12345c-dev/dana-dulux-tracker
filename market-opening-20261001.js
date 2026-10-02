@@ -17,7 +17,7 @@
   const openCustomerForm=app.openCustomerForm;
   const addBaseMap=app.addBaseMap;
 
-  const RIYADH_DISTRICTS_URL='https://namaa-gis.kharetatalenmaa.sa/server/rest/services/Riyadh/RiyadhPMS_DistrictsPI/FeatureServer/5/query?where=1%3D1&outFields=DISTRICT_NAME%2CDISTRICT_NAME_EN%2CDISTRICT_NO%2CMUNIC_NAME%2CMUNIC_NO%2CZONE_&returnGeometry=true&outSR=4326&f=geojson';
+  const RIYADH_DISTRICTS_URL='https://namaa-gis.kharetatalenmaa.sa/server/rest/services/Riyadh/RiyadhPMS_DistrictsPI/FeatureServer/5/query?where=1%3D1&outFields=DISTRICT_NAME%2CDISTRICT_NAME_EN%2CDISTRICT_NO%2CMUNIC_NAME%2CMUNIC_NO%2CZONE_&returnGeometry=true&outSR=4326&geometryPrecision=5&f=geojson';
 
   const mo={
     settings:null,

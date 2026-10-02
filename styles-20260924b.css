@@ -3479,3 +3479,73 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   font-weight:800;
   line-height:1.5;
 }
+
+
+/* Market Opening planner viewport fix — keep Save reachable */
+.modal-card:has(#moAutoPlannerMap){
+  height:min(94dvh,920px);
+  max-height:94dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.modal-card:has(#moAutoPlannerMap) .modal-head{
+  flex:0 0 auto;
+}
+.modal-card:has(#moAutoPlannerMap) #modalContent{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  padding-bottom:0;
+}
+.modal-card:has(#moAutoPlannerMap) .mo4-planner{
+  min-height:100%;
+}
+.modal-card:has(#moAutoPlannerMap) .mo4-planner-workspace{
+  min-height:clamp(390px,52vh,580px);
+}
+.modal-card:has(#moAutoPlannerMap) #moAutoPlannerMap{
+  height:clamp(390px,52vh,580px);
+}
+.modal-card:has(#moAutoPlannerMap) .mo4-planner-footer{
+  position:sticky;
+  bottom:0;
+  z-index:950;
+  margin-inline:-16px;
+  margin-bottom:0;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-width:1px 0 0;
+  border-radius:0;
+  background:rgba(6,12,24,.96);
+  box-shadow:0 -14px 30px rgba(2,6,23,.45);
+  backdrop-filter:blur(18px);
+}
+.modal-card:has(#moAutoPlannerMap) #moPlannerSave{
+  position:relative;
+  z-index:2;
+}
+
+@media(max-width:760px){
+  .modal-card:has(#moAutoPlannerMap){
+    width:100vw;
+    height:100dvh;
+    max-height:100dvh;
+  }
+  .modal-card:has(#moAutoPlannerMap) #modalContent{
+    padding:9px 9px 0;
+  }
+  .modal-card:has(#moAutoPlannerMap) .mo4-planner-workspace{
+    min-height:0;
+  }
+  .modal-card:has(#moAutoPlannerMap) #moAutoPlannerMap{
+    height:min(48dvh,460px);
+    min-height:320px;
+  }
+  .modal-card:has(#moAutoPlannerMap) .mo4-planner-footer{
+    margin-inline:-9px;
+    padding:10px 9px calc(10px + env(safe-area-inset-bottom));
+  }
+}

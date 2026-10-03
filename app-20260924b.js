@@ -69,10 +69,17 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const fmt=n=>new Intl.NumberFormat(lang==='ar'?'ar-SA':'en-US',{maximumFractionDigits:2}).format(Number(n||0));
 const money=n=>lang==='ar'?fmt(n)+' ر.س':'SAR '+fmt(n);
-const dateTime=iso=>iso?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Riyadh'}).format(new Date(iso)):'-';
-const dateOnly=d=>d?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(d+'T00:00:00Z')):'-';
+const parseDateValue=v=>{
+ const s=String(v??'').trim();if(!s)return null;
+ const dateOnlyValue=/^\d{4}-\d{2}-\d{2}$/.test(s);
+ const normalized=dateOnlyValue?s+'T00:00:00Z':s.replace(/^(\d{4}-\d{2}-\d{2})\s/,'$1T');
+ const d=new Date(normalized);
+ return Number.isNaN(d.getTime())?null:{date:d,dateOnly:dateOnlyValue};
+};
+const dateTime=iso=>{const p=parseDateValue(iso);return p?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Riyadh'}).format(p.date):'-';};
+const dateOnly=v=>{const p=parseDateValue(v);return p?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'medium',timeZone:p.dateOnly?'UTC':'Asia/Riyadh'}).format(p.date):'-';};
 const todayRiyadh=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const dateKeyRiyadh=iso=>iso?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso)):'';
+const dateKeyRiyadh=iso=>{const p=parseDateValue(iso);return p?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(p.date):'';};
 const monthRiyadh=()=>todayRiyadh().slice(0,7);
 const weekStartRiyadh=()=>{
  const today=todayRiyadh(),d=new Date(today+'T00:00:00Z'),daysSinceSaturday=(d.getUTCDay()+1)%7;
@@ -389,13 +396,18 @@ function renderDormantDashboard(){
    :(rows.length?'The list is shown directly. Click any customer to record a visit or order.':'No inactive customers right now.');
  if(!box)return;
  box.innerHTML=rows.length?rows.map(c=>{
-   const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=c.inactive_visit_due_at?new Date(c.inactive_visit_due_at).getTime():0,overdue=!!due&&due<Date.now();
-   const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
-   return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
-     <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
-     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'موعد الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
-     <span class="dormant-visit ${overdue?'overdue':(visit?'done':'pending')}">${badgeText}</span>
-   </button>`;
+   try{
+     const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=parseDateValue(c.inactive_visit_due_at)?.date?.getTime()||0,overdue=!!due&&due<Date.now();
+     const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
+     return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
+       <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
+       <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'موعد الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
+       <span class="dormant-visit ${overdue?'overdue':(visit?'done':'pending')}">${badgeText}</span>
+     </button>`;
+   }catch(err){
+     console.error('dormant row render failed',c?.id,err);
+     return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}"><span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span><span class="dormant-visit pending">${lang==='ar'?'فتح العميل':'Open customer'}</span></button>`;
+   }
  }).join(''):`<div class="attention-empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`;
 }
 function openDormantList(){
@@ -457,8 +469,6 @@ async function saveInactiveVisit(id){
 }
 function renderTodayFollowupsDashboard(){
  const box=$('todayFollowupList'),count=$('todayFollowupCount'),sub=$('todayFollowupSub');if(!box)return;
- const holder=box.closest('details');if(holder)holder.open=true;
- box.style.setProperty('display','grid','important');
  const today=todayRiyadh(),repId=state.profile?.id;
  const customerById=new Map(state.customers.map(c=>[Number(c.id),c]));
  const rows=state.salesFollowupStates.map(fs=>({fs,c:customerById.get(Number(fs.customer_id))}))

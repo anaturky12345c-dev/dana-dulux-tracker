@@ -373,26 +373,38 @@ function inactiveVisitForCustomer(c){
    .filter(r=>Number(r.customer_id)===Number(c?.id)&&r.action_code==='inactive_visit'&&new Date(r.created_at||0).getTime()>=since)
    .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null;
 }
-function renderDormantDashboard(){
- const box=$('dormantList'),count=$('dormantCount'),sub=$('dormantSub');if(!box)return;
- const holder=box.closest('details');if(holder)holder.open=true;
- box.style.setProperty('display','grid','important');
+function dormantRows(){
  const repId=state.profile?.id;
- const rows=state.customers.filter(c=>c.status==='inactive'&&(canManage()||c.assigned_rep===repId))
-   .slice().sort((a,b)=>new Date(a.inactive_since||a.updated_at||0)-new Date(b.inactive_since||b.updated_at||0));
+ return state.customers
+   .filter(c=>c.status==='inactive'&&(canManage()||c.assigned_rep===repId))
+   .slice()
+   .sort((a,b)=>new Date(a.inactive_since||a.updated_at||0)-new Date(b.inactive_since||b.updated_at||0));
+}
+function renderDormantDashboard(){
+ const count=$('dormantCount'),sub=$('dormantSub'),launch=$('dormantDashboardLaunch');
+ const rows=dormantRows();
  if(count)count.textContent=String(rows.length);
  if(sub)sub.textContent=lang==='ar'
-   ?(rows.length?'عملاء نشطون سابقاً لم يسجلوا طلبية في أسبوع العمل السابق. مطلوب زيارة وتقرير.':'لا يوجد عملاء خاملون حالياً.')
-   :(rows.length?'Previously active customers with no order in the last Sat–Thu workweek. Visit and report required.':'No inactive customers right now.');
- box.innerHTML=rows.length?rows.map(c=>{
+   ?(rows.length?'اضغط لعرض كل العملاء الخاملين وتسجيل الزيارة أو الطلبية.':'لا يوجد عملاء خاملون حالياً.')
+   :(rows.length?'Click to view all inactive customers and record a visit or order.':'No inactive customers right now.');
+ if(launch){
+   launch.disabled=rows.length===0;
+   launch.setAttribute('aria-label',lang==='ar'?`فتح قائمة العملاء الخاملين — ${rows.length} عميل`:`Open inactive customers — ${rows.length}`);
+ }
+}
+function openDormantList(){
+ const rows=dormantRows();
+ const cards=rows.map(c=>{
    const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=c.inactive_visit_due_at?new Date(c.inactive_visit_due_at).getTime():0,overdue=!!due&&due<Date.now();
    const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
-   return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
+   return `<button type="button" class="dormant-item dormant-modal-item" data-dormant-list-customer="${c.id}">
      <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
      <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'موعد الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
      <span class="dormant-visit ${overdue?'overdue':(visit?'done':'pending')}">${badgeText}</span>
    </button>`;
- }).join(''):`<div class="attention-empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`;
+ }).join('');
+ openModal(lang==='ar'?`العملاء الخاملون (${rows.length})`:`Inactive Customers (${rows.length})`,
+   rows.length?`<div class="dormant-modal-list">${cards}</div>`:`<div class="empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`);
 }
 function openDormantCustomer(id){
  const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c||c.status!=='inactive')return;
@@ -1856,6 +1868,7 @@ $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data
 $('reports')?.addEventListener('click',e=>{const b=e.target.closest('[data-core-sales-followup]');if(b){openSalesFollowupForm(Number(b.dataset.coreSalesFollowup));return;}});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});$('salesFollowupsBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-delete-report]');if(b)deleteReport(Number(b.dataset.deleteReport));});
 $('dashboard')?.addEventListener('click',e=>{let el;
+if((el=e.target.closest('#dormantDashboardLaunch'))){openDormantList();return;}
 if((el=e.target.closest('[data-dashboard-sales-followup]'))){openSalesFollowupForm(Number(el.dataset.dashboardSalesFollowup));return;}
 if((el=e.target.closest('[data-dormant-customer]'))){openDormantCustomer(Number(el.dataset.dormantCustomer));return;}if((el=e.target.closest('[data-attention-customer]'))){openCustomer(Number(el.dataset.attentionCustomer));return;}if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','inactive','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
@@ -1881,10 +1894,10 @@ document.addEventListener('click',e=>{
  const pcm=e.target.closest('[data-voice-pcm-play]');if(pcm){e.preventDefault();togglePcmPreview(pcm.dataset.voicePcmPlay);return;}
  const play=e.target.closest('[data-play-voice]');if(play){e.preventDefault();playSavedVoice(play);return;}
 });
-$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#sActivateNowBtn')))enableSaleActivation();else if((b=e.target.closest('#sAgreedPendingBtn')))showPendingAgreementForm();else if((b=e.target.closest('#sSaveAgreedPendingBtn')))markAgreedPendingFromSales();else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-inactive-visit]')))openInactiveVisitForm(Number(b.dataset.inactiveVisit));else if((b=e.target.closest('#saveInactiveVisitBtn')))saveInactiveVisit(Number(b.dataset.id));else if((b=e.target.closest('#saveSalesFollowupBtn')))saveSalesFollowup();else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});
+$('modalContent')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-dormant-list-customer]'))){openDormantCustomer(Number(b.dataset.dormantListCustomer));}else if((b=e.target.closest('#gpsBtn')))captureLocation();else if((b=e.target.closest('#saveCustomerBtn')))createCustomer();else if((b=e.target.closest('[data-edit-customer]')))openCustomerEditor(Number(b.dataset.editCustomer));else if((b=e.target.closest('#saveCustomerEditBtn')))saveCustomerEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-customer]')))deleteCustomer(Number(b.dataset.deleteCustomer));else if((b=e.target.closest('[data-change-status]')))openStatusForm(Number(b.dataset.changeStatus));else if((b=e.target.closest('#saveStatusBtn')))changeStatus(Number(b.dataset.id));else if((b=e.target.closest('[data-edit-location]')))openLocationEditor(Number(b.dataset.editLocation));else if((b=e.target.closest('#saveLocationBtn')))saveLocation(Number(b.dataset.id));else if((b=e.target.closest('[data-add-sale]')))openSaleForm(Number(b.dataset.addSale));else if((b=e.target.closest('#sActivateNowBtn')))enableSaleActivation();else if((b=e.target.closest('#sAgreedPendingBtn')))showPendingAgreementForm();else if((b=e.target.closest('#sSaveAgreedPendingBtn')))markAgreedPendingFromSales();else if((b=e.target.closest('#saveSaleBtn')))addSale();else if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('#saveSaleEditBtn')))saveSaleEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));else if((b=e.target.closest('[data-inactive-visit]')))openInactiveVisitForm(Number(b.dataset.inactiveVisit));else if((b=e.target.closest('#saveInactiveVisitBtn')))saveInactiveVisit(Number(b.dataset.id));else if((b=e.target.closest('#saveSalesFollowupBtn')))saveSalesFollowup();else if((b=e.target.closest('[data-add-report]')))openReportForm(Number(b.dataset.addReport));else if((b=e.target.closest('#saveReportBtn')))addReport();else if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('#saveReportEditBtn')))saveReportEdit(Number(b.dataset.id));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));else if((b=e.target.closest('#saveGoalsBtn')))saveGoals();else if((b=e.target.closest('#copyTemporaryRepPasswordBtn'))){const x=$('temporaryRepPassword');if(x){navigator.clipboard?.writeText(x.value);x.select();flash(lang==='ar'?'تم نسخ كلمة المرور.':'Password copied.');}}});
 $('securityGateBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('#gateChangePasswordBtn')))changePassword(true);else if((b=e.target.closest('#verifyMfaEnrollBtn')))verifyMFA($('mfaEnrollCode')?.value||'');else if((b=e.target.closest('#verifyMfaChallengeBtn')))verifyMFA($('mfaChallengeCode')?.value||'');});
 ['pointerdown','keydown','touchstart','scroll'].forEach(evt=>window.addEventListener(evt,()=>{state.lastActivity=Date.now();},{passive:true}));setInterval(()=>{if(state.session&&Date.now()-state.lastActivity>MAX_IDLE_MS)logout(lang==='ar'?'تم تسجيل خروجك تلقائياً بعد ساعة بدون استخدام.':'You were signed out after 1 hour of inactivity.');},30000);
-window.DANA_APP={sb,state,t,esc,fmt,money,dateTime,dateOnly,todayRiyadh,dateKeyRiyadh,monthRiyadh,statusLabel,badgeStatus,actionLabel,productLabel,isAdmin,isManager,canManage,openModal,closeModal,flash,openReportForm,openSalesFollowupForm,openCustomer,openDormantCustomer,openCustomerForm,addBaseMap,refreshAll,repOptions,gotoPage,getLang:()=>lang};
+window.DANA_APP={sb,state,t,esc,fmt,money,dateTime,dateOnly,todayRiyadh,dateKeyRiyadh,monthRiyadh,statusLabel,badgeStatus,actionLabel,productLabel,isAdmin,isManager,canManage,openModal,closeModal,flash,openReportForm,openSalesFollowupForm,openCustomer,openDormantCustomer,openDormantList,openCustomerForm,addBaseMap,refreshAll,repOptions,gotoPage,getLang:()=>lang};
 applyLanguage();
 
 if(!configured) showConfigMessage(); else sb.auth.onAuthStateChange((_event,session)=>{if(!session&&!$('login').classList.contains('hidden'))return;if(!session)showLogin();}); if(configured) loadProfile();

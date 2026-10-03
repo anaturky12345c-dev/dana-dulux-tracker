@@ -4083,3 +4083,83 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   background:#fff7ed;
   color:#9a3412;
 }
+
+
+/* Market Opening desktop scheduling calendar */
+.mo8-calendar-board{padding:14px 14px 12px}
+.mo8-desktop-hint{padding:7px 10px;border-radius:10px;background:rgba(15,118,110,.08);font-weight:800;white-space:nowrap}
+.mo8-calendar-strip{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(180px,220px);
+  gap:10px;
+  overflow-x:auto;
+  padding:6px 3px 12px;
+  scroll-snap-type:x proximity;
+}
+.mo8-date-column{
+  min-height:170px;
+  border:1px solid #dbe3e8;
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+  scroll-snap-align:start;
+  transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease,background .15s ease;
+}
+.mo8-date-column.today{border-color:#0f766e;box-shadow:0 0 0 2px rgba(15,118,110,.08)}
+.mo8-date-column.drop-ready{border-style:dashed}
+.mo8-date-column.dragover{
+  border-color:#0f766e;
+  background:#ecfdf5;
+  box-shadow:0 10px 24px rgba(15,118,110,.18);
+  transform:translateY(-2px);
+}
+.mo8-date-head{
+  display:grid;
+  gap:2px;
+  padding:10px 11px;
+  border-bottom:1px solid #e5e7eb;
+  background:#f8fafc;
+}
+.mo8-date-column.today .mo8-date-head{background:#f0fdfa}
+.mo8-date-head span{font-size:11px;color:#64748b}
+.mo8-date-head b{font-size:13px}
+.mo8-date-head small{font-size:10px;color:#64748b}
+.mo8-date-body{display:grid;gap:7px;padding:8px;min-height:108px;align-content:start}
+.mo8-area-chip{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:7px;
+  align-items:center;
+  padding:8px 9px;
+  border:1px solid #dbe3e8;
+  border-radius:10px;
+  background:#fff;
+  box-shadow:0 2px 7px rgba(15,23,42,.05);
+}
+.mo8-area-chip.movable{cursor:grab}
+.mo8-area-chip.movable:active{cursor:grabbing}
+.mo8-area-chip.dragging{opacity:.42}
+.mo8-area-chip b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo8-area-chip small{display:block;margin-top:2px;font-size:9px;color:#64748b}
+.mo8-grip{font-size:18px;color:#64748b;line-height:1}
+.mo8-move-mark{font-weight:900;color:#0f766e}
+.mo8-lock-mark{font-size:11px;opacity:.6}
+.mo8-empty-slot{
+  min-height:72px;
+  display:grid;
+  place-items:center;
+  padding:12px;
+  border:1px dashed #cbd5e1;
+  border-radius:10px;
+  color:#94a3b8;
+  font-size:11px;
+  text-align:center;
+}
+.mo8-date-column.dragover .mo8-empty-slot{border-color:#0f766e;color:#0f766e;background:rgba(255,255,255,.72)}
+.mo8-drag-status{margin-top:2px;font-size:11px;color:#64748b;font-weight:700}
+
+@media(max-width:900px){
+  .mo8-calendar-strip{grid-auto-columns:minmax(165px,190px)}
+  .mo8-desktop-hint{white-space:normal}
+}

@@ -117,12 +117,22 @@
     const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
     return r*2*Math.asin(Math.sqrt(Math.min(1,Math.max(0,a))));
   }
-  function missionForToday(){
-    if(mo.previewRepId)return previewMission();
-    if(!isRepUser())return null;
+  function missionsForToday(){
+    if(mo.previewRepId){
+      const p=previewMission();
+      return p?[p]:[];
+    }
+    if(!isRepUser())return [];
     return mo.missions
       .filter(m=>m.rep_id===state.profile.id&&ymd(m.scheduled_date)===today()&&m.status!=='cancelled')
-      .sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||'')))[0]||null;
+      .sort((a,b)=>{
+        const sa=a.status==='in_progress'?0:a.status==='scheduled'?1:2;
+        const sb=b.status==='in_progress'?0:b.status==='scheduled'?1:2;
+        return sa-sb||String(a.created_at||'').localeCompare(String(b.created_at||''));
+      });
+  }
+  function missionForToday(){
+    return missionsForToday()[0]||null;
   }
   function overdueForRep(){
     if(mo.previewRepId)return null;
@@ -609,9 +619,7 @@
     closeModal();
     await loadData(true);
     openRepPlans(repId);
-    flash(data?.mode==='swap'
-      ?tx('تم تبديل المهمتين بين التاريخين.','The two missions were swapped between dates.')
-      :tx('تم نقل المهمة إلى التاريخ المحدد.','Mission moved to the selected date.'));
+    flash(tx('تم نقل المهمة إلى التاريخ المحدد. ويمكن وجود أكثر من منطقة في نفس اليوم.','Mission moved to the selected date. Multiple areas can share the same day.'));
   }
 
   function openRepPlans(repId){
@@ -632,8 +640,11 @@
     let pickedMissionId=null;
 
     const scheduleRail='<section class="mo7-schedule-board"><div class="mo7-schedule-head"><div><b>'+tx('تحديد مهمة اليوم بالسحب','Set the day by dragging')+'</b><span>'+tx('اسحب المهمة من القائمة للأعلى وضعها على التاريخ المطلوب. إذا كان التاريخ عليه مهمة أخرى، يتم تبديل المهمتين تلقائيًا.','Drag a mission from the list up to the date you want. If that date already has another mission, the two missions are swapped automatically.')+'</span></div><span class="mo7-mobile-hint">'+tx('بالجوال: اضغط «اختيار للنقل» ثم اضغط التاريخ.','On mobile: tap “Select to move”, then tap a date.')+'</span></div><div class="mo7-date-rail" id="moRepDateRail">'+scheduleDates.map(d=>{
-      const mission=rows.find(m=>ymd(m.scheduled_date)===d&&m.status!=='cancelled');
-      return '<button type="button" class="mo7-date-slot '+(d===todayKey?'today ':'')+(mission?'occupied':'')+'" data-mo-drop-date="'+safe(d)+'"><span>'+safe(plannerDayLabel(d))+'</span><b>'+safe(fmtDate(d))+'</b><small>'+(mission?safe(mission.area_name):tx('فارغ','Empty'))+'</small></button>';
+      const dayMissions=rows.filter(m=>ymd(m.scheduled_date)===d&&m.status!=='cancelled');
+      const summary=dayMissions.length
+        ?(dayMissions.length===1?safe(dayMissions[0].area_name):n(dayMissions.length)+' '+tx('مناطق','areas')+' · '+safe(dayMissions.slice(0,2).map(x=>x.area_name).join('، '))+(dayMissions.length>2?'…':''))
+        :tx('فارغ','Empty');
+      return '<button type="button" class="mo7-date-slot '+(d===todayKey?'today ':'')+(dayMissions.length?'occupied':'')+'" data-mo-drop-date="'+safe(d)+'"><span>'+safe(plannerDayLabel(d))+'</span><b>'+safe(fmtDate(d))+'</b><small>'+summary+'</small></button>';
     }).join('')+'</div><div id="moRepMoveHint" class="mo7-move-hint">'+tx('ما تم اختيار مهمة للنقل.','No mission selected for moving.')+'</div></section>';
 
     const planCards=rows.length?rows.map(m=>{
@@ -1706,7 +1717,8 @@
     const form=document.querySelector('#modalContent .form-grid');
     if(!form)return;
     const existing=document.getElementById('moCustomerMissionNotice');if(existing)existing.remove();
-    const m=missionForToday();
+    const todayMissions=missionsForToday();
+    const m=todayMissions[0]||null;
     const notice=document.createElement('div');
     notice.id='moCustomerMissionNotice';
     notice.className='full mo-customer-mission-notice';
@@ -1718,7 +1730,8 @@
       return;
     }
     notice.classList.add('ok');
-    notice.innerHTML='<b>'+tx('مهمة فتح السوق','Market-opening mission')+': '+safe(m.area_name)+' · '+safe(m.city)+'</b><div>'+safe(tx('تقدر تسجل العميل سواء داخل المنطقة أو خارجها. العميل داخل الحدود فقط هو الذي يدخل في هدف المهمة؛ وإذا كان خارجها يظهر لك تنبيه ويحفظ كعميل عادي بدون احتسابه في الهدف.','You can register the customer inside or outside the assigned area. Only customers inside the boundary count toward the mission target; outside customers are saved normally with a warning and do not count.'))+'</div><div id="moCustomerZoneStatus" class="small"></div>';
+    const areas=todayMissions.map(x=>x.area_name).join('، ');
+    notice.innerHTML='<b>'+tx('مناطق فتح السوق اليوم','Today Market Opening areas')+': '+safe(areas)+'</b><div>'+safe(tx('يمكن يكون عندك أكثر من منطقة في نفس اليوم. حدد موقع العميل والنظام يحسبه تلقائيًا على المنطقة التي يقع داخل حدودها. وإذا كان خارج كل مناطق اليوم، ينحفظ بدون احتسابه في الهدف.','You can have multiple areas on the same day. Choose the customer location and the system automatically counts it toward the matching area. If it is outside all of today’s areas, it is saved without counting toward a target.'))+'</div><div id="moCustomerZoneStatus" class="small"></div>';
     form.prepend(notice);
     const area=document.getElementById('fArea');if(area&&!area.value)area.value=m.area_name;
     const save=document.getElementById('saveCustomerBtn');if(save)save.disabled=true;
@@ -1739,24 +1752,21 @@
 
   function customerLocationChanged(lat,lng){
     if(!isRepUser()||!mo.settings?.enabled||!mo.settings?.strict_rep_customer_creation)return;
-    const m=missionForToday(),save=document.getElementById('saveCustomerBtn'),box=document.getElementById('moCustomerZoneStatus');
-    if(!m){if(save)save.disabled=true;return;}
-    let inside=false,detail='';
-    if(m.zone_type==='district_polygon'&&m.zone_geojson){
-      inside=pointInZoneGeojson(m.zone_geojson,Number(lat),Number(lng));
-      detail=inside
-        ?tx('داخل المنطقة المطلوبة — هذا العميل سيدخل في هدف المهمة.','Inside the required area — this customer will count toward the mission target.')
-        :tx('تنبيه: أنت خارج حدود المنطقة المطلوبة. العميل سيُحفظ عادي، لكنه لن يدخل في هدف فتح السوق.','Warning: you are outside the required area. The customer will still be saved, but will not count toward the Market Opening target.');
-    }else{
+    const list=missionsForToday(),save=document.getElementById('saveCustomerBtn'),box=document.getElementById('moCustomerZoneStatus');
+    if(!list.length){if(save)save.disabled=true;return;}
+    const match=list.find(m=>{
+      if(m.zone_type==='district_polygon'&&m.zone_geojson){
+        return pointInZoneGeojson(m.zone_geojson,Number(lat),Number(lng));
+      }
       const dist=haversine(Number(m.center_lat),Number(m.center_lng),Number(lat),Number(lng));
-      inside=dist<=Number(m.radius_m);
-      detail=inside
-        ?tx('داخل منطقة المهمة — هذا العميل سيدخل في الهدف.','Inside the mission zone — this customer will count toward the target.')
-        :tx('تنبيه: أنت خارج منطقة المهمة بحوالي ','Warning: you are about ')+n(Math.max(0,Math.round(dist-m.radius_m)))+tx(' متر. العميل سيُحفظ لكنه لن يدخل في الهدف.',' m outside the mission zone. The customer will be saved but will not count toward the target.');
-    }
+      return dist<=Number(m.radius_m);
+    })||null;
+    const detail=match
+      ?tx('داخل منطقة ','Inside area ')+match.area_name+tx(' — هذا العميل سيدخل في هدف هذه المهمة.',' — this customer will count toward this mission target.')
+      :tx('تنبيه: الموقع خارج جميع مناطق فتح السوق المحددة لك اليوم. العميل سيُحفظ عادي لكنه لن يدخل في أي هدف.','Warning: this location is outside all Market Opening areas assigned to you today. The customer will be saved normally but will not count toward any target.');
     if(save)save.disabled=false;
     if(box){
-      box.className='small '+(inside?'ok':'warn');
+      box.className='small '+(match?'ok':'warn');
       box.textContent=detail;
     }
   }

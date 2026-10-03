@@ -4029,3 +4029,37 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo5-check-grid{grid-template-columns:1fr}
   .mo5-demo-options{grid-template-columns:1fr}
 }
+
+
+/* Market Opening — drag-to-date scheduler */
+.mo7-schedule-board{margin:14px 0 16px;padding:14px;border:1px solid rgba(15,118,110,.2);border-radius:16px;background:rgba(255,255,255,.72)}
+.mo7-schedule-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.mo7-schedule-head>div{display:grid;gap:3px}
+.mo7-schedule-head b{font-size:15px}
+.mo7-schedule-head span{font-size:12px;line-height:1.6;color:var(--muted,#64748b)}
+.mo7-mobile-hint{max-width:260px;padding:7px 9px;border-radius:10px;background:rgba(15,118,110,.08);font-weight:700}
+.mo7-date-rail{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x proximity}
+.mo7-date-slot{min-width:118px;scroll-snap-align:start;border:1px solid #dbe3e8;border-radius:12px;padding:9px 10px;background:#fff;text-align:start;display:grid;gap:2px;cursor:pointer;transition:.16s ease}
+.mo7-date-slot span{font-size:11px;color:#64748b}
+.mo7-date-slot b{font-size:13px}
+.mo7-date-slot small{font-size:10px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo7-date-slot.today{border-color:#0f766e;box-shadow:0 0 0 2px rgba(15,118,110,.09)}
+.mo7-date-slot.today:before{content:"اليوم";font-size:9px;font-weight:800;color:#0f766e}
+[dir="ltr"] .mo7-date-slot.today:before{content:"Today"}
+.mo7-date-slot.occupied{background:#f8fafc}
+.mo7-date-slot.dragover{transform:translateY(-3px);border-color:#0f766e;background:#ecfdf5;box-shadow:0 8px 22px rgba(15,118,110,.18)}
+.mo7-move-hint{margin-top:4px;font-size:11px;color:#64748b}
+.mo7-draggable{cursor:grab;transition:.16s ease}
+.mo7-draggable:active{cursor:grabbing}
+.mo7-draggable.dragging{opacity:.48;transform:scale(.985)}
+.mo7-draggable.picked{outline:2px solid #0f766e;outline-offset:2px}
+.mo7-drag-note,.mo7-locked-note{margin:8px 0;padding:7px 9px;border-radius:10px;font-size:11px;font-weight:700}
+.mo7-drag-note{background:#ecfdf5;color:#0f766e}
+.mo7-locked-note{background:#fff7ed;color:#9a3412}
+.mo-customer-mission-notice .warn,#moCustomerZoneStatus.warn{color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:7px 9px;margin-top:8px;font-weight:700}
+
+@media(max-width:720px){
+  .mo7-schedule-head{display:grid}
+  .mo7-mobile-hint{max-width:none}
+  .mo7-date-slot{min-width:104px}
+}

@@ -64,7 +64,7 @@ const LOGIN_LOCK_MS = 5*60*1000;
 const LOGIN_FAIL_LIMIT = 5;
 const PAGE_SIZE = 1000;
 const ACTIVE_NEW_GOAL_MIN_SALES = 5000;
-const state={session:null,profile:null,customers:[],sales:[],reports:[],profiles:[],goals:[],map:null,markerLayer:null,mapLocations:[],pickerMap:null,pickerMarker:null,securityGateMode:null,mfaFactorId:null,lastActivity:Date.now(),activityCache:new Map(),customerMonthOnly:false};
+const state={session:null,profile:null,customers:[],sales:[],reports:[],profiles:[],goals:[],salesFollowupStates:[],map:null,markerLayer:null,mapLocations:[],pickerMap:null,pickerMarker:null,securityGateMode:null,mfaFactorId:null,lastActivity:Date.now(),activityCache:new Map(),customerMonthOnly:false};
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const fmt=n=>new Intl.NumberFormat(lang==='ar'?'ar-SA':'en-US',{maximumFractionDigits:2}).format(Number(n||0));
@@ -292,7 +292,7 @@ function showLogin(message=''){ hideSecurityGate(); $('login').classList.remove(
 function showApp(){ prepareAppShell(); gotoPage('dashboard'); }
 async function logout(message=''){
   try{ if(sb) await sb.auth.signOut(); }catch(_){}
-  state.session=null;state.profile=null;state.customers=[];state.sales=[];state.reports=[];state.profiles=[];state.goals=[];state.activityCache.clear();state.lastActivity=Date.now();
+  state.session=null;state.profile=null;state.customers=[];state.sales=[];state.reports=[];state.profiles=[];state.goals=[];state.salesFollowupStates=[];state.activityCache.clear();state.lastActivity=Date.now();
   ['customersBody','salesBody','reportsBody','auditBody'].forEach(id=>{const el=$(id);if(el)el.innerHTML='';});
   showLogin(message);
 }
@@ -308,7 +308,7 @@ async function loadPaged(makeQuery,label){
 }
 
 async function refreshAll(){
-  await Promise.all([loadProfiles(),loadCustomers(),loadSales(),loadReports(),loadGoals()]);
+  await Promise.all([loadProfiles(),loadCustomers(),loadSales(),loadReports(),loadGoals(),loadDashboardFollowups()]);
   state.activityCache.clear(); renderAll();
 }
 async function loadProfiles(){const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name');state.profiles=error?[]:(data||[]);}
@@ -319,6 +319,14 @@ async function loadCustomers(){
 async function loadSales(){state.sales=await loadPaged((x,y)=>sb.from('sales').select('id,customer_id,product,quantity,amount,order_ref,business_date,created_at,rep_id,customer:customers(name),rep:profiles!sales_rep_id_fkey(full_name)').order('business_date',{ascending:false}).order('created_at',{ascending:false}).range(x,y),lang==='ar'?'السحوبات':'sales');}
 async function loadReports(){state.reports=await loadPaged((x,y)=>sb.from('reports').select('id,customer_id,report_type,action_code,note,old_status,new_status,audio_path,audio_duration_seconds,created_at,business_date,rep_id,customer:customers(name,status),rep:profiles!reports_rep_id_fkey(full_name)').order('created_at',{ascending:false}).range(x,y),lang==='ar'?'المتابعات':'follow-ups');}
 async function loadGoals(){const {data,error}=await sb.from('performance_goals').select('id,scope_type,rep_id,goal_type,product_code,monthly_target,updated_at').order('scope_type').order('rep_id').order('goal_type').order('product_code');state.goals=error?[]:(data||[]);}
+async function loadDashboardFollowups(){
+  const {data,error}=await sb.from('sales_followup_state').select('customer_id,next_due_at,updated_at');
+  if(error){
+    console.error('dashboard followups',error);
+    return;
+  }
+  state.salesFollowupStates=data||[];
+}
 
 function activityForCustomer(cid){
  cid=Number(cid);if(state.activityCache.has(cid))return state.activityCache.get(cid);
@@ -406,6 +414,29 @@ async function saveInactiveVisit(id){
    if(btn){btn.disabled=false;btn.textContent=t('save');}
  }
 }
+function renderTodayFollowupsDashboard(){
+ const box=$('todayFollowupList'),count=$('todayFollowupCount'),sub=$('todayFollowupSub');if(!box)return;
+ const today=todayRiyadh(),repId=state.profile?.id;
+ const customerById=new Map(state.customers.map(c=>[Number(c.id),c]));
+ const rows=state.salesFollowupStates.map(fs=>({fs,c:customerById.get(Number(fs.customer_id))}))
+   .filter(x=>x.c&&['hesitant','rejected'].includes(x.c.status)&&x.fs.next_due_at)
+   .filter(x=>dateKeyRiyadh(x.fs.next_due_at)<=today)
+   .filter(x=>canManage()||x.c.assigned_rep===repId)
+   .sort((a,b)=>new Date(a.fs.next_due_at)-new Date(b.fs.next_due_at));
+ if(count)count.textContent=String(rows.length);
+ if(sub)sub.textContent=rows.length
+   ?(lang==='ar'?'تشمل متابعات اليوم وأي متابعة متأخرة لم تُسجل بعد.':'Includes today\'s follow-ups and any overdue follow-up not yet recorded.')
+   :(lang==='ar'?'لا توجد متابعات مطلوبة أو متأخرة حالياً.':'No due or overdue follow-ups right now.');
+ box.innerHTML=rows.length?rows.map(x=>{
+   const c=x.c,due=dateKeyRiyadh(x.fs.next_due_at),late=due<today;
+   return `<button type="button" class="today-followup-item" data-dashboard-sales-followup="${c.id}">
+     <span class="today-followup-main"><b>${esc(c.name)}</b><span>${badgeStatus(c.status)}</span></span>
+     <span class="today-followup-meta">${canManage()?'<small>'+esc(c.rep?.full_name||'-')+'</small>':''}<small>${late?(lang==='ar'?'متأخرة منذ: ':'Overdue since: '):(lang==='ar'?'موعد اليوم: ':'Due today: ')}${dateTime(x.fs.next_due_at)}</small></span>
+     <span class="today-followup-action">${lang==='ar'?'تسجيل متابعة':'Record'}</span>
+   </button>`;
+ }).join(''):`<div class="attention-empty">${lang==='ar'?'لا توجد متابعات مطلوبة أو متأخرة حالياً.':'No due or overdue follow-ups right now.'}</div>`;
+}
+
 function renderDashboard(){
  $('dashboard')?.classList.toggle('rep-dashboard',!canManage());
  const dashboardConfig=canManage()?[['customers',t('totalCustomers')],['sales-month',t('salesThisMonth')],['active',t('activeCustomers')],['hesitant',t('hesitantCustomers')],['rejected',t('rejectedCustomers')]]:[['sales-day',lang==='ar'?'سحوبات اليوم':'Sales Today'],['sales-month',t('salesThisMonth')],['active',t('activeCustomers')],['hesitant',t('hesitantCustomers')],['rejected',t('rejectedCustomers')]];
@@ -427,6 +458,7 @@ function renderDashboard(){
  if($('attentionSub'))$('attentionSub').textContent=lang==='ar'?(attention.length?'هذه طلبات تدخل إدارة مفتوحة فقط.':'لا توجد حالات مفتوحة تحتاج تدخل الإدارة.'):(attention.length?'Only open management-intervention requests are shown.':'No open management-intervention cases.');
  $('attentionList').innerHTML=attention.length?attention.slice(0,8).map(r=>`<button type="button" class="attention-item" data-attention-customer="${r.customer_id}"><span class="attention-main"><b>${esc(r.customer?.name||'-')}</b><span>${esc(r.note||(r.audio_path?(lang==='ar'?'تقرير صوتي':'Voice report'):''))}</span></span><span class="attention-meta">${esc(r.rep?.full_name||'-')}<small>${dateTime(r.created_at)}</small></span><span class="attention-open">${lang==='ar'?'فتح العميل':'Open'}</span></button>`).join(''):`<div class="attention-empty">${lang==='ar'?'لا توجد حالات تحتاج تدخل الإدارة حالياً.':'No cases need management intervention right now.'}</div>`;
  renderDormantDashboard();
+ renderTodayFollowupsDashboard();
  const reps=canManage()?state.profiles.filter(p=>p.role==='rep'):[state.profile];
  const repDailyRows=reps.map(p=>{
    const newToday=state.customers.filter(c=>c.assigned_rep===p.id&&dateKeyRiyadh(c.created_at)===today);
@@ -1277,6 +1309,8 @@ function setCustomerLocation(lat,lng,zoom=true){const x=Number(lat),y=Number(lng
 function initCustomerPickerMap(){const el=$('customerPickerMap');if(!el||!window.L)return;if(state.pickerMap){try{state.pickerMap.remove()}catch(_){}}state.pickerMap=L.map(el,{zoomControl:true}).setView([24.7136,46.6753],11);addBaseMap(state.pickerMap);state.pickerMap.on('click',e=>setCustomerLocation(e.latlng.lat,e.latlng.lng,false));setTimeout(()=>state.pickerMap?.invalidateSize(),100);}
 function captureLocation(){if(!navigator.geolocation)return flash(lang==='ar'?'المتصفح لا يدعم تحديد الموقع':'Location is not supported',true);const btn=$('gpsBtn');if(btn)btn.disabled=true;navigator.geolocation.getCurrentPosition(pos=>{setCustomerLocation(pos.coords.latitude,pos.coords.longitude,true);if(btn)btn.disabled=false;},()=>{flash(lang==='ar'?'تعذر الحصول على الموقع. اختره يدوياً.':'Could not get location. Choose it manually.',true);if(btn)btn.disabled=false;},{enableHighAccuracy:true,timeout:15000,maximumAge:0});}
 async function createCustomer(){
+ const saveBtn=$('saveCustomerBtn');
+ if(saveBtn?.dataset.saving==='1')return;
  const name=$('fName').value.trim(),customerType=$('fCustomerType')?.value||'',area=$('fArea').value.trim(),phone=$('fPhone').value.trim(),status=$('fStatus').value,lat=$('fLat').value,lng=$('fLng').value,reason=$('fInitialReason')?.value.trim()||'';
  if(!name)return flash(lang==='ar'?'اسم العميل مطلوب':'Customer name is required',true);
  if(!['shop','factory','project'].includes(customerType))return flash(lang==='ar'?'حدد نوع العميل: محل أو مصنع أو مشروع.':'Select customer type: Shop, Factory, or Project.',true);
@@ -1285,6 +1319,8 @@ async function createCustomer(){
  if((status==='hesitant'||status==='rejected')&&reason.length<5)return flash(lang==='ar'?(status==='hesitant'?'اكتب سبب تردد العميل':'اكتب سبب رفض العميل'):(status==='hesitant'?'Enter the reason for hesitation':'Enter the reason for rejection'),true);
  if(!lat||!lng)return flash(lang==='ar'?'حدد موقع العميل':'Select customer location',true);
  let error=null;
+ if(saveBtn){saveBtn.dataset.saving='1';saveBtn.disabled=true;saveBtn.textContent=lang==='ar'?'جاري الحفظ...':'Saving...';}
+ try{
  if(status==='active'){
    const saleDate=$('fSaleDate')?.value||'',product=$('fSaleProduct')?.value||'',qty=Number($('fSaleQty')?.value||0),amount=Number($('fSaleAmount')?.value||0);
    if(!saleDate)return flash(lang==='ar'?'اختر تاريخ الطلبية الأولى.':'Choose the first order date.',true);
@@ -1307,9 +1343,17 @@ async function createCustomer(){
      customer_outside_market_mission:lang==='ar'?'موقع العميل خارج منطقة مهمة فتح السوق المحددة لك.':'Customer location is outside your assigned market-opening zone.'
    };
    const msg=error.message==='active customer requires initial sale'?(lang==='ar'?'لا يمكن تسجيل العميل نشط بدون طلبية.':'Active customer requires an order.'):(missionErrors[error.message]||error.message);
-   return flash((lang==='ar'?'تعذر إضافة العميل: ':'Could not add customer: ')+msg,true);
+   flash((lang==='ar'?'تعذر إضافة العميل: ':'Could not add customer: ')+msg,true);
+   return;
  }
  closeModal();flash(lang==='ar'?(status==='active'?'تمت إضافة العميل والطلبية الأولى':'تمت إضافة العميل'):(status==='active'?'Customer and first order saved':'Customer added'));await refreshAll();
+ }finally{
+   if(saveBtn&&document.body.contains(saveBtn)){
+     saveBtn.dataset.saving='0';
+     saveBtn.disabled=false;
+     saveBtn.textContent=t('save');
+   }
+ }
 }
 
 function openCustomerEditor(id){if(!canManage())return;const c=state.customers.find(x=>Number(x.id)===Number(id));if(!c)return;const adminStatus=isAdmin()?`<div class="full"><div class="notice" style="margin-bottom:8px"><b>${lang==='ar'?'تعديل الحالة - إدارة':'Admin status correction'}</b><br>${lang==='ar'?'الحالة الحالية: ':'Current status: '}${esc(statusLabel(c.status))}. ${lang==='ar'?'اختيار «نشط» غير مسموح إذا ما عند العميل طلبية.':'Active cannot be selected unless the customer has an order.'}</div><label>${lang==='ar'?'تعديل الحالة (اختياري)':'Change status (optional)'}</label><select id="ecStatus"><option value="">${lang==='ar'?'بدون تغيير الحالة...':'No status change...'}</option>${CHANGE_STATUS_KEYS.filter(k=>k!==c.status).map(k=>`<option value="${k}">${t(k)}</option>`).join('')}</select></div>`:'';openModal(lang==='ar'?'تعديل العميل':'Edit Customer',`<div class="form-grid"><div><label>${t('customer')}</label><input id="ecName" value="${esc(c.name)}"></div><div><label>${t('customerType')}</label><select id="ecCustomerType"><option value="" ${!c.customer_type?'selected':''}>${t('notSet')}</option><option value="shop" ${c.customer_type==='shop'?'selected':''}>${t('shop')}</option><option value="factory" ${c.customer_type==='factory'?'selected':''}>${t('factory')}</option><option value="project" ${c.customer_type==='project'?'selected':''}>${t('project')}</option></select></div><div><label>${t('area')}</label><input id="ecArea" value="${esc(c.area||'')}"></div><div><label>${t('phone')}</label><input id="ecPhone" value="${esc(c.phone||'')}"></div><div><label>${t('representative')}</label><select id="ecRep">${repOptions(c.assigned_rep)}</select></div>${adminStatus}<div class="full"><button class="btn" id="saveCustomerEditBtn" data-id="${c.id}">${t('save')}</button></div></div>`);}
@@ -1748,19 +1792,7 @@ $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});$('salesFollowupsBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-delete-report]');if(b)deleteReport(Number(b.dataset.deleteReport));});
 $('dashboard')?.addEventListener('click',e=>{let el;
-if((el=e.target.closest('.priority-toggle'))){
-  const card=el.closest('.priority-collapsible');
-  const targetId=el.dataset.priorityTarget||'';
-  const list=(targetId&&document.getElementById(targetId))||card?.querySelector('.priority-list');
-  if(card&&list){
-    const opening=el.getAttribute('aria-expanded')!=='true';
-    el.setAttribute('aria-expanded',opening?'true':'false');
-    card.classList.toggle('expanded',opening);
-    list.classList.toggle('hidden',!opening);
-    list.style.setProperty('display',opening?'grid':'none','important');
-  }
-  return;
-}
+if((el=e.target.closest('[data-dashboard-sales-followup]'))){openSalesFollowupForm(Number(el.dataset.dashboardSalesFollowup));return;}
 if((el=e.target.closest('[data-dormant-customer]'))){openDormantCustomer(Number(el.dataset.dormantCustomer));return;}if((el=e.target.closest('[data-attention-customer]'))){openCustomer(Number(el.dataset.attentionCustomer));return;}if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','inactive','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);
    if(kind==='total_sales'){

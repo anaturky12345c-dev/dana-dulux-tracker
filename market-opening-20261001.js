@@ -57,7 +57,8 @@
     loadSeq:0,
     lastLoadedAt:0,
     bulkSelectMode:false,
-    selectedMissionIds:new Set()
+    selectedMissionIds:new Set(),
+    customerFormMode:'normal'
   };
 
   const ar=()=>app.getLang()==='ar';
@@ -495,7 +496,7 @@
   function repHtml(preview=false){
     const m=missionForToday(),over=overdueForRep(),next=nextForRep();
     const active=m||over;
-    const previewBanner=preview?'<div class="mo5-preview-banner"><div><b>'+tx('معاينة تجربة المندوب','Representative experience preview')+'</b><span>'+tx('هذه المعاينة لا تنفذ أي إجراء فعلي. الصفحة ما زالت مخفية عن المناديب.','This preview cannot perform real actions. The page is still hidden from representatives.')+'</span></div><button class="btn secondary mini" type="button" data-mo-exit-preview="1">'+tx('رجوع للإدارة','Back to management')+'</button></div>':'';
+    const previewBanner=preview?'<div class="mo5-preview-banner"><div><b>'+tx('معاينة تجربة المندوب','Representative experience preview')+'</b><span>'+tx('هذه المعاينة لا تنفذ أي إجراء فعلي. النظام الفعلي متاح للمناديب حسب خططهم المعتمدة.','This preview cannot perform real actions. The live system is available to representatives based on their assigned plans.')+'</span></div><button class="btn secondary mini" type="button" data-mo-exit-preview="1">'+tx('رجوع للإدارة','Back to management')+'</button></div>':'';
     if(!active){
       return '<div class="mo5-shell mo5-rep">'+previewBanner+
         '<section class="mo5-empty"><div class="mo5-empty-icon">✓</div><div><h2>'+tx('ما عندك مهمة الآن','No active mission right now')+'</h2><p>'+tx('إذا ما عندك مهمة اليوم، ما تحتاج تسوي شيء. المنطقة القادمة تظهر لك تلقائيًا بعد اعتماد الإدارة.','If you have no mission today, there is nothing to do. Your next approved area appears automatically.')+'</p>'+(next?'<div class="mo5-next">'+tx('المهمة القادمة','Next mission')+': <b>'+safe(next.area_name)+'</b> · '+safe(fmtDate(next.scheduled_date))+'</div>':'')+'</div></section>'+
@@ -510,7 +511,7 @@
       ?'<button class="mo5-step-action primary" type="button" '+(preview?'':('data-mo-start="'+safe(active.id)+'"'))+disabled+'>'+tx('ابدأ المهمة','Start mission')+'</button>'
       :'<span class="mo5-step-done">'+tx('المهمة بدأت','Mission started')+'</span>';
     const actionCustomer=!isOver
-      ?'<button class="mo5-step-action success" type="button" '+(preview?'':'data-mo-add-customer="1"')+disabled+'>'+tx('سجل عميل جديد','Register new customer')+'</button>'
+      ?'<button class="mo5-step-action success" type="button" '+(preview?'':'data-mo-add-customer="1"')+disabled+'>'+tx('إضافة عميل من المهمة','Add customer from mission')+'</button>'
       :'<span class="mo5-step-note">'+tx('انقل الموعد أولًا قبل تسجيل عملاء','Reschedule first before registering customers')+'</span>';
     const actionDelay=pending
       ?'<span class="mo5-step-wait">'+tx('طلب التأجيل تحت المراجعة','Reschedule request pending')+' · '+safe(fmtDate(pending.requested_date))+'</span>'
@@ -522,7 +523,7 @@
         '<div class="mo5-progress-summary"><strong>'+n(done)+' <small>/ '+n(active.target_customers)+'</small></strong><span>'+tx('عميل مسجل','customers registered')+'</span><div class="mo-progress"><i style="width:'+pct(active)+'%"></i></div><b>'+n(left)+' '+tx('متبقي','remaining')+'</b></div></section>'+
       '<section class="mo5-rep-steps"><div class="mo5-section-head"><div><span>'+tx('نفّذها بهذا الترتيب','Follow these steps in order')+'</span><h3>'+tx('ثلاث خطوات فقط','Only three steps')+'</h3></div></div>'+
         '<article><em>1</em><div><b>'+tx('ابدأ المهمة','Start the mission')+'</b><span>'+tx('اضغط مرة واحدة عند وصولك للمنطقة.','Tap once when you reach the assigned area.')+'</span></div>'+actionStart+'</article>'+
-        '<article><em>2</em><div><b>'+tx('سجل العملاء الجدد','Register new customers')+'</b><span>'+tx('كل عميل تسجله داخل المنطقة يدخل تلقائيًا في تقدم المهمة.','Every new customer registered inside the zone counts automatically.')+'</span></div>'+actionCustomer+'</article>'+
+        '<article><em>2</em><div><b>'+tx('سجل العملاء الجدد','Register new customers')+'</b><span>'+tx('تقدر تضيف العميل من هنا أو بالطريقة القديمة من صفحة العملاء. إذا كان داخل منطقة المهمة، ينحسب تلقائيًا في التقدم بالطريقتين.','You can add the customer here or through the existing Customers page. If the customer is inside the mission area, it counts automatically either way.')+'</span></div>'+actionCustomer+'</article>'+
         '<article><em>3</em><div><b>'+tx('إذا ما قدرت تروح','If you cannot go')+'</b><span>'+tx('أرسل طلب تأجيل. الموعد لا يتغير إلا بعد موافقة الإدارة.','Send a reschedule request. The date changes only after management approval.')+'</span></div>'+actionDelay+'</article>'+
       '</section>'+
       '<section class="mo5-mini-stats"><div><span>'+tx('نشط','Active')+'</span><b>'+n(b.active)+'</b></div><div><span>'+tx('متفق','Agreed')+'</span><b>'+n(b.agreed_pending)+'</b></div><div><span>'+tx('متردد','Hesitant')+'</span><b>'+n(b.hesitant)+'</b></div><div><span>'+tx('رافض','Rejected')+'</span><b>'+n(b.rejected)+'</b></div></section>'+
@@ -565,8 +566,12 @@
 
     const requestPanel=pendingRequests.length?'<section class="mo5-requests"><div class="mo5-section-head"><div><span>'+tx('تحتاج قرارك','Needs your decision')+'</span><h3>'+tx('طلبات تأجيل معلقة','Pending reschedule requests')+'</h3></div><strong>'+n(pendingRequests.length)+'</strong></div><div class="mo4-request-grid">'+pendingRequests.map(r=>{const m=mo.missions.find(x=>x.id===r.mission_id);return '<article class="mo4-request-card"><div><span>'+safe(m?repName(m.rep_id):repName(r.requested_by))+'</span><h4>'+safe(m?.area_name||'-')+'</h4><p>'+safe(fmtDate(m?.scheduled_date))+' → <b>'+safe(fmtDate(r.requested_date))+'</b></p><small>'+safe(r.reason)+'</small></div><div><button class="btn good mini" type="button" data-mo-request-approve="'+safe(r.id)+'">'+tx('موافقة','Approve')+'</button><button class="btn bad mini" type="button" data-mo-request-reject="'+safe(r.id)+'">'+tx('رفض','Reject')+'</button></div></article>';}).join('')+'</div></section>':'';
 
+    const accessLive=!!mo.settings?.rep_access_enabled;
+    const accessBanner=accessLive
+      ?'<div class="mo5-pilot-banner mo5-live-banner"><div><b>✓ '+tx('النظام مفعل للمناديب','System live for representatives')+'</b><span>'+tx('كل مندوب يشوف خطته، ويقدر يضيف العميل من المهمة أو بالطريقة القديمة من صفحة العملاء.','Each representative can see their plan and add customers either from the mission or through the existing Customers page.')+'</span></div><span class="mo5-lock-state">'+tx('وصول المناديب: مفتوح','Rep access: live')+'</span></div>'
+      :'<div class="mo5-pilot-banner"><div><b>🔒 '+tx('نسخة تجريبية داخلية','Internal pilot')+'</b><span>'+tx('صفحة فتح السوق مخفية عن المناديب حاليًا.','Market Opening is currently hidden from representatives.')+'</span></div><span class="mo5-lock-state">'+tx('وصول المناديب: مغلق','Rep access: locked')+'</span></div>';
     return '<div class="mo5-shell mo5-management">'+
-      '<div class="mo5-pilot-banner"><div><b>🔒 '+tx('نسخة تجريبية داخلية','Internal pilot')+'</b><span>'+tx('صفحة فتح السوق مخفية عن المناديب حاليًا. لن تظهر لهم حتى تعتمدها أنت.','Market Opening is currently hidden from representatives. They will not see it until you approve launch.')+'</span></div><span class="mo5-lock-state">'+tx('وصول المناديب: مغلق','Rep access: locked')+'</span></div>'+
+      accessBanner+
       '<section class="mo5-admin-hero"><div><span class="mo5-kicker">'+tx('إدارة فتح السوق','Market Opening')+'</span><h1>'+tx('خطط المناطق وتابع التنفيذ من مكان واحد','Plan territories and track execution in one place')+'</h1><p>'+tx('وزّع أحياء الرياض، راجع الطلبات، وعدّل أي خطة بدون ما تضيع بياناتها السابقة.','Assign Riyadh districts, review requests, and edit any plan without losing its history.')+'</p></div>'+
         '<div class="mo5-hero-metrics"><div><strong>'+n(dateRows.length)+'</strong><span>'+tx('مهام اليوم المحدد','missions on selected day')+'</span></div><div><strong>'+n(done)+' / '+n(target)+'</strong><span>'+tx('التقدم','progress')+'</span></div><div><strong>'+n(totalLive)+'</strong><span>'+tx('مهام قادمة/جارية','upcoming/in progress')+'</span></div></div></section>'+
       '<section class="mo5-primary-actions">'+
@@ -1042,7 +1047,7 @@
       b=e.target.closest('[data-mo-rep-plans]');if(b){openRepPlans(b.dataset.moRepPlans);return;}
       b=e.target.closest('[data-mo-history]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moHistory);if(m)await openMissionHistory(m);return;}
       b=e.target.closest('[data-mo-start]');if(b){await startMission(b.dataset.moStart);return;}
-      b=e.target.closest('[data-mo-add-customer]');if(b){openCustomerForm();return;}
+      b=e.target.closest('[data-mo-add-customer]');if(b){mo.customerFormMode='mission';openCustomerForm();return;}
       b=e.target.closest('[data-mo-map]');if(b){mo.selectedMissionId=b.dataset.moMap;const m=mo.missions.find(x=>x.id===mo.selectedMissionId);if(m)renderMissionMap(m);return;}
       b=e.target.closest('[data-mo-map-fit]');if(b){if(mo.map&&mo.activeBounds?.isValid?.())mo.map.fitBounds(mo.activeBounds,{padding:[24,24]});return;}
       b=e.target.closest('[data-mo-map-full]');if(b){toggleMissionMapFullscreen();return;}
@@ -1874,7 +1879,9 @@
   }
 
   function attachCustomerForm(){
-    if(!isRepUser()||!mo.settings?.enabled||!mo.settings?.strict_rep_customer_creation)return;
+    const missionMode=mo.customerFormMode==='mission';
+    mo.customerFormMode='normal';
+    if(!missionMode||!isRepUser()||!mo.settings?.enabled||!mo.settings?.rep_access_enabled)return;
     const form=document.querySelector('#modalContent .form-grid');
     if(!form)return;
     const existing=document.getElementById('moCustomerMissionNotice');if(existing)existing.remove();
@@ -1912,7 +1919,7 @@
   }
 
   function customerLocationChanged(lat,lng){
-    if(!isRepUser()||!mo.settings?.enabled||!mo.settings?.strict_rep_customer_creation)return;
+    if(!isRepUser()||!mo.settings?.enabled||!mo.settings?.rep_access_enabled||!document.getElementById('moCustomerMissionNotice'))return;
     const list=missionsForToday(),save=document.getElementById('saveCustomerBtn'),box=document.getElementById('moCustomerZoneStatus');
     if(!list.length){
       if(save)save.disabled=false;

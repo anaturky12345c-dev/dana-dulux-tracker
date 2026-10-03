@@ -381,10 +381,10 @@ function goalProgress(goal,achieved,isMoney=true){
 
 
 function inactiveVisitForCustomer(c){
- const since=c?.inactive_since?new Date(c.inactive_since).getTime():0;
+ const since=parseDateValue(c?.inactive_since)?.date?.getTime()||0;
  return state.reports
-   .filter(r=>Number(r.customer_id)===Number(c?.id)&&r.action_code==='inactive_visit'&&new Date(r.created_at||0).getTime()>=since)
-   .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null;
+   .filter(r=>Number(r.customer_id)===Number(c?.id)&&r.action_code==='inactive_visit'&&(parseDateValue(r.created_at)?.date?.getTime()||0)>=since)
+   .sort((a,b)=>(parseDateValue(b.created_at)?.date?.getTime()||0)-(parseDateValue(a.created_at)?.date?.getTime()||0))[0]||null;
 }
 function dormantRows(){
  const repId=state.profile?.id;
@@ -398,8 +398,8 @@ function renderDormantDashboard(){
  const rows=dormantRows();
  if(count)count.textContent=String(rows.length);
  if(sub)sub.textContent=lang==='ar'
-   ?(rows.length?'القائمة ظاهرة مباشرة. اضغط على أي عميل لتسجيل زيارة أو طلبية.':'لا يوجد عملاء خاملون حالياً.')
-   :(rows.length?'The list is shown directly. Click any customer to record a visit or order.':'No inactive customers right now.');
+   ?(rows.length?'اضغط لفتح القائمة وعرض العملاء الخاملين.':'لا يوجد عملاء خاملون حالياً.')
+   :(rows.length?'Click to open the inactive-customer list.':'No inactive customers right now.');
  if(!box)return;
  box.innerHTML=rows.length?rows.map(c=>{
    try{

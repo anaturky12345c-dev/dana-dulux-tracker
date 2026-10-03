@@ -150,7 +150,7 @@ function applyLanguage(){
  const mf=$('mapFilter');if(mf){mf.options[0].text=lang==='ar'?'كل الحالات':'All Statuses';for(let i=1;i<mf.options.length;i++){const v=mf.options[i].value;mf.options[i].text=v==='frequent'?(lang==='ar'?'سحب متكرر هذا الشهر':'Repeated sale this month'):t(v);}} const mrf=$('mapRepFilter');if(mrf&&mrf.options.length)mrf.options[0].text=t('allReps');const mtf=$('mapTypeFilter');if(mtf){const labs={'':lang==='ar'?'كل أنواع العملاء':'All Customer Types',shop:t('shop'),factory:t('factory'),project:t('project')};for(const o of mtf.options)o.text=labs[o.value]||o.value;}if(typeof setMapText==='function')setMapText();
  const ar=$('analyticsRep');if(ar&&ar.options.length)ar.options[0].text=t('allReps');
 
- heads('customers',[t('customer'),t('customerType'),t('customerAddedAt'),t('lastOrderDate'),t('area'),t('representative'),t('status'),t('salesCountMonth'),t('salesValueMonth'),'']);
+ heads('customers',[t('customer'),t('lastOrderDate'),t('customerType'),t('customerAddedAt'),t('area'),t('representative'),t('status'),t('salesCountMonth'),t('salesValueMonth'),'']);
  heads('sales',[t('date'),t('customer'),t('product'),t('quantity'),t('value'),t('representative'),lang==='ar'?'الإجراءات':'Actions']);
  set('#sfhDate',t('recordedAt'));set('#sfhCustomer',t('customer'));set('#sfhRep',t('representative'));set('#sfhStatus',t('status'));set('#sfhNote',lang==='ar'?'التقرير الصوتي / التفاصيل':'Voice Report / Details');set('#sfhActions',lang==='ar'?'الإجراءات':'Actions');set('#chDate',t('recordedAt'));set('#chCustomer',t('customer'));set('#chRep',t('representative'));set('#chType',lang==='ar'?'النوع':'Type');set('#chDetails',lang==='ar'?'التقرير الصوتي / التفاصيل':'Voice Report / Details');set('#chActions',lang==='ar'?'الإجراءات':'Actions');
  heads('audit',[lang==='ar'?'الوقت':'Time',lang==='ar'?'المستخدم':'User',t('action'),lang==='ar'?'الكيان':'Entity',lang==='ar'?'التفاصيل':'Details']);
@@ -346,7 +346,12 @@ async function loadDashboardFollowups(){
 function activityForCustomer(cid){
  cid=Number(cid);if(state.activityCache.has(cid))return state.activityCache.get(cid);
  const month=monthRiyadh();let monthSalesCount=0,monthSalesValue=0,lastSale=null;
- for(const x of state.sales){if(Number(x.customer_id)!==cid)continue;if(String(x.business_date||'').startsWith(month)){monthSalesCount++;monthSalesValue+=Number(x.amount||0);}if(!lastSale||new Date(x.created_at)>new Date(lastSale.created_at))lastSale=x;}
+ for(const x of state.sales){
+   if(Number(x.customer_id)!==cid)continue;
+   if(String(x.business_date||'').startsWith(month)){monthSalesCount++;monthSalesValue+=Number(x.amount||0);}
+   const xDate=String(x.business_date||''),lastDate=String(lastSale?.business_date||'');
+   if(!lastSale||xDate>lastDate||(xDate===lastDate&&new Date(x.created_at||0)>new Date(lastSale.created_at||0)))lastSale=x;
+ }
  const out={monthSalesCount,monthSalesValue,lastSale};state.activityCache.set(cid,out);return out;
 }
 function customerCategory(c){const x=activityForCustomer(c.id);if(c.status==='inactive')return 'inactive';if(x.monthSalesCount>1)return 'frequent';return c.status||'hesitant';}
@@ -660,7 +665,7 @@ function renderCustomers(){
   return (!f||c.status===f)&&(!repFilter||c.assigned_rep===repFilter)&&periodOk&&searchOk;
  });
  rows=rows.slice().sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
- $('customersBody').innerHTML=rows.length?rows.map(c=>{const ac=activityForCustomer(c.id);const added=c.created_at?dateOnly(dateKeyRiyadh(c.created_at)):'-',lastOrder=ac.lastSale?.business_date?dateOnly(ac.lastSale.business_date):'-';return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.customer_type?t(c.customer_type):t('notSet'))}</td><td>${added}</td><td>${lastOrder}</td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${ac.monthSalesCount}</td><td>${money(ac.monthSalesValue)}</td><td><button class="btn secondary" data-open-customer="${c.id}">${t('view')}</button></td></tr>`}).join(''):`<tr><td colspan="10" class="empty">${t('noData')}</td></tr>`;
+ $('customersBody').innerHTML=rows.length?rows.map(c=>{const ac=activityForCustomer(c.id);const added=c.created_at?dateOnly(dateKeyRiyadh(c.created_at)):'-',lastOrder=ac.lastSale?.business_date?dateOnly(ac.lastSale.business_date):'-';return `<tr><td><b>${esc(c.name)}</b></td><td><b>${lastOrder}</b></td><td>${esc(c.customer_type?t(c.customer_type):t('notSet'))}</td><td>${added}</td><td>${esc(c.area||'-')}</td><td>${esc(c.rep?.full_name||'-')}</td><td>${badgeStatus(c.status)}</td><td>${ac.monthSalesCount}</td><td>${money(ac.monthSalesValue)}</td><td><button class="btn secondary" data-open-customer="${c.id}">${t('view')}</button></td></tr>`}).join(''):`<tr><td colspan="10" class="empty">${t('noData')}</td></tr>`;
 }
 function renderSales(){
  refreshSaleRepFilter();

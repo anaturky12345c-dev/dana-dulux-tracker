@@ -101,6 +101,32 @@
     const t=Math.max(1,Number(m.target_customers||0));
     return Math.min(100,Math.round(progress(m)/t*100));
   }
+  function quickTargetHtml(m){
+    if(!isManagementUser()||!m||['completed','cancelled'].includes(m.status))return '';
+    const done=progress(m),min=Math.max(1,done),target=Math.max(min,Number(m.target_customers||min));
+    return '<div class="mo-quick-target" data-mo-quick-target="'+safe(m.id)+'">'+
+      '<div class="mo-quick-target-copy"><b>'+tx('عدد العملاء المطلوبين','Required customers')+'</b><small>'+tx('تعديل سريع بدون فتح المهمة','Quick edit without opening the mission')+' · '+tx('المنجز','Done')+' '+n(done)+'</small></div>'+
+      '<div class="mo-quick-target-control"><input type="number" inputmode="numeric" min="'+n(min)+'" max="50" step="1" value="'+n(target)+'" data-mo-target-input="'+safe(m.id)+'" aria-label="'+tx('عدد العملاء المطلوبين','Required customers')+'"><button class="btn good mini" type="button" data-mo-target-save="'+safe(m.id)+'">'+tx('حفظ','Save')+'</button></div>'+
+    '</div>';
+  }
+  async function saveQuickMissionTarget(missionId,wrap=null,afterSave=null){
+    if(!isManagementUser())return;
+    const m=mo.missions.find(x=>x.id===missionId);
+    if(!m)return flash(tx('المهمة غير موجودة.','Mission not found.'),true);
+    const host=wrap||document.querySelector('[data-mo-quick-target="'+missionId+'"]');
+    const input=host?.querySelector('[data-mo-target-input]');
+    const btn=host?.querySelector('[data-mo-target-save]');
+    const target=Number(input?.value||0),done=progress(m);
+    if(!Number.isInteger(target)||target<1||target>50)return flash(tx('الهدف يجب أن يكون رقمًا صحيحًا من 1 إلى 50.','Target must be a whole number from 1 to 50.'),true);
+    if(target<done)return flash(tx('لا يمكن جعل المطلوب أقل من العملاء المنجزين: ','Required customers cannot be below completed customers: ')+n(done),true);
+    if(btn){btn.disabled=true;btn.textContent=tx('جاري الحفظ...','Saving...');}
+    const {data,error}=await sb.rpc('admin_update_market_mission_target',{p_mission_id:missionId,p_target_customers:target});
+    if(error){if(btn){btn.disabled=false;btn.textContent=tx('حفظ','Save');}return flash(tx('تعذر تعديل العدد: ','Could not update target: ')+friendlyError(error.message),true);}
+    if(data?.ok===false){if(btn){btn.disabled=false;btn.textContent=tx('حفظ','Save');}return flash(tx('المهمة غير موجودة.','Mission not found.'),true);}
+    flash(data?.changed===false?tx('العدد هو نفسه، ما تغير شيء.','The target is already the same.'):tx('تم تعديل عدد العملاء المطلوبين.','Required customer target updated.'));
+    await loadData(true);
+    if(typeof afterSave==='function')afterSave();
+  }
   function statusText(m){
     if(m.status==='cancelled')return tx('ملغاة','Cancelled');
     if(m.status==='completed')return tx('مكتملة','Completed');
@@ -582,6 +608,7 @@
       return '<article class="mo4-mission-card '+(todayMission?statusClass(todayMission):'empty')+'">'+
         '<div class="mo4-card-top"><div><span>'+tx('المندوب','Representative')+'</span><h4>'+safe(rep.full_name)+'</h4><small>'+tx('قادمة','Upcoming')+' '+n(upcoming)+' · '+tx('مكتملة','Completed')+' '+n(completed)+'</small></div><span class="mo-status-pill">'+(todayMission?tx('خطة اليوم','Today plan'):tx('بدون خطة اليوم','No plan today'))+'</span></div>'+
         todayBlock+
+        (live?quickTargetHtml(todayMission):'')+
         '<div class="mo4-card-actions">'+
           (todayMission?'<button class="btn secondary mini" type="button" data-mo-map="'+safe(todayMission.id)+'">'+tx('عرض في الخريطة','View on map')+'</button>':'')+
           (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(todayMission.id)+'">'+tx('تعديل خطة اليوم','Edit today plan')+'</button>':'')+
@@ -746,6 +773,7 @@
         (canDelete?'<label class="mo6-check" data-mo-rep-check-wrap style="display:none"><input type="checkbox" data-mo-rep-select="'+safe(m.id)+'"><span></span></label>':'')+
         '<div class="mo4-card-top"><div><span>'+safe(fmtDate(m.scheduled_date))+'</span><h4>'+safe(m.area_name)+'</h4><small>'+safe(m.city)+' · '+tx('الهدف','Target')+' '+n(m.target_customers)+' · '+tx('المنجز','Done')+' '+n(progress(m))+'</small></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
         '<div class="mo-progress"><i style="width:'+pct(m)+'%"></i></div>'+
+        (live?quickTargetHtml(m):'')+
         (movable?'<div class="mo7-drag-note">⠿ '+tx('يمكن سحب هذه المنطقة مباشرة إلى أي تاريخ بالأعلى','Drag this area directly to any date above')+'</div>':(live&&progress(m)>0?'<div class="mo7-locked-note">'+tx('هذه المهمة عليها إنجاز عملاء؛ تغيير تاريخها يتم من التعديل الكامل فقط.','This mission has customer progress; change its date through full edit only.')+'</div>':''))+
         '<div class="mo4-card-actions"><button class="btn secondary mini" type="button" data-mo-rep-map="'+safe(m.id)+'">'+tx('عرض في الخريطة','View on map')+'</button><button class="btn secondary mini" type="button" data-mo-rep-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
           (live?'<button class="btn secondary mini" type="button" data-mo-rep-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button>':'')+
@@ -841,6 +869,13 @@
     document.querySelectorAll('[data-mo-rep-delete]').forEach(btn=>btn.onclick=()=>{
       const m=mo.missions.find(x=>x.id===btn.dataset.moRepDelete);if(m)openPermanentDelete(m);
     });
+    document.querySelectorAll('[data-mo-quick-target]').forEach(wrap=>{
+      wrap.addEventListener('pointerdown',e=>e.stopPropagation());
+      wrap.addEventListener('dragstart',e=>e.preventDefault());
+      const input=wrap.querySelector('[data-mo-target-input]'),btn=wrap.querySelector('[data-mo-target-save]');
+      if(btn)btn.onclick=async e=>{e.stopPropagation();await saveQuickMissionTarget(btn.dataset.moTargetSave,wrap,()=>openRepPlans(repId));};
+      if(input)input.onkeydown=async e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();await saveQuickMissionTarget(input.dataset.moTargetInput,wrap,()=>openRepPlans(repId));}};
+    });
 
     if(canDelete){
       let selecting=false;
@@ -895,6 +930,7 @@
         return '<article class="mo6-plan-row '+statusClass(m)+'">'+
           (mo.bulkSelectMode&&canPermanentDelete()?'<label class="mo6-check"><input type="checkbox" data-mo-select-mission="'+safe(m.id)+'" '+(checked?'checked':'')+'><span></span></label>':'')+
           '<div class="mo6-plan-main"><div class="mo6-plan-date">'+safe(fmtDate(m.scheduled_date))+'</div><div><b>'+safe(m.area_name)+'</b><small>'+safe(m.city)+' · '+tx('الهدف','Target')+' '+n(m.target_customers)+' · '+tx('المنجز','Done')+' '+n(progress(m))+'</small></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
+          (live?quickTargetHtml(m):'')+
           '<div class="mo6-plan-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('عرض في الخريطة','View on map')+'</button><button class="btn secondary mini" type="button" data-mo-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
           (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button>':'')+
           (canPermanentDelete()?'<button class="btn bad mini" type="button" data-mo-delete="'+safe(m.id)+'">'+tx('حذف','Delete')+'</button>':'')+
@@ -924,6 +960,7 @@
       '<div class="mo4-card-top"><div><span>'+safe(repName(m.rep_id))+'</span><h4>'+safe(m.area_name)+'</h4><small>'+safe(fmtDate(m.scheduled_date))+(m.reschedule_count?' · '+tx('تأجلت ','Rescheduled ')+n(m.reschedule_count)+'×':'')+'</small></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
       '<div class="mo4-card-progress"><div><b>'+n(done)+'</b><span>/ '+n(m.target_customers)+'</span></div><strong>'+percent+'%</strong></div><div class="mo-progress"><i style="width:'+percent+'%"></i></div>'+
       '<div class="mo4-card-meta"><span>'+tx('متبقي','Remaining')+' <b>'+n(left)+'</b></span><span>'+tx('المنطقة','Zone')+' <b>'+safe(zoneSummary(m))+'</b></span>'+(pending?'<span class="pending">'+tx('طلب تأجيل','Reschedule')+' <b>'+safe(fmtDate(pending.requested_date))+'</b></span>':'')+'</div>'+
+      (live?quickTargetHtml(m):'')+
       '<div class="mo4-card-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('عرض في الخريطة','View on map')+'</button><button class="btn secondary mini" type="button" data-mo-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
       (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(m.id)+'">'+(isOverdue?tx('نقل الموعد','Move date'):tx('تأجيل مباشر','Direct reschedule'))+'</button>':'')+
       (canPermanentDelete()?'<button class="btn bad mini mo4-delete" type="button" data-mo-delete="'+safe(m.id)+'">'+tx('حذف نهائي','Delete permanently')+'</button>':'')+
@@ -1018,7 +1055,12 @@
       b=e.target.closest('[data-mo-select-all]');if(b){const boxes=[...root.querySelectorAll('[data-mo-select-mission]')];const all=boxes.length&&boxes.every(x=>x.checked);boxes.forEach(x=>{x.checked=!all;if(!all)mo.selectedMissionIds.add(x.dataset.moSelectMission);else mo.selectedMissionIds.delete(x.dataset.moSelectMission);});updateBulkSelectionControls();return;}
       b=e.target.closest('[data-mo-delete-selected]');if(b){const ids=[...mo.selectedMissionIds];if(ids.length)openBulkDeleteSelected(ids);return;}
       b=e.target.closest('[data-mo-select-mission]');if(b){if(b.checked)mo.selectedMissionIds.add(b.dataset.moSelectMission);else mo.selectedMissionIds.delete(b.dataset.moSelectMission);updateBulkSelectionControls();return;}
+      b=e.target.closest('[data-mo-target-save]');if(b){await saveQuickMissionTarget(b.dataset.moTargetSave,b.closest('[data-mo-quick-target]'));return;}
       b=e.target.closest('[data-mo-delete]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moDelete);if(m)openPermanentDelete(m);return;}
+    };
+    root.onkeydown=async e=>{
+      const input=e.target.closest?.('[data-mo-target-input]');
+      if(input&&e.key==='Enter'){e.preventDefault();await saveQuickMissionTarget(input.dataset.moTargetInput,input.closest('[data-mo-quick-target]'));}
     };
     const df=document.getElementById('moDateFilter'),rf=document.getElementById('moRepFilter');
     if(df)df.onchange=()=>{mo.selectedMissionId=null;renderPage();};
@@ -1643,8 +1685,8 @@
   }
 
   function eventLabel(k){
-    const a={created:'إنشاء المهمة',started:'بدء المهمة',rescheduled:'تأجيل المهمة',reschedule_requested:'طلب تأجيل',reschedule_rejected:'رفض طلب التأجيل',edited:'تعديل المهمة',customer_counted:'احتساب عميل',completed:'إكمال الهدف',cancelled:'إلغاء قديم',enabled:'تشغيل النظام',disabled:'إيقاف النظام'};
-    const e={created:'Mission created',started:'Mission started',rescheduled:'Mission rescheduled',reschedule_requested:'Reschedule requested',reschedule_rejected:'Reschedule rejected',edited:'Mission edited',customer_counted:'Customer counted',completed:'Target completed',cancelled:'Legacy cancellation',enabled:'System enabled',disabled:'System disabled'};
+    const a={created:'إنشاء المهمة',started:'بدء المهمة',rescheduled:'تأجيل المهمة',reschedule_requested:'طلب تأجيل',reschedule_rejected:'رفض طلب التأجيل',edited:'تعديل المهمة',target_updated:'تعديل عدد العملاء المطلوبين',customer_counted:'احتساب عميل',completed:'إكمال الهدف',cancelled:'إلغاء قديم',enabled:'تشغيل النظام',disabled:'إيقاف النظام'};
+    const e={created:'Mission created',started:'Mission started',rescheduled:'Mission rescheduled',reschedule_requested:'Reschedule requested',reschedule_rejected:'Reschedule rejected',edited:'Mission edited',target_updated:'Required customer target updated',customer_counted:'Customer counted',completed:'Target completed',cancelled:'Legacy cancellation',enabled:'System enabled',disabled:'System disabled'};
     return (ar()?a:e)[k]||k||'-';
   }
 
@@ -1690,6 +1732,7 @@
       'new date cannot be in the past':tx('لا يمكن اختيار تاريخ سابق.','New date cannot be in the past.'),
       'closed mission cannot be rescheduled':tx('المهمة مغلقة ولا يمكن تأجيلها.','Closed mission cannot be rescheduled.'),
       'closed mission cannot be edited':tx('المهمة مغلقة ولا يمكن تعديلها.','Closed mission cannot be edited.'),
+      'invalid target':tx('الهدف يجب أن يكون من 1 إلى 50.','Target must be between 1 and 50.'),
       'target cannot be below achieved customers':tx('لا يمكن جعل الهدف أقل من عدد العملاء المنجزين.','Target cannot be below achieved customers.'),
       'zone cannot change after customer progress':tx('استخدم التعديل الكامل للخطة لتغيير المنطقة.','Use full plan editing to change the zone.'),
       'district polygon required':tx('اختر الحي من الخريطة حتى يتم حفظ حدوده كاملة.','Choose a district on the map so its full boundary is saved.'),

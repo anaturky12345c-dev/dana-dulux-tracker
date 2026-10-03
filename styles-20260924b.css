@@ -4064,20 +4064,6 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo7-date-slot{min-width:104px}
 }
 
-/* Dashboard priority cards — explicit toggle buttons for reliable mobile/desktop opening */
-.priority-collapsible>.priority-toggle{
-  width:100%;
-  border:0;
-  background:transparent;
-  color:inherit;
-  padding:0;
-  text-align:inherit;
-  font:inherit;
-}
-.priority-collapsible.expanded .priority-list{display:grid!important}
-.priority-collapsible:not(.expanded) .priority-list{display:none!important}
-.priority-collapsible.expanded .priority-chevron{transform:rotate(180deg)}
-
 .mo-customer-mission-notice.warn{
   border-color:#fed7aa;
   background:#fff7ed;
@@ -4248,6 +4234,13 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   outline-offset:4px;
   border-radius:10px;
 }
+.dashboard-priority-grid details.dashboard-dormant[open]>.dormant-list,
+.dashboard-priority-grid details.dashboard-followup-today[open]>.today-followup-list{
+  max-height:430px;
+  overflow:auto;
+  padding-inline-end:3px;
+}
+
 
 
 /* Market Opening modal layout hardening — footer always reachable */
@@ -4395,17 +4388,3 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
 }
 
 
-/* Dormant dashboard list — always visible, no collapse */
-.dormant-inline-card{overflow:hidden}
-.dormant-inline-list{
-  display:grid!important;
-  gap:8px;
-  max-height:430px;
-  overflow:auto;
-  padding-inline-end:3px;
-}
-.dormant-inline-list:empty::before{
-  content:"";
-  display:block;
-  min-height:1px;
-}

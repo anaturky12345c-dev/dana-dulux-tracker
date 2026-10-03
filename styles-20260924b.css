@@ -4077,3 +4077,9 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
 .priority-collapsible.expanded .priority-list{display:grid!important}
 .priority-collapsible:not(.expanded) .priority-list{display:none!important}
 .priority-collapsible.expanded .priority-chevron{transform:rotate(180deg)}
+
+.mo-customer-mission-notice.warn{
+  border-color:#fed7aa;
+  background:#fff7ed;
+  color:#9a3412;
+}

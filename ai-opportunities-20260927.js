@@ -583,8 +583,10 @@ function boot(){
     const cityFilter=document.getElementById('aiOppCityFilter');
     if(cityFilter){
       const selected=cityFilter.value||'';
-      const cities=[...new Set(allRows.map(x=>String(x.city||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,ar()?'ar':'en'));
-      cityFilter.innerHTML='<option value="">'+(ar()?'كل المدن':'All cities')+'</option>'+cities.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+      const cityCounts=new Map();
+      for(const x of allRows){const cityName=String(x.city||'').trim();if(cityName)cityCounts.set(cityName,(cityCounts.get(cityName)||0)+1);}
+      const cities=[...cityCounts.keys()].sort((a,b)=>a.localeCompare(b,ar()?'ar':'en'));
+      cityFilter.innerHTML='<option value="">'+(ar()?'كل المدن':'All cities')+' ('+allRows.length+')</option>'+cities.map(c=>'<option value="'+esc(c)+'">'+esc(c)+' ('+cityCounts.get(c)+')</option>').join('');
       cityFilter.value=cities.includes(selected)?selected:'';
     }
     const city=cityFilter?.value||'';

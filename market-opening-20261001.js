@@ -51,7 +51,9 @@
     demoPreview:null,
     loading:false,
     loadSeq:0,
-    lastLoadedAt:0
+    lastLoadedAt:0,
+    bulkSelectMode:false,
+    selectedMissionIds:new Set()
   };
 
   const ar=()=>app.getLang()==='ar';
@@ -545,9 +547,52 @@
       '</section>'+
       (overdue.length?'<section class="mo5-overdue"><div class="mo5-section-head"><div><span>'+tx('تحتاج متابعة','Needs attention')+'</span><h3>'+tx('مهام فات موعدها','Overdue missions')+'</h3></div><strong>'+n(overdue.length)+'</strong></div><div class="mo4-overdue-grid">'+overdue.map(m=>missionCard(m,true)).join('')+'</div></section>':'')+
       '<section class="mo5-missions-board"><div class="mo5-section-head"><div><span>'+tx('المناديب','Representatives')+'</span><h3>'+tx('مهام اليوم المحدد','Missions for selected day')+'</h3></div><span>'+tx('اضغط تعديل لتغيير المندوب أو التاريخ أو المنطقة أو الهدف','Use Edit to change rep, date, area, or target')+'</span></div><div class="mo4-mission-grid">'+boardRows+'</div></section>'+
+      fullPlanListHtml(activeReps,filterRep)+
       '<details class="mo5-map-panel management-map" open><summary><div><b>'+tx('الخريطة التشغيلية','Operations map')+'</b><span id="moSelectedMissionText">'+tx('اختر مهمة من البطاقات لعرض حدودها وعملائها.','Select a mission card to inspect its area and customers.')+'</span></div><span>⌄</span></summary><div class="mo5-map-actions"><span class="badge b-info" id="moMapCount">0</span><button class="btn secondary mini" type="button" data-mo-map-fit="1">'+tx('إظهار كامل المنطقة','Fit area')+'</button><button class="btn secondary mini" type="button" data-mo-map-full="1">'+tx('ملء الشاشة','Full screen')+'</button></div><div id="moIntegrityBox"></div><div id="moCoverageCompass" class="mo-v2-coverage"></div><div id="marketOpeningMap" class="mo-map mo-v2-map mo5-map"></div><div id="moMapLegend" class="mo-map-legend"></div></details>'+
       '<div class="mo5-secondary-actions"><button class="btn secondary mini" type="button" data-mo-disable="1">'+tx('إيقاف نظام فتح السوق','Disable Market Opening system')+'</button></div>'+
     '</div>';
+  }
+
+  function fullPlanListHtml(activeReps,filterRep=''){
+    const reps=filterRep?activeReps.filter(r=>r.id===filterRep):activeReps;
+    const rows=mo.missions
+      .filter(m=>m.status!=='cancelled'&&(!filterRep||m.rep_id===filterRep))
+      .sort((a,b)=>ymd(a.scheduled_date).localeCompare(ymd(b.scheduled_date))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
+    const selectedCount=[...mo.selectedMissionIds].filter(id=>rows.some(m=>m.id===id)).length;
+    const allSelected=rows.length>0&&selectedCount===rows.length;
+    const toolbar=canPermanentDelete()
+      ?'<div class="mo6-plan-toolbar"><button class="btn secondary mini" type="button" data-mo-selection-toggle="1">'+(mo.bulkSelectMode?tx('إلغاء التحديد','Cancel selection'):tx('تحديد','Select'))+'</button>'+
+        (mo.bulkSelectMode?'<button class="btn secondary mini" type="button" id="moSelectAllBtn" data-mo-select-all="1">'+(allSelected?tx('إلغاء تحديد الكل','Clear all'):tx('تحديد الكل','Select all'))+'</button><button class="btn bad mini" type="button" id="moDeleteSelectedBtn" data-mo-delete-selected="1" '+(selectedCount?'':'disabled')+'>'+tx('حذف المحدد','Delete selected')+(selectedCount?' ('+n(selectedCount)+')':'')+'</button>':'')+'</div>'
+      :'';
+    const groups=reps.map(rep=>{
+      const plans=rows.filter(m=>m.rep_id===rep.id);
+      if(!plans.length)return '';
+      return '<div class="mo6-rep-plan-group"><div class="mo6-rep-plan-head"><div><b>'+safe(rep.full_name)+'</b><span>'+n(plans.length)+' '+tx('مهمة','missions')+'</span></div></div><div class="mo6-plan-list">'+plans.map(m=>{
+        const live=!['completed','cancelled'].includes(m.status);
+        const checked=mo.selectedMissionIds.has(m.id);
+        return '<article class="mo6-plan-row '+statusClass(m)+'">'+
+          (mo.bulkSelectMode&&canPermanentDelete()?'<label class="mo6-check"><input type="checkbox" data-mo-select-mission="'+safe(m.id)+'" '+(checked?'checked':'')+'><span></span></label>':'')+
+          '<div class="mo6-plan-main"><div class="mo6-plan-date">'+safe(fmtDate(m.scheduled_date))+'</div><div><b>'+safe(m.area_name)+'</b><small>'+safe(m.city)+' · '+tx('الهدف','Target')+' '+n(m.target_customers)+' · '+tx('المنجز','Done')+' '+n(progress(m))+'</small></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
+          '<div class="mo6-plan-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button><button class="btn secondary mini" type="button" data-mo-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
+          (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button>':'')+
+          (canPermanentDelete()?'<button class="btn bad mini" type="button" data-mo-delete="'+safe(m.id)+'">'+tx('حذف','Delete')+'</button>':'')+
+          '</div></article>';
+      }).join('')+'</div></div>';
+    }).filter(Boolean).join('');
+    return '<section class="mo6-all-plans"><div class="mo5-section-head"><div><span>'+tx('كل الخطط','All plans')+'</span><h3>'+tx('الخطط مرتبة حسب المندوب','Plans grouped by representative')+'</h3><small>'+tx('كل مندوب له قائمته، وتقدر تعدل أو تحذف مهمة منفردة، أو تدخل وضع التحديد لحذف عدة مهام.','Each rep has a separate list. Edit or delete one mission, or use selection mode for several missions.')+'</small></div>'+toolbar+'</div>'+
+      (groups||'<div class="empty">'+tx('لا توجد خطط لعرضها.','No plans to display.')+'</div>')+'</section>';
+  }
+
+  function updateBulkSelectionControls(){
+    const visible=[...document.querySelectorAll('[data-mo-select-mission]')];
+    const selected=visible.filter(x=>x.checked).length;
+    const deleteBtn=document.getElementById('moDeleteSelectedBtn');
+    if(deleteBtn){
+      deleteBtn.disabled=selected===0;
+      deleteBtn.textContent=tx('حذف المحدد','Delete selected')+(selected?' ('+n(selected)+')':'');
+    }
+    const allBtn=document.getElementById('moSelectAllBtn');
+    if(allBtn)allBtn.textContent=visible.length&&selected===visible.length?tx('إلغاء تحديد الكل','Clear all'):tx('تحديد الكل','Select all');
   }
 
   function missionCard(m,isOverdue){
@@ -646,6 +691,10 @@
       b=e.target.closest('[data-mo-request-reschedule]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moRequestReschedule);if(m)openRepRescheduleRequest(m);return;}
       b=e.target.closest('[data-mo-request-approve]');if(b){const r=mo.requests.find(x=>x.id===b.dataset.moRequestApprove);if(r)openRequestReview(r,true);return;}
       b=e.target.closest('[data-mo-request-reject]');if(b){const r=mo.requests.find(x=>x.id===b.dataset.moRequestReject);if(r)openRequestReview(r,false);return;}
+      b=e.target.closest('[data-mo-selection-toggle]');if(b){mo.bulkSelectMode=!mo.bulkSelectMode;mo.selectedMissionIds.clear();renderPage();return;}
+      b=e.target.closest('[data-mo-select-all]');if(b){const boxes=[...root.querySelectorAll('[data-mo-select-mission]')];const all=boxes.length&&boxes.every(x=>x.checked);boxes.forEach(x=>{x.checked=!all;if(!all)mo.selectedMissionIds.add(x.dataset.moSelectMission);else mo.selectedMissionIds.delete(x.dataset.moSelectMission);});updateBulkSelectionControls();return;}
+      b=e.target.closest('[data-mo-delete-selected]');if(b){const ids=[...mo.selectedMissionIds];if(ids.length)openBulkDeleteSelected(ids);return;}
+      b=e.target.closest('[data-mo-select-mission]');if(b){if(b.checked)mo.selectedMissionIds.add(b.dataset.moSelectMission);else mo.selectedMissionIds.delete(b.dataset.moSelectMission);updateBulkSelectionControls();return;}
       b=e.target.closest('[data-mo-delete]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moDelete);if(m)openPermanentDelete(m);return;}
     };
     const df=document.getElementById('moDateFilter'),rf=document.getElementById('moRepFilter');
@@ -1016,6 +1065,33 @@
       if(error)return flash(tx('تعذر تنفيذ القرار: ','Could not review request: ')+friendlyError(error.message),true);
       if(data!==true)return flash(tx('الطلب غير موجود.','Request not found.'),true);
       closeModal();flash(approve?tx('تمت الموافقة ونقل موعد المهمة.','Approved and mission date updated.'):tx('تم رفض طلب التأجيل.','Reschedule request rejected.'));await loadData(true);
+    };
+  }
+
+  function openBulkDeleteSelected(ids){
+    if(!canPermanentDelete())return;
+    const unique=[...new Set((ids||[]).filter(id=>mo.missions.some(m=>m.id===id)))];
+    if(!unique.length)return;
+    const rows=unique.map(id=>mo.missions.find(m=>m.id===id)).filter(Boolean);
+    const preview=rows.slice(0,8).map(m=>'<li><b>'+safe(repName(m.rep_id))+'</b> · '+safe(m.area_name)+' · '+safe(fmtDate(m.scheduled_date))+'</li>').join('');
+    openModal(tx('حذف المهام المحددة','Delete Selected Missions'),
+      '<div class="form-grid mo4-delete-modal"><div class="full danger-note"><b>'+tx('سيتم حذف ','You are about to permanently delete ')+n(rows.length)+tx(' مهمة محددة نهائيًا.',' selected mission(s).')+'</b><br>'+tx('سيتم حذف سجلات مهام فتح السوق المرتبطة بها، لكن العملاء أنفسهم لن يُحذفوا من قائمة العملاء. لا يمكن التراجع.','Related Market Opening mission records will be deleted, but customer records themselves will remain. This cannot be undone.')+'</div>'+
+      '<div class="full mo6-delete-preview"><ul>'+preview+(rows.length>8?'<li>… +'+n(rows.length-8)+'</li>':'')+'</ul></div>'+
+      '<div class="full"><label>'+tx('اكتب كلمة حذف للتأكيد','Type حذف to confirm')+'</label><input id="moBulkDeleteConfirm" autocomplete="off" placeholder="حذف"></div><div class="full"><button class="btn bad" id="moBulkDeleteSave" type="button" disabled>'+tx('حذف المهام المحددة','Delete selected missions')+'</button></div></div>');
+    const input=document.getElementById('moBulkDeleteConfirm'),btn=document.getElementById('moBulkDeleteSave');
+    input.oninput=()=>{btn.disabled=input.value.trim()!=='حذف';};
+    btn.onclick=async()=>{
+      if(input.value.trim()!=='حذف')return;
+      btn.disabled=true;
+      const {data,error}=await sb.rpc('admin_delete_market_missions_permanently',{p_mission_ids:unique,p_confirmation:'DELETE_SELECTED'});
+      btn.disabled=false;
+      if(error)return flash(tx('تعذر حذف المهام المحددة: ','Could not delete selected missions: ')+friendlyError(error.message),true);
+      closeModal();
+      mo.selectedMissionIds.clear();
+      mo.bulkSelectMode=false;
+      mo.selectedMissionId=null;
+      flash(tx('تم حذف ','Deleted ')+n(Number(data||0))+tx(' مهمة محددة نهائيًا.',' selected mission(s) permanently.'));
+      await loadData(true);
     };
   }
 

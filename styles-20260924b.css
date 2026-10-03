@@ -4362,3 +4362,34 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
     min-height:44px;
   }
 }
+
+
+/* Dormant customers — dedicated modal launcher, no collapse dependency */
+.dormant-launch-card{padding:0;overflow:hidden}
+.dormant-launch-btn{
+  width:100%;
+  border:0;
+  background:transparent;
+  color:inherit;
+  padding:16px;
+  text-align:inherit;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.dormant-launch-btn:hover{background:#fafafa}
+.dormant-launch-btn:disabled{cursor:default;opacity:.65}
+.dormant-launch-open{
+  font-size:11px;
+  font-weight:800;
+  color:#6d28d9;
+  white-space:nowrap;
+}
+.dormant-modal-list{display:grid;gap:8px;max-height:68vh;overflow:auto;padding:2px}
+.dormant-modal-item{width:100%;text-align:inherit}
+@media(max-width:700px){
+  .dormant-launch-btn{padding:13px}
+  .dormant-launch-open{font-size:10px}
+  .dormant-modal-list{max-height:72vh}
+}

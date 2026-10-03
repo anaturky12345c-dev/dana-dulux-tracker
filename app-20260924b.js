@@ -70,10 +70,16 @@ const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const fmt=n=>new Intl.NumberFormat(lang==='ar'?'ar-SA':'en-US',{maximumFractionDigits:2}).format(Number(n||0));
 const money=n=>lang==='ar'?fmt(n)+' ر.س':'SAR '+fmt(n);
 const parseDateValue=v=>{
- const s=String(v??'').trim();if(!s)return null;
+ let s=String(v??'').trim();if(!s)return null;
  const dateOnlyValue=/^\d{4}-\d{2}-\d{2}$/.test(s);
- const normalized=dateOnlyValue?s+'T00:00:00Z':s.replace(/^(\d{4}-\d{2}-\d{2})\s/,'$1T');
- const d=new Date(normalized);
+ if(dateOnlyValue)s+='T00:00:00Z';
+ else{
+   s=s.replace(/^(\d{4}-\d{2}-\d{2})\s/,'$1T');
+   s=s.replace(/(\.\d{3})\d+(?=(?:Z|[+-]\d{2}(?::?\d{2})?)?$)/,'$1');
+   s=s.replace(/([+-]\d{2})(\d{2})$/,'$1:$2');
+   s=s.replace(/([+-]\d{2})$/,'$1:00');
+ }
+ const d=new Date(s);
  return Number.isNaN(d.getTime())?null:{date:d,dateOnly:dateOnlyValue};
 };
 const dateTime=iso=>{const p=parseDateValue(iso);return p?new Intl.DateTimeFormat(lang==='ar'?'ar-SA':'en-GB',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Riyadh'}).format(p.date):'-';};

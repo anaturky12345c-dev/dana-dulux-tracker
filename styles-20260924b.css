@@ -4226,3 +4226,25 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo8-map-panel{position:relative;top:auto}
   .mo8-drag-map{height:300px}
 }
+
+
+/* Dashboard priority cards — authoritative native details behavior */
+.dashboard-priority-grid details.priority-collapsible>summary.priority-summary{
+  list-style:none;
+  width:100%;
+  cursor:pointer;
+  user-select:none;
+}
+.dashboard-priority-grid details.priority-collapsible>summary.priority-summary::-webkit-details-marker{display:none}
+.dashboard-priority-grid details.priority-collapsible:not([open])>.priority-list{display:none!important}
+.dashboard-priority-grid details.priority-collapsible[open]>.priority-list{
+  display:grid!important;
+  gap:8px;
+  margin-top:10px;
+}
+.dashboard-priority-grid details.priority-collapsible[open] .priority-chevron{transform:rotate(180deg)}
+.dashboard-priority-grid details.priority-collapsible>summary.priority-summary:focus-visible{
+  outline:2px solid #2563eb;
+  outline-offset:4px;
+  border-radius:10px;
+}

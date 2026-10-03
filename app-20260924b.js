@@ -346,7 +346,6 @@ function safeRender(name,fn){
  }
 }
 function renderAll(){
- if(!$('mCustomers'))return;
  safeRender('dashboard',renderDashboard);
  safeRender('dormant-dashboard',renderDormantDashboard);
  safeRender('followup-dashboard',renderTodayFollowupsDashboard);

@@ -131,7 +131,7 @@ function applyLanguage(){
  if($('newCustomerBtn'))$('newCustomerBtn').textContent=t('newCustomer');if($('newSaleBtn'))$('newSaleBtn').textContent=t('recordSale');if($('newSalesFollowupBtn'))$('newSalesFollowupBtn').textContent=lang==='ar'?'+ تسجيل متابعة':'+ Record Follow-up';if($('newComplaintBtn'))$('newComplaintBtn').textContent=lang==='ar'?'+ شكوى / طلب':'+ Complaint / Request';if($('editGoalsBtn'))$('editGoalsBtn').textContent=t('editGoals');set('#servicePageTitle',lang==='ar'?'متابعات وشكاوى العملاء':'Customer Follow-ups & Complaints');set('#servicePageHint',lang==='ar'?'المتابعات البيعية منفصلة عن الشكاوى والطلبات. لا يتم تغيير حالة العميل من هذه الصفحة.':'Sales follow-ups are separate from complaints and requests. Customer status is not changed from this page.');set('#requiredFollowupTitle',lang==='ar'?'المتابعات المطلوبة':'Required Sales Follow-ups');set('#requiredFollowupHint',lang==='ar'?'المتردد: كل 3 أيام عمل. الرافض: كل 7 أيام عمل. الجمعة لا تُحسب.':'Hesitant: every 3 workdays. Rejected: every 7 workdays. Friday is not counted.');set('#salesFollowupHistoryTitle',lang==='ar'?'سجل المتابعات':'Sales Follow-up History');set('#salesFollowupHistoryHint',lang==='ar'?'تسجيل المتابعة لا يغيّر حالة العميل.':'Recording a follow-up does not change customer status.');set('#complaintsHistoryTitle',lang==='ar'?'الشكاوى والطلبات':'Complaints & Requests');set('#complaintsHistoryHint',lang==='ar'?'الشكاوى وطلبات العينات وطلبات الخدمة وتدخل الإدارة.':'Complaints, sample requests, service requests, and management intervention.');
  ph('customerSearch',t('searchCustomer'));ph('saleSearch',t('searchSale'));ph('mapSearch',lang==='ar'?'ابحث باسم العميل أو المنطقة...':'Search customer or area...');
 
- set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#dormantTitle',lang==='ar'?'عملاء خاملون – مطلوب زيارة':'Inactive Customers – Visit Required');set('#goalsTitle',t('goals'));
+ set('#dashboard .dashboard-panels h3',canManage()?t('repSummary'):(lang==='ar'?'ملخص اليوم':'Today summary'));const rss=$('repSummarySub');if(rss)rss.textContent=canManage()?(lang==='ar'?'أرقام اليوم فقط — كل مندوب في بطاقة مستقلة':'Today only — one clear card per representative'):(lang==='ar'?'أرقامك لليوم فقط':'Your numbers for today');set('#dashboard .dashboard-attention h3',t('managementIntervention'));set('#dormantTitle',lang==='ar'?'العملاء الخاملون':'Inactive Customers');set('#goalsTitle',t('goals'));
  const goalSmall=document.querySelector('#goalsTitle + .small');if(goalSmall)goalSmall.textContent=t('currentMonth');
  const rp=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head h3');if(rp)rp.textContent=t('repPerformance');
  const rpSmall=document.querySelector('#repPerformance')?.closest('.card')?.querySelector('.dashboard-head .small');if(rpSmall)rpSmall.textContent=t('currentMonth');
@@ -398,33 +398,26 @@ function renderDormantDashboard(){
  const rows=dormantRows();
  if(count)count.textContent=String(rows.length);
  if(sub)sub.textContent=lang==='ar'
-   ?(rows.length?'اضغط لفتح القائمة وعرض العملاء الخاملين.':'لا يوجد عملاء خاملون حالياً.')
-   :(rows.length?'Click to open the inactive-customer list.':'No inactive customers right now.');
+   ?(rows.length?'اضغط لعرض العملاء الخاملين. العميل يبقى خاملًا إلى أن تُسجل له طلبية جديدة.':'لا يوجد عملاء خاملون حالياً.')
+   :(rows.length?'Click to view inactive customers. A customer stays inactive until a new order is recorded.':'No inactive customers right now.');
  if(!box)return;
  box.innerHTML=rows.length?rows.map(c=>{
-   try{
-     const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=parseDateValue(c.inactive_visit_due_at)?.date?.getTime()||0,overdue=!!due&&due<Date.now();
-     const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
-     return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
-       <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
-       <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'موعد الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
-       <span class="dormant-visit ${overdue?'overdue':(visit?'done':'pending')}">${badgeText}</span>
-     </button>`;
-   }catch(err){
-     console.error('dormant row render failed',c?.id,err);
-     return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}"><span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span><span class="dormant-visit pending">${lang==='ar'?'فتح العميل':'Open customer'}</span></button>`;
-   }
+   const ac=activityForCustomer(c.id);
+   return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
+     <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
+     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateTime(c.inactive_since||c.updated_at||c.created_at)}</small></span>
+     <span class="dormant-visit pending">${lang==='ar'?'خامل':'Inactive'}</span>
+   </button>`;
  }).join(''):`<div class="attention-empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`;
 }
 function openDormantList(){
  const rows=dormantRows();
  const cards=rows.map(c=>{
-   const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=c.inactive_visit_due_at?new Date(c.inactive_visit_due_at).getTime():0,overdue=!!due&&due<Date.now();
-   const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
+   const ac=activityForCustomer(c.id);
    return `<button type="button" class="dormant-item dormant-modal-item" data-dormant-list-customer="${c.id}">
      <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
-     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'موعد الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
-     <span class="dormant-visit ${overdue?'overdue':(visit?'done':'pending')}">${badgeText}</span>
+     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateTime(c.inactive_since||c.updated_at||c.created_at)}</small></span>
+     <span class="dormant-visit pending">${lang==='ar'?'خامل':'Inactive'}</span>
    </button>`;
  }).join('');
  openModal(lang==='ar'?`العملاء الخاملون (${rows.length})`:`Inactive Customers (${rows.length})`,
@@ -439,10 +432,10 @@ function openDormantCustomer(id){
      <div><b>${t('representative')}</b>${esc(c.rep?.full_name||'-')}</div>
      <div><b>${t('status')}</b>${badgeStatus(c.status)}</div>
      <div><b>${lang==='ar'?'آخر طلبية':'Last order'}</b>${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</div>
-     <div><b>${lang==='ar'?'خامل منذ':'Inactive since'}</b>${dateTime(c.inactive_since||c.updated_at||c.created_at)}</div><div><b>${lang==='ar'?'مهلة الزيارة':'Visit due'}</b>${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</div>
+     <div><b>${lang==='ar'?'خامل منذ':'Inactive since'}</b>${dateTime(c.inactive_since||c.updated_at||c.created_at)}</div>
    </div>
    <div class="${visit?'security-good':'security-warn'}" style="margin-top:10px">
-     ${visit?(lang==='ar'?'تم تسجيل زيارة بعد تحوله إلى خامل: ':'A visit was logged after inactivity: ')+esc(visit.note):(lang==='ar'?'زيارة العميل وتسجيل تقرير إلزامي كل 3 أيام عمل ما دام خاملًا. وإذا نتجت الزيارة عن طلبية يمكن تسجيل التقرير داخل شاشة الطلبية.':'A customer visit and report are required. The report can also be entered inside the order screen if the visit results in an order.')}
+     ${visit?(lang==='ar'?'تم تسجيل زيارة بعد تحوله إلى خامل: ':'A visit was logged after inactivity: ')+esc(visit.note):(lang==='ar'?'العميل خامل ويجب زيارته. لا يوجد موعد دوري للزيارة، ولا يعود نشطًا إلا بعد تسجيل طلبية جديدة.':'The customer is inactive and should be visited. There is no recurring visit deadline, and the customer becomes active only after a new order is recorded.')}
    </div>
    <div class="toolbar" style="margin-top:12px">
      <button class="btn secondary" data-inactive-visit="${c.id}">${lang==='ar'?'تسجيل زيارة':'Record Visit'}</button>

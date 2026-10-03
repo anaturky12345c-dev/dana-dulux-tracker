@@ -4163,3 +4163,66 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo8-calendar-strip{grid-auto-columns:minmax(165px,190px)}
   .mo8-desktop-hint{white-space:normal}
 }
+
+
+/* Market Opening drag scheduler map */
+.mo8-calendar-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 360px;
+  gap:14px;
+  align-items:start;
+}
+.mo8-calendar-main{min-width:0}
+.mo8-map-panel{
+  position:sticky;
+  top:8px;
+  border:1px solid #dbe3e8;
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:0 8px 24px rgba(15,23,42,.08);
+}
+.mo8-map-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+  padding:10px 12px;
+  border-bottom:1px solid #e5e7eb;
+  background:#f8fafc;
+}
+.mo8-map-head>div:first-child{display:grid;gap:2px}
+.mo8-map-head b{font-size:13px}
+.mo8-map-head span{font-size:10px;color:#64748b}
+.mo8-map-label{
+  display:grid;
+  gap:2px;
+  min-width:120px;
+  text-align:end;
+}
+.mo8-map-label b{font-size:12px;color:#0f766e}
+.mo8-map-label span{font-size:9px;color:#64748b}
+.mo8-drag-map{height:360px;width:100%;background:#e5e7eb}
+.mo8-map-legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 14px;
+  padding:9px 11px;
+  border-top:1px solid #e5e7eb;
+  background:#fff;
+  font-size:10px;
+  color:#475569;
+}
+.mo8-map-legend span{display:flex;align-items:center;gap:5px}
+.mo8-map-legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.mo8-map-legend i.current{background:#0f766e}
+.mo8-map-legend i.target{background:#2563eb}
+@media(max-width:1180px){
+  .mo8-calendar-layout{grid-template-columns:minmax(0,1fr) 310px}
+  .mo8-drag-map{height:320px}
+}
+@media(max-width:900px){
+  .mo8-calendar-layout{grid-template-columns:1fr}
+  .mo8-map-panel{position:relative;top:auto}
+  .mo8-drag-map{height:300px}
+}

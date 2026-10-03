@@ -58,7 +58,7 @@
       <div id="marketOpeningDashboardSlot"></div>
       <div class="dashboard-priority-grid">
         <div class="card dashboard-attention management-only dashboard-attention-priority priority-collapsible">
-          <button type="button" class="dashboard-head attention-head priority-toggle" aria-expanded="false">
+          <button type="button" class="dashboard-head attention-head priority-toggle" data-priority-target="attentionList" aria-expanded="false">
             <div><h3>Management Intervention</h3><div class="small" id="attentionSub"></div></div>
             <div class="priority-side"><span class="attention-count" id="attentionCount">0</span><span class="priority-chevron" aria-hidden="true">⌄</span></div>
           </button>
@@ -66,7 +66,7 @@
         </div>
 
         <div class="card dashboard-dormant dashboard-dormant-priority priority-collapsible">
-          <button type="button" class="dashboard-head attention-head priority-toggle" aria-expanded="false">
+          <button type="button" class="dashboard-head attention-head priority-toggle" data-priority-target="dormantList" aria-expanded="false">
             <div><h3 id="dormantTitle">Inactive Customers – Visit Required</h3><div class="small" id="dormantSub"></div></div>
             <div class="priority-side"><span class="attention-count dormant-count" id="dormantCount">0</span><span class="priority-chevron" aria-hidden="true">⌄</span></div>
           </button>
@@ -74,7 +74,7 @@
         </div>
 
         <div class="card dashboard-followup-today priority-collapsible">
-          <button type="button" class="dashboard-head attention-head priority-toggle" aria-expanded="false">
+          <button type="button" class="dashboard-head attention-head priority-toggle" data-priority-target="todayFollowupList" aria-expanded="false">
             <div><h3 id="todayFollowupTitle">Required Follow-ups Today</h3><div class="small" id="todayFollowupSub"></div></div>
             <div class="priority-side"><span class="attention-count today-followup-count" id="todayFollowupCount">0</span><span class="priority-chevron" aria-hidden="true">⌄</span></div>
           </button>

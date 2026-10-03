@@ -46,6 +46,10 @@
     plannerLayers:new Map(),
     plannerAssignments:new Map(),
     plannerActiveRepId:null,
+    repScheduleMap:null,
+    repScheduleBaseLayer:null,
+    repScheduleFocusLayer:null,
+    repScheduleTargetLayer:null,
     previewRepId:null,
     previewMissionId:null,
     demoPreview:null,
@@ -622,6 +626,93 @@
     flash(tx('تم نقل المهمة إلى التاريخ المحدد. ويمكن وجود أكثر من منطقة في نفس اليوم.','Mission moved to the selected date. Multiple areas can share the same day.'));
   }
 
+  function destroyRepScheduleMap(){
+    try{mo.repScheduleMap?.remove();}catch(_){}
+    mo.repScheduleMap=null;
+    mo.repScheduleBaseLayer=null;
+    mo.repScheduleFocusLayer=null;
+    mo.repScheduleTargetLayer=null;
+  }
+
+  function missionMapLayer(m,style={}){
+    if(!window.L||!m)return null;
+    try{
+      if(m.zone_type==='district_polygon'&&m.zone_geojson){
+        return L.geoJSON({type:'Feature',properties:{},geometry:m.zone_geojson},{
+          style:{
+            color:style.color||'#64748b',
+            weight:style.weight??2,
+            fillColor:style.fillColor||style.color||'#94a3b8',
+            fillOpacity:style.fillOpacity??.05,
+            dashArray:style.dashArray||null
+          }
+        });
+      }
+      return L.circle([Number(m.center_lat),Number(m.center_lng)],{
+        radius:Number(m.radius_m||2500),
+        color:style.color||'#64748b',
+        weight:style.weight??2,
+        fillColor:style.fillColor||style.color||'#94a3b8',
+        fillOpacity:style.fillOpacity??.05,
+        dashArray:style.dashArray||null
+      });
+    }catch(_){return null;}
+  }
+
+  function initRepScheduleMap(repId,rows){
+    destroyRepScheduleMap();
+    const el=document.getElementById('moRepDragMap');
+    if(!el||!window.L)return;
+    mo.repScheduleMap=L.map(el,{zoomControl:true,preferCanvas:true,attributionControl:false}).setView([24.7136,46.6753],10);
+    addBaseMap(mo.repScheduleMap);
+    addPickerMapLayers(mo.repScheduleMap);
+    mo.repScheduleBaseLayer=L.layerGroup().addTo(mo.repScheduleMap);
+    mo.repScheduleTargetLayer=L.layerGroup().addTo(mo.repScheduleMap);
+    mo.repScheduleFocusLayer=L.layerGroup().addTo(mo.repScheduleMap);
+
+    const bounds=L.latLngBounds([]);
+    rows.filter(m=>m.status!=='cancelled').forEach(m=>{
+      const layer=missionMapLayer(m,{color:'#94a3b8',weight:1.5,fillOpacity:.025,dashArray:'5 5'});
+      if(!layer)return;
+      layer.addTo(mo.repScheduleBaseLayer).bindTooltip(safe(m.area_name)+' · '+safe(fmtDate(m.scheduled_date)),{sticky:true});
+      try{bounds.extend(layer.getBounds());}catch(_){}
+    });
+    if(bounds.isValid())mo.repScheduleMap.fitBounds(bounds,{padding:[18,18],maxZoom:12});
+    setTimeout(()=>mo.repScheduleMap?.invalidateSize(),90);
+  }
+
+  function focusRepScheduleMission(missionId,targetDate=null){
+    if(!mo.repScheduleMap)return;
+    const m=mo.missions.find(x=>x.id===missionId);
+    if(!m)return;
+    mo.repScheduleFocusLayer?.clearLayers();
+    mo.repScheduleTargetLayer?.clearLayers();
+
+    if(targetDate){
+      mo.missions.filter(x=>
+        x.rep_id===m.rep_id&&x.id!==m.id&&x.status!=='cancelled'&&ymd(x.scheduled_date)===targetDate
+      ).forEach(x=>{
+        const peer=missionMapLayer(x,{color:'#2563eb',weight:2.5,fillOpacity:.08,dashArray:'6 4'});
+        if(peer)peer.addTo(mo.repScheduleTargetLayer).bindTooltip(tx('موجود في هذا اليوم: ','Already on this day: ')+safe(x.area_name));
+      });
+    }
+
+    const focus=missionMapLayer(m,{color:'#0f766e',weight:4,fillOpacity:.18});
+    if(focus){
+      focus.addTo(mo.repScheduleFocusLayer).bindTooltip(tx('المنطقة التي تنقلها: ','Area being moved: ')+safe(m.area_name),{permanent:false});
+      try{
+        const b=focus.getBounds();
+        if(b?.isValid())mo.repScheduleMap.fitBounds(b,{padding:[28,28],maxZoom:13});
+      }catch(_){}
+    }
+    const label=document.getElementById('moRepDragMapLabel');
+    if(label)label.innerHTML='<b>'+safe(m.area_name)+'</b><span>'+safe(fmtDate(m.scheduled_date))+(targetDate?tx(' ← إلى ',' → ')+safe(fmtDate(targetDate)):'')+'</span>';
+  }
+
+  function clearRepScheduleTargetDate(){
+    mo.repScheduleTargetLayer?.clearLayers();
+  }
+
   function openRepPlans(repId){
     if(!isManagementUser())return;
     const rep=state.profiles.find(p=>p.id===repId);
@@ -638,7 +729,7 @@
     const canDelete=canPermanentDelete();
     const scheduleDates=repScheduleDates(rows);
 
-    const scheduleRail='<section class="mo7-schedule-board mo8-calendar-board"><div class="mo7-schedule-head"><div><b>'+tx('جدولة المناطق بالسحب','Drag areas between dates')+'</b><span>'+tx('امسك المنطقة بالماوس واسحبها من تاريخها الحالي إلى التاريخ المطلوب. يمكن وضع أكثر من منطقة في نفس اليوم.','Grab an area with the mouse and drag it from its current date to the date you want. Multiple areas can be placed on the same day.')+'</span></div><span class="mo8-desktop-hint">'+tx('للإدارة على اللابتوب · سحب وإفلات مباشر','Management desktop · direct drag & drop')+'</span></div><div class="mo8-calendar-strip" id="moRepDateRail">'+scheduleDates.map(d=>{
+    const scheduleRail='<section class="mo7-schedule-board mo8-calendar-board"><div class="mo7-schedule-head"><div><b>'+tx('جدولة المناطق بالسحب','Drag areas between dates')+'</b><span>'+tx('امسك المنطقة بالماوس واسحبها من تاريخها الحالي إلى التاريخ المطلوب. الخريطة تعرض لك موقع المنطقة أثناء السحب، والمناطق الموجودة في التاريخ الذي تمر فوقه.','Grab an area with the mouse and drag it from its current date to the date you want. The map shows the area while dragging and the areas already assigned to the date you hover over.')+'</span></div><span class="mo8-desktop-hint">'+tx('للإدارة على اللابتوب · سحب وإفلات مباشر','Management desktop · direct drag & drop')+'</span></div><div class="mo8-calendar-layout"><div class="mo8-calendar-main"><div class="mo8-calendar-strip" id="moRepDateRail">'+scheduleDates.map(d=>{
       const dayMissions=rows.filter(m=>ymd(m.scheduled_date)===d&&m.status!=='cancelled');
       const chips=dayMissions.length?dayMissions.map(m=>{
         const live=!['completed','cancelled'].includes(m.status);
@@ -646,7 +737,7 @@
         return '<div class="mo8-area-chip '+statusClass(m)+' '+(movable?'movable':'locked')+'" '+(movable?'draggable="true" data-mo-drag-mission="'+safe(m.id)+'"':'')+' data-mo-scheduled-chip="'+safe(m.id)+'"><span class="mo8-grip" aria-hidden="true">⠿</span><div><b>'+safe(m.area_name)+'</b><small>'+tx('الهدف','Target')+' '+n(m.target_customers)+' · '+tx('المنجز','Done')+' '+n(progress(m))+'</small></div>'+(movable?'<span class="mo8-move-mark">↔</span>':'<span class="mo8-lock-mark">🔒</span>')+'</div>';
       }).join(''):'<div class="mo8-empty-slot">'+tx('اسحب منطقة إلى هنا','Drop an area here')+'</div>';
       return '<div class="mo8-date-column '+(d===todayKey?'today ':'')+(dayMissions.length?'occupied':'')+'" data-mo-drop-date="'+safe(d)+'"><div class="mo8-date-head"><span>'+safe(plannerDayLabel(d))+'</span><b>'+safe(fmtDate(d))+'</b><small>'+n(dayMissions.length)+' '+tx('منطقة','areas')+'</small></div><div class="mo8-date-body">'+chips+'</div></div>';
-    }).join('')+'</div><div class="mo8-drag-status" id="moRepMoveHint">'+tx('اسحب أي منطقة قابلة للنقل إلى تاريخ آخر.','Drag any movable area to another date.')+'</div></section>';
+    }).join('')+'</div><div class="mo8-drag-status" id="moRepMoveHint">'+tx('اسحب أي منطقة قابلة للنقل إلى تاريخ آخر.','Drag any movable area to another date.')+'</div></div><aside class="mo8-map-panel"><div class="mo8-map-head"><div><b>'+tx('موقع المنطقة','Area location')+'</b><span>'+tx('تتحدث الخريطة تلقائيًا أثناء السحب','Map updates automatically while dragging')+'</span></div><div id="moRepDragMapLabel" class="mo8-map-label">'+tx('امسك منطقة لعرض موقعها','Grab an area to see its location')+'</div></div><div id="moRepDragMap" class="mo8-drag-map"></div><div class="mo8-map-legend"><span><i class="current"></i>'+tx('المنطقة التي تنقلها','Area being moved')+'</span><span><i class="target"></i>'+tx('مناطق موجودة في التاريخ المستهدف','Areas already on target date')+'</span></div></aside></div></section>';
 
     const planCards=rows.length?rows.map(m=>{
       const live=!['completed','cancelled'].includes(m.status);
@@ -670,8 +761,12 @@
         (canDelete?'<button class="btn secondary" type="button" id="moRepSelectToggle">'+tx('تحديد','Select')+'</button><button class="btn secondary" type="button" id="moRepSelectAll" style="display:none">'+tx('تحديد الكل','Select all')+'</button><button class="btn bad" type="button" id="moRepDeleteSelected" style="display:none" disabled>'+tx('حذف المحدد','Delete selected')+'</button>':'')+
       '</div><div class="mo4-mission-grid" id="moRepPlansGrid">'+planCards+'</div>');
 
+    initRepScheduleMap(repId,rows);
+    const firstMapMission=rows.find(m=>m.status!=='cancelled');
+    if(firstMapMission)focusRepScheduleMission(firstMapMission.id);
+
     const add=document.getElementById('moRepAddPlan');
-    if(add)add.onclick=()=>{closeModal();openMissionForm(null,repId);};
+    if(add)add.onclick=()=>{destroyRepScheduleMap();closeModal();openMissionForm(null,repId);};
 
     const hint=document.getElementById('moRepMoveHint');
     let draggingMissionId=null;
@@ -679,6 +774,7 @@
       card.addEventListener('dragstart',e=>{
         draggingMissionId=card.dataset.moDragMission;
         const m=mo.missions.find(x=>x.id===draggingMissionId);
+        focusRepScheduleMission(draggingMissionId);
         e.dataTransfer.effectAllowed='move';
         e.dataTransfer.setData('text/plain',draggingMissionId);
         card.classList.add('dragging');
@@ -689,15 +785,21 @@
         card.classList.remove('dragging');
         draggingMissionId=null;
         document.querySelectorAll('[data-mo-drop-date]').forEach(x=>x.classList.remove('dragover','drop-ready'));
+        clearRepScheduleTargetDate();
         if(hint)hint.textContent=tx('اسحب أي منطقة قابلة للنقل إلى تاريخ آخر.','Drag any movable area to another date.');
       });
     });
 
     document.querySelectorAll('[data-mo-drop-date]').forEach(slot=>{
-      slot.addEventListener('dragenter',e=>{e.preventDefault();slot.classList.add('dragover');});
+      slot.addEventListener('dragenter',e=>{
+        e.preventDefault();
+        slot.classList.add('dragover');
+        if(draggingMissionId)focusRepScheduleMission(draggingMissionId,slot.dataset.moDropDate);
+      });
       slot.addEventListener('dragover',e=>{
         e.preventDefault();
         slot.classList.add('dragover');
+        if(draggingMissionId)focusRepScheduleMission(draggingMissionId,slot.dataset.moDropDate);
         if(e.dataTransfer)e.dataTransfer.dropEffect='move';
       });
       slot.addEventListener('dragleave',e=>{
@@ -719,9 +821,14 @@
       });
     });
 
+    document.querySelectorAll('[data-mo-scheduled-chip],[data-mo-rep-plan-row]').forEach(el=>{
+      const id=el.dataset.moScheduledChip||el.dataset.moRepPlanRow;
+      el.addEventListener('mouseenter',()=>{if(!draggingMissionId&&id)focusRepScheduleMission(id);});
+    });
+
     document.querySelectorAll('[data-mo-rep-map]').forEach(btn=>btn.onclick=()=>{
       const m=mo.missions.find(x=>x.id===btn.dataset.moRepMap);if(!m)return;
-      closeModal();mo.selectedMissionId=m.id;renderMissionMap(m);
+      destroyRepScheduleMap();closeModal();mo.selectedMissionId=m.id;renderMissionMap(m);
       setTimeout(()=>document.getElementById('marketOpeningMap')?.scrollIntoView({behavior:'smooth',block:'center'}),60);
     });
     document.querySelectorAll('[data-mo-rep-history]').forEach(btn=>btn.onclick=()=>{
@@ -729,7 +836,7 @@
     });
     document.querySelectorAll('[data-mo-rep-edit]').forEach(btn=>btn.onclick=()=>{
       const m=mo.missions.find(x=>x.id===btn.dataset.moRepEdit);if(!m)return;
-      closeModal();openMissionForm(m);
+      destroyRepScheduleMap();closeModal();openMissionForm(m);
     });
     document.querySelectorAll('[data-mo-rep-delete]').forEach(btn=>btn.onclick=()=>{
       const m=mo.missions.find(x=>x.id===btn.dataset.moRepDelete);if(m)openPermanentDelete(m);

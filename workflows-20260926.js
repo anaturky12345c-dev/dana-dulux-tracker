@@ -230,24 +230,24 @@ function renderFollowups(){
   var body=byId('requiredFollowupBody');
 
   var todayRows=salesFollowupRows().filter(function(x){
-    if(dateKey(x.fs.next_due_at)!==today())return false;
+    if(dateKey(x.fs.next_due_at)>today())return false;
     return isManagement()||x.customer.assigned_rep===app.state.profile.id;
   });
   var todayBox=byId('todayFollowupList');
   setText('todayFollowupCount',String(todayRows.length));
   setText('todayFollowupSub',todayRows.length
-    ?tx('هذه المتابعات موعدها اليوم. اضغط على العميل وسجل المتابعة مباشرة.','These follow-ups are due today. Tap a customer to record the follow-up.')
-    :tx('لا توجد متابعات مطلوبة اليوم.','No follow-ups are due today.'));
+    ?tx('تشمل متابعات اليوم وأي متابعة متأخرة لم تُسجل بعد. اضغط على العميل وسجل المتابعة مباشرة.','Includes today\'s follow-ups and any overdue follow-up not yet recorded. Tap a customer to record it.')
+    :tx('لا توجد متابعات مطلوبة أو متأخرة حالياً.','No due or overdue follow-ups right now.'));
   if(todayBox){
-    todayBox.innerHTML=todayRows.length?todayRows.slice(0,10).map(function(x){
+    todayBox.innerHTML=todayRows.length?todayRows.map(function(x){
       var c=x.customer,fs=x.fs;
       return '<button type="button" class="today-followup-item" data-sales-followup="'+c.id+'">'
         +'<span class="today-followup-main"><b>'+e(c.name)+'</b><span>'+statusBadge(c.status)+'</span></span>'
         +'<span class="today-followup-meta">'+(isManagement()?'<small>'+e(repName(c))+'</small>':'')
-        +'<small>'+tx('موعد اليوم: ','Due today: ')+app.dateTime(fs.next_due_at)+'</small></span>'
+        +'<small>'+tx(dateKey(fs.next_due_at)<today()?'متأخرة منذ: ':'موعد اليوم: ',dateKey(fs.next_due_at)<today()?'Overdue since: ':'Due today: ')+app.dateTime(fs.next_due_at)+'</small></span>'
         +'<span class="today-followup-action">'+tx('تسجيل متابعة','Record')+'</span>'
         +'</button>';
-    }).join(''):'<div class="attention-empty">'+tx('لا توجد متابعات مطلوبة اليوم.','No follow-ups are due today.')+'</div>';
+    }).join(''):'<div class="attention-empty">'+tx('لا توجد متابعات مطلوبة أو متأخرة حالياً.','No due or overdue follow-ups right now.')+'</div>';
   }
 
   setText('requiredFollowupCount',String(salesRows.length));

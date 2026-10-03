@@ -353,7 +353,7 @@ function renderDormantDashboard(){
  if(sub)sub.textContent=lang==='ar'
    ?(rows.length?'عملاء نشطون سابقاً لم يسجلوا طلبية في أسبوع العمل السابق. مطلوب زيارة وتقرير.':'لا يوجد عملاء خاملون حالياً.')
    :(rows.length?'Previously active customers with no order in the last Sat–Thu workweek. Visit and report required.':'No inactive customers right now.');
- box.innerHTML=rows.length?rows.slice(0,10).map(c=>{
+ box.innerHTML=rows.length?rows.map(c=>{
    const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=c.inactive_visit_due_at?new Date(c.inactive_visit_due_at).getTime():0,overdue=!!due&&due<Date.now();
    const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
    return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
@@ -1749,12 +1749,15 @@ $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});$('salesFollowupsBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-delete-report]');if(b)deleteReport(Number(b.dataset.deleteReport));});
 $('dashboard')?.addEventListener('click',e=>{let el;
 if((el=e.target.closest('.priority-toggle'))){
-  const card=el.closest('.priority-collapsible'),list=card?.querySelector('.priority-list');
+  const card=el.closest('.priority-collapsible');
+  const targetId=el.dataset.priorityTarget||'';
+  const list=(targetId&&document.getElementById(targetId))||card?.querySelector('.priority-list');
   if(card&&list){
-    const opening=list.classList.contains('hidden');
-    list.classList.toggle('hidden',!opening);
-    card.classList.toggle('expanded',opening);
+    const opening=el.getAttribute('aria-expanded')!=='true';
     el.setAttribute('aria-expanded',opening?'true':'false');
+    card.classList.toggle('expanded',opening);
+    list.classList.toggle('hidden',!opening);
+    list.style.setProperty('display',opening?'grid':'none','important');
   }
   return;
 }

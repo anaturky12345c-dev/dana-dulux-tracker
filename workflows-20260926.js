@@ -225,45 +225,11 @@ function followupAction(row,mini){
 }
 
 function renderFollowups(){
-  var repFilter=byId('followupRepFilter')?byId('followupRepFilter').value:'';
-  var salesRows=salesFollowupRows().filter(function(x){return !repFilter||x.customer.assigned_rep===repFilter;});
-  var body=byId('requiredFollowupBody');
-
-  // Dashboard follow-ups are rendered by the core app so they cannot disappear if this module reloads.
-
-  setText('requiredFollowupCount',String(salesRows.length));
-
-  if(body){
-    body.innerHTML=salesRows.length?salesRows.map(function(x){
-      var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
-      return '<tr class="'+(late?'workload-row-overdue':'')+'">'
-        +'<td><b>'+e(c.name)+'</b></td>'
-        +'<td>'+e(repName(c))+'</td>'
-        +'<td>'+statusBadge(c.status)+'</td>'
-        +'<td>'+app.dateTime(fs.next_due_at)+'</td>'
-        +'<td><b class="'+(late?'due-bad':'due-ok')+'">'+e(dueLabel(fs.next_due_at))+'</b></td>'
-        +'<td>'+followupAction(x,true)+'</td>'
-        +'</tr>';
-    }).join(''):'<tr><td colspan="6" class="empty">'+tx('لا توجد متابعات مطلوبة حالياً.','No required follow-ups right now.')+'</td></tr>';
-  }
-
-  var mobile=byId('requiredFollowupMobile');
-  if(mobile){
-    mobile.innerHTML=salesRows.length?salesRows.map(function(x){
-      var c=x.customer,fs=x.fs,late=deadlineMs(fs.next_due_at)<nowMs();
-      return '<div class="followup-mobile-card">'
-        +'<div class="dashboard-head" style="margin-bottom:5px"><b>'+e(c.name)+'</b>'+statusBadge(c.status)+'</div>'
-        +'<div class="small">'+tx('المندوب: ','Representative: ')+e(repName(c))+'</div>'
-        +'<div class="small">'+tx('موعد المتابعة: ','Follow-up due: ')+app.dateTime(fs.next_due_at)+'</div>'
-        +'<div class="small '+(late?'due-bad':'due-ok')+'"><b>'+e(dueLabel(fs.next_due_at))+'</b></div>'
-        +'<div style="margin-top:8px">'+followupAction(x,true)+'</div></div>';
-    }).join(''):'<div class="small">'+tx('لا توجد متابعات مطلوبة حالياً.','No required follow-ups right now.')+'</div>';
-  }
-
+  // Required sales follow-ups and the dashboard queue are rendered by the core app.
+  // This module only owns management-intervention state to avoid two files overwriting the same UI.
   var waiting=managementRows();
   setText('attentionCount',String(waiting.length));
   setText('attentionSub',waiting.length?tx('طلبات تدخل إدارة مفتوحة — المهلة 48 ساعة ضمن أيام العمل.','Open management-intervention requests — 48 working hours; Friday is not counted.'):tx('لا توجد حالات مفتوحة تحتاج تدخل الإدارة.','No open management-intervention cases.'));
-
   var attention=byId('attentionList');
   if(attention){
     attention.innerHTML=waiting.length?waiting.slice(0,8).map(function(x){
@@ -275,7 +241,6 @@ function renderFollowups(){
     }).join(''):'<div class="attention-empty">'+tx('لا توجد حالات تحتاج تدخل الإدارة حالياً.','No cases need management intervention right now.')+'</div>';
   }
 }
-
 
 function renderTasks(){
   if(!TASKS_ENABLED)return;

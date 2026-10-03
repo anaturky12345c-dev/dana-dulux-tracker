@@ -580,18 +580,19 @@ function boot(){
     }
 
     const allRows=(data||[]).filter(x=>x.quality_checked_at||x.assigned_rep||!['new','reviewed'].includes(x.status));
+    const period=document.getElementById('aiOppPeriodFilter')?.value||'';
+    const periodRows=allRows.filter(x=>periodMatch(x,period));
     const cityFilter=document.getElementById('aiOppCityFilter');
     if(cityFilter){
       const selected=cityFilter.value||'';
       const cityCounts=new Map();
-      for(const x of allRows){const cityName=String(x.city||'').trim();if(cityName)cityCounts.set(cityName,(cityCounts.get(cityName)||0)+1);}
+      for(const x of periodRows){const cityName=String(x.city||'').trim();if(cityName)cityCounts.set(cityName,(cityCounts.get(cityName)||0)+1);}
       const cities=[...cityCounts.keys()].sort((a,b)=>a.localeCompare(b,ar()?'ar':'en'));
-      cityFilter.innerHTML='<option value="">'+(ar()?'كل المدن':'All cities')+' ('+allRows.length+')</option>'+cities.map(c=>'<option value="'+esc(c)+'">'+esc(c)+' ('+cityCounts.get(c)+')</option>').join('');
+      cityFilter.innerHTML='<option value="">'+(ar()?'كل المدن':'All cities')+' — '+periodRows.length+'</option>'+cities.map(c=>'<option value="'+esc(c)+'">'+esc(c)+' — '+cityCounts.get(c)+'</option>').join('');
       cityFilter.value=cities.includes(selected)?selected:'';
     }
     const city=cityFilter?.value||'';
-    const period=document.getElementById('aiOppPeriodFilter')?.value||'';
-    const rows=allRows.filter(x=>(!city||String(x.city||'')===city)&&periodMatch(x,period)),rmap=repMap();
+    const rows=periodRows.filter(x=>(!city||String(x.city||'')===city)),rmap=repMap();
     opportunityById=new Map(rows.map(x=>[x.id,x]));
     renderSummary(rows);renderRepDashboard(rows);
 

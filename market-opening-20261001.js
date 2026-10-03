@@ -1723,10 +1723,10 @@
     notice.id='moCustomerMissionNotice';
     notice.className='full mo-customer-mission-notice';
     if(!m){
-      const over=overdueForRep();
-      notice.innerHTML='<b>'+tx('لا يمكن إضافة عميل جديد الآن','New customer cannot be added now')+'</b><div>'+safe(over?tx('عندك مهمة فات موعدها وتحتاج الإدارة تأجلها لك.','You have an overdue mission that management needs to reschedule.'):tx('ما عندك مهمة فتح سوق محددة لليوم.','You do not have a market-opening mission for today.'))+'</div>';
+      notice.classList.add('warn');
+      notice.innerHTML='<b>'+tx('ما عندك مهمة فتح سوق اليوم','No Market Opening mission today')+'</b><div>'+safe(tx('تقدر تضيف العميل بشكل طبيعي. هذا العميل لن يدخل في هدف فتح السوق لأنه لا توجد لك منطقة محددة اليوم.','You can add the customer normally. This customer will not count toward a Market Opening target because you have no assigned area today.'))+'</div>';
       form.prepend(notice);
-      const save=document.getElementById('saveCustomerBtn');if(save)save.disabled=true;
+      const save=document.getElementById('saveCustomerBtn');if(save)save.disabled=false;
       return;
     }
     notice.classList.add('ok');
@@ -1753,7 +1753,14 @@
   function customerLocationChanged(lat,lng){
     if(!isRepUser()||!mo.settings?.enabled||!mo.settings?.strict_rep_customer_creation)return;
     const list=missionsForToday(),save=document.getElementById('saveCustomerBtn'),box=document.getElementById('moCustomerZoneStatus');
-    if(!list.length){if(save)save.disabled=true;return;}
+    if(!list.length){
+      if(save)save.disabled=false;
+      if(box){
+        box.className='small warn';
+        box.textContent=tx('لا توجد لك منطقة فتح سوق اليوم. العميل سيُحفظ بشكل طبيعي ولن يدخل في هدف فتح السوق.','You have no Market Opening area today. The customer will be saved normally and will not count toward a Market Opening target.');
+      }
+      return;
+    }
     const match=list.find(m=>{
       if(m.zone_type==='district_polygon'&&m.zone_geojson){
         return pointInZoneGeojson(m.zone_geojson,Number(lat),Number(lng));

@@ -579,6 +579,41 @@
     return '<section class="mo5-missions-board"><div class="mo5-section-head"><div><span>'+tx('إدارة الخطط من مكان واحد','Manage plans in one place')+'</span><h3>'+tx('المناديب','Representatives')+'</h3></div><span>'+tx('خطة اليوم تظهر مباشرة، وكل باقي الخطط والتقرير الكامل داخل زر خطط المندوب.','Today’s plan appears directly; all other plans and the full report are inside Representative plans.')+'</span></div><div class="mo4-mission-grid">'+(cards||'<div class="empty">'+tx('لا يوجد مناديب نشطون.','No active representatives.')+'</div>')+'</div></section>';
   }
 
+  function plannerDayLabel(dateStr){
+    const d=new Date(dateStr+'T00:00:00Z');
+    return new Intl.DateTimeFormat(ar()?'ar-SA':'en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(d);
+  }
+
+  function repScheduleDates(rows){
+    const out=new Set();
+    let d=new Date(today()+'T00:00:00Z');
+    let added=0;
+    while(added<21){
+      if(d.getUTCDay()!==5){out.add(d.toISOString().slice(0,10));added++;}
+      d.setUTCDate(d.getUTCDate()+1);
+    }
+    rows.forEach(m=>{
+      const x=ymd(m.scheduled_date);
+      if(x>=today()&&m.status!=='cancelled')out.add(x);
+    });
+    return [...out].sort();
+  }
+
+  async function moveMissionByDrag(missionId,newDate,repId){
+    const m=mo.missions.find(x=>x.id===missionId);
+    if(!m)return;
+    if(ymd(m.scheduled_date)===newDate)return;
+    const {data,error}=await sb.rpc('admin_drag_market_mission',{p_mission_id:missionId,p_new_date:newDate});
+    if(error)return flash(tx('تعذر نقل المهمة: ','Could not move mission: ')+friendlyError(error.message),true);
+    if(data?.ok===false)return flash(tx('المهمة غير موجودة.','Mission not found.'),true);
+    closeModal();
+    await loadData(true);
+    openRepPlans(repId);
+    flash(data?.mode==='swap'
+      ?tx('تم تبديل المهمتين بين التاريخين.','The two missions were swapped between dates.')
+      :tx('تم نقل المهمة إلى التاريخ المحدد.','Mission moved to the selected date.'));
+  }
+
   function openRepPlans(repId){
     if(!isManagementUser())return;
     const rep=state.profiles.find(p=>p.id===repId);
@@ -593,14 +628,24 @@
     const inProgress=rows.filter(m=>m.status==='in_progress');
     const achieved=rows.reduce((sum,m)=>sum+progress(m),0);
     const canDelete=canPermanentDelete();
+    const scheduleDates=repScheduleDates(rows);
+    let pickedMissionId=null;
+
+    const scheduleRail='<section class="mo7-schedule-board"><div class="mo7-schedule-head"><div><b>'+tx('تحديد مهمة اليوم بالسحب','Set the day by dragging')+'</b><span>'+tx('اسحب المهمة من القائمة للأعلى وضعها على التاريخ المطلوب. إذا كان التاريخ عليه مهمة أخرى، يتم تبديل المهمتين تلقائيًا.','Drag a mission from the list up to the date you want. If that date already has another mission, the two missions are swapped automatically.')+'</span></div><span class="mo7-mobile-hint">'+tx('بالجوال: اضغط «اختيار للنقل» ثم اضغط التاريخ.','On mobile: tap “Select to move”, then tap a date.')+'</span></div><div class="mo7-date-rail" id="moRepDateRail">'+scheduleDates.map(d=>{
+      const mission=rows.find(m=>ymd(m.scheduled_date)===d&&m.status!=='cancelled');
+      return '<button type="button" class="mo7-date-slot '+(d===todayKey?'today ':'')+(mission?'occupied':'')+'" data-mo-drop-date="'+safe(d)+'"><span>'+safe(plannerDayLabel(d))+'</span><b>'+safe(fmtDate(d))+'</b><small>'+(mission?safe(mission.area_name):tx('فارغ','Empty'))+'</small></button>';
+    }).join('')+'</div><div id="moRepMoveHint" class="mo7-move-hint">'+tx('ما تم اختيار مهمة للنقل.','No mission selected for moving.')+'</div></section>';
 
     const planCards=rows.length?rows.map(m=>{
       const live=!['completed','cancelled'].includes(m.status);
-      return '<article class="mo4-mission-card '+statusClass(m)+'" data-mo-rep-plan-row="'+safe(m.id)+'">'+
+      const movable=live&&progress(m)===0&&ymd(m.scheduled_date)>=todayKey;
+      return '<article class="mo4-mission-card '+statusClass(m)+' '+(movable?'mo7-draggable':'')+'" data-mo-rep-plan-row="'+safe(m.id)+'" '+(movable?'draggable="true" data-mo-drag-mission="'+safe(m.id)+'"':'')+'>'+
         (canDelete?'<label class="mo6-check" data-mo-rep-check-wrap style="display:none"><input type="checkbox" data-mo-rep-select="'+safe(m.id)+'"><span></span></label>':'')+
         '<div class="mo4-card-top"><div><span>'+safe(fmtDate(m.scheduled_date))+'</span><h4>'+safe(m.area_name)+'</h4><small>'+safe(m.city)+' · '+tx('الهدف','Target')+' '+n(m.target_customers)+' · '+tx('المنجز','Done')+' '+n(progress(m))+'</small></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
         '<div class="mo-progress"><i style="width:'+pct(m)+'%"></i></div>'+
+        (movable?'<div class="mo7-drag-note">↥ '+tx('اسحب هذه المهمة للأعلى إلى التاريخ المطلوب','Drag this mission upward to the wanted date')+'</div>':(live&&progress(m)>0?'<div class="mo7-locked-note">'+tx('هذه المهمة عليها إنجاز عملاء؛ تغيير تاريخها يتم من التعديل الكامل فقط.','This mission has customer progress; change its date through full edit only.')+'</div>':''))+
         '<div class="mo4-card-actions"><button class="btn secondary mini" type="button" data-mo-rep-map="'+safe(m.id)+'">'+tx('عرض في الخريطة','View on map')+'</button><button class="btn secondary mini" type="button" data-mo-rep-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
+          (movable?'<button class="btn secondary mini" type="button" data-mo-pick-mission="'+safe(m.id)+'">'+tx('اختيار للنقل','Select to move')+'</button>':'')+
           (live?'<button class="btn secondary mini" type="button" data-mo-rep-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button>':'')+
           (canDelete?'<button class="btn bad mini" type="button" data-mo-rep-delete="'+safe(m.id)+'">'+tx('حذف','Delete')+'</button>':'')+
         '</div></article>';
@@ -608,6 +653,7 @@
 
     openModal(tx('خطط المندوب — ','Representative plans — ')+rep.full_name,
       '<div class="mo5-mini-stats management"><div><span>'+tx('خطة اليوم','Today')+'</span><b>'+n(todayRows.length)+'</b></div><div><span>'+tx('قادمة','Upcoming')+'</span><b>'+n(upcoming.length)+'</b></div><div><span>'+tx('جاري التنفيذ','In progress')+'</span><b>'+n(inProgress.length)+'</b></div><div><span>'+tx('مكتملة','Completed')+'</span><b>'+n(completed.length)+'</b></div></div>'+
+      scheduleRail+
       '<div class="notice"><b>'+tx('إجمالي العملاء المنجزين في الخطط','Total customers completed across plans')+': '+n(achieved)+'</b><br>'+tx('من هنا تضيف أو تعدل أو تحذف أو تراجع أي خطة لهذا المندوب.','From here you can add, edit, delete, or review any plan for this representative.')+'</div>'+
       '<div class="mo4-card-actions" style="margin:10px 0"><button class="btn" type="button" id="moRepAddPlan">+ '+tx('إضافة خطة','Add plan')+'</button>'+
         (canDelete?'<button class="btn secondary" type="button" id="moRepSelectToggle">'+tx('تحديد','Select')+'</button><button class="btn secondary" type="button" id="moRepSelectAll" style="display:none">'+tx('تحديد الكل','Select all')+'</button><button class="btn bad" type="button" id="moRepDeleteSelected" style="display:none" disabled>'+tx('حذف المحدد','Delete selected')+'</button>':'')+
@@ -615,6 +661,41 @@
 
     const add=document.getElementById('moRepAddPlan');
     if(add)add.onclick=()=>{closeModal();openMissionForm(null,repId);};
+
+    const hint=document.getElementById('moRepMoveHint');
+    const setPicked=id=>{
+      pickedMissionId=id||null;
+      document.querySelectorAll('[data-mo-drag-mission]').forEach(x=>x.classList.toggle('picked',x.dataset.moDragMission===pickedMissionId));
+      if(hint){
+        const m=mo.missions.find(x=>x.id===pickedMissionId);
+        hint.textContent=m?tx('تم اختيار: ','Selected: ')+m.area_name+tx(' — اضغط التاريخ المطلوب بالأعلى.',' — tap the wanted date above.'):tx('ما تم اختيار مهمة للنقل.','No mission selected for moving.');
+      }
+    };
+
+    document.querySelectorAll('[data-mo-pick-mission]').forEach(btn=>btn.onclick=()=>setPicked(btn.dataset.moPickMission));
+
+    document.querySelectorAll('[data-mo-drag-mission]').forEach(card=>{
+      card.addEventListener('dragstart',e=>{
+        pickedMissionId=card.dataset.moDragMission;
+        e.dataTransfer.effectAllowed='move';
+        e.dataTransfer.setData('text/plain',pickedMissionId);
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+    });
+
+    document.querySelectorAll('[data-mo-drop-date]').forEach(slot=>{
+      slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('dragover');if(e.dataTransfer)e.dataTransfer.dropEffect='move';});
+      slot.addEventListener('dragleave',()=>slot.classList.remove('dragover'));
+      slot.addEventListener('drop',async e=>{
+        e.preventDefault();slot.classList.remove('dragover');
+        const id=e.dataTransfer?.getData('text/plain')||pickedMissionId;
+        if(id)await moveMissionByDrag(id,slot.dataset.moDropDate,repId);
+      });
+      slot.addEventListener('click',async()=>{
+        if(pickedMissionId)await moveMissionByDrag(pickedMissionId,slot.dataset.moDropDate,repId);
+      });
+    });
 
     document.querySelectorAll('[data-mo-rep-map]').forEach(btn=>btn.onclick=()=>{
       const m=mo.missions.find(x=>x.id===btn.dataset.moRepMap);if(!m)return;
@@ -1493,7 +1574,12 @@
       'invalid assignment count':tx('توزيع المناطق غير صالح.','Invalid territory assignment.'),
       'invalid representative assignment':tx('يوجد توزيع غير صالح لأحد المناديب.','One representative assignment is invalid.'),
       'invalid zone in planner':tx('إحدى المناطق المحددة غير صالحة. أعد تحديدها من الخريطة.','One selected zone is invalid. Re-select it on the map.'),
-      'market opening preview locked':tx('فتح السوق ما زال في وضع التجربة ومغلق عن المناديب.','Market Opening is still in internal preview and locked for representatives.')
+      'market opening preview locked':tx('فتح السوق ما زال في وضع التجربة ومغلق عن المناديب.','Market Opening is still in internal preview and locked for representatives.'),
+      'mission with customer progress cannot be dragged':tx('هذه المهمة عليها عملاء منجزون؛ لا يمكن نقلها بالسحب. استخدم التعديل الكامل إذا احتجت تغييرها.','This mission already has customer progress and cannot be moved by drag. Use full edit if needed.'),
+      'target mission has customer progress':tx('التاريخ المطلوب عليه مهمة بدأ فيها تسجيل عملاء؛ لا يمكن تبديلها بالسحب.','The target date has a mission with customer progress, so it cannot be swapped by drag.'),
+      'target date has closed mission':tx('التاريخ المطلوب عليه مهمة مغلقة ولا يمكن تبديلها.','The target date has a closed mission and cannot be swapped.'),
+      'district already assigned on target date':tx('نفس الحي موزع على مندوب آخر في التاريخ المطلوب. اختر تاريخًا آخر.','The same district is assigned to another representative on the target date. Choose another date.'),
+      'district already assigned on source date':tx('التبديل سيصنع تعارضًا في الحي على التاريخ القديم. اختر تاريخًا آخر.','The swap would create a district conflict on the old date. Choose another date.')
     };
     return dict[m]||m;
   }
@@ -1632,7 +1718,7 @@
       return;
     }
     notice.classList.add('ok');
-    notice.innerHTML='<b>'+tx('مهمة فتح السوق','Market-opening mission')+': '+safe(m.area_name)+' · '+safe(m.city)+'</b><div>'+safe(m.zone_type==='district_polygon'?tx('التسجيل مسموح داخل حدود الحي المحددة فقط. جميع الحالات الأولية تُحسب في الهدف.','Registration is allowed only inside the selected district boundary. All initial statuses count toward the target.'):tx('اختر موقع العميل داخل دائرة المهمة. جميع الحالات الأولية تُحسب في الهدف.','Choose the customer location inside the mission circle. All initial statuses count toward the target.'))+'</div><div id="moCustomerZoneStatus" class="small"></div>';
+    notice.innerHTML='<b>'+tx('مهمة فتح السوق','Market-opening mission')+': '+safe(m.area_name)+' · '+safe(m.city)+'</b><div>'+safe(tx('تقدر تسجل العميل سواء داخل المنطقة أو خارجها. العميل داخل الحدود فقط هو الذي يدخل في هدف المهمة؛ وإذا كان خارجها يظهر لك تنبيه ويحفظ كعميل عادي بدون احتسابه في الهدف.','You can register the customer inside or outside the assigned area. Only customers inside the boundary count toward the mission target; outside customers are saved normally with a warning and do not count.'))+'</div><div id="moCustomerZoneStatus" class="small"></div>';
     form.prepend(notice);
     const area=document.getElementById('fArea');if(area&&!area.value)area.value=m.area_name;
     const save=document.getElementById('saveCustomerBtn');if(save)save.disabled=true;
@@ -1659,18 +1745,18 @@
     if(m.zone_type==='district_polygon'&&m.zone_geojson){
       inside=pointInZoneGeojson(m.zone_geojson,Number(lat),Number(lng));
       detail=inside
-        ?tx('الموقع داخل حدود الحي — يُسمح بالحفظ.','Location is inside the district boundary — saving is allowed.')
-        :tx('الموقع خارج حدود الحي المحدد للمهمة.','Location is outside the district boundary assigned to this mission.');
+        ?tx('داخل المنطقة المطلوبة — هذا العميل سيدخل في هدف المهمة.','Inside the required area — this customer will count toward the mission target.')
+        :tx('تنبيه: أنت خارج حدود المنطقة المطلوبة. العميل سيُحفظ عادي، لكنه لن يدخل في هدف فتح السوق.','Warning: you are outside the required area. The customer will still be saved, but will not count toward the Market Opening target.');
     }else{
       const dist=haversine(Number(m.center_lat),Number(m.center_lng),Number(lat),Number(lng));
       inside=dist<=Number(m.radius_m);
       detail=inside
-        ?tx('الموقع داخل منطقة المهمة — يُسمح بالحفظ.','Location is inside the mission zone — saving is allowed.')
-        :tx('الموقع خارج منطقة المهمة بحوالي ','Location is outside the mission zone by about ')+n(Math.max(0,Math.round(dist-m.radius_m)))+tx(' متر.',' m.');
+        ?tx('داخل منطقة المهمة — هذا العميل سيدخل في الهدف.','Inside the mission zone — this customer will count toward the target.')
+        :tx('تنبيه: أنت خارج منطقة المهمة بحوالي ','Warning: you are about ')+n(Math.max(0,Math.round(dist-m.radius_m)))+tx(' متر. العميل سيُحفظ لكنه لن يدخل في الهدف.',' m outside the mission zone. The customer will be saved but will not count toward the target.');
     }
-    if(save)save.disabled=!inside;
+    if(save)save.disabled=false;
     if(box){
-      box.className='small '+(inside?'ok':'bad');
+      box.className='small '+(inside?'ok':'warn');
       box.textContent=detail;
     }
   }

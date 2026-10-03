@@ -637,15 +637,16 @@
     const achieved=rows.reduce((sum,m)=>sum+progress(m),0);
     const canDelete=canPermanentDelete();
     const scheduleDates=repScheduleDates(rows);
-    let pickedMissionId=null;
 
-    const scheduleRail='<section class="mo7-schedule-board"><div class="mo7-schedule-head"><div><b>'+tx('تحديد مهمة اليوم بالسحب','Set the day by dragging')+'</b><span>'+tx('اسحب المهمة من القائمة للأعلى وضعها على التاريخ المطلوب. إذا كان التاريخ عليه مهمة أخرى، يتم تبديل المهمتين تلقائيًا.','Drag a mission from the list up to the date you want. If that date already has another mission, the two missions are swapped automatically.')+'</span></div><span class="mo7-mobile-hint">'+tx('بالجوال: اضغط «اختيار للنقل» ثم اضغط التاريخ.','On mobile: tap “Select to move”, then tap a date.')+'</span></div><div class="mo7-date-rail" id="moRepDateRail">'+scheduleDates.map(d=>{
+    const scheduleRail='<section class="mo7-schedule-board mo8-calendar-board"><div class="mo7-schedule-head"><div><b>'+tx('جدولة المناطق بالسحب','Drag areas between dates')+'</b><span>'+tx('امسك المنطقة بالماوس واسحبها من تاريخها الحالي إلى التاريخ المطلوب. يمكن وضع أكثر من منطقة في نفس اليوم.','Grab an area with the mouse and drag it from its current date to the date you want. Multiple areas can be placed on the same day.')+'</span></div><span class="mo8-desktop-hint">'+tx('للإدارة على اللابتوب · سحب وإفلات مباشر','Management desktop · direct drag & drop')+'</span></div><div class="mo8-calendar-strip" id="moRepDateRail">'+scheduleDates.map(d=>{
       const dayMissions=rows.filter(m=>ymd(m.scheduled_date)===d&&m.status!=='cancelled');
-      const summary=dayMissions.length
-        ?(dayMissions.length===1?safe(dayMissions[0].area_name):n(dayMissions.length)+' '+tx('مناطق','areas')+' · '+safe(dayMissions.slice(0,2).map(x=>x.area_name).join('، '))+(dayMissions.length>2?'…':''))
-        :tx('فارغ','Empty');
-      return '<button type="button" class="mo7-date-slot '+(d===todayKey?'today ':'')+(dayMissions.length?'occupied':'')+'" data-mo-drop-date="'+safe(d)+'"><span>'+safe(plannerDayLabel(d))+'</span><b>'+safe(fmtDate(d))+'</b><small>'+summary+'</small></button>';
-    }).join('')+'</div><div id="moRepMoveHint" class="mo7-move-hint">'+tx('ما تم اختيار مهمة للنقل.','No mission selected for moving.')+'</div></section>';
+      const chips=dayMissions.length?dayMissions.map(m=>{
+        const live=!['completed','cancelled'].includes(m.status);
+        const movable=live&&progress(m)===0&&ymd(m.scheduled_date)>=todayKey;
+        return '<div class="mo8-area-chip '+statusClass(m)+' '+(movable?'movable':'locked')+'" '+(movable?'draggable="true" data-mo-drag-mission="'+safe(m.id)+'"':'')+' data-mo-scheduled-chip="'+safe(m.id)+'"><span class="mo8-grip" aria-hidden="true">⠿</span><div><b>'+safe(m.area_name)+'</b><small>'+tx('الهدف','Target')+' '+n(m.target_customers)+' · '+tx('المنجز','Done')+' '+n(progress(m))+'</small></div>'+(movable?'<span class="mo8-move-mark">↔</span>':'<span class="mo8-lock-mark">🔒</span>')+'</div>';
+      }).join(''):'<div class="mo8-empty-slot">'+tx('اسحب منطقة إلى هنا','Drop an area here')+'</div>';
+      return '<div class="mo8-date-column '+(d===todayKey?'today ':'')+(dayMissions.length?'occupied':'')+'" data-mo-drop-date="'+safe(d)+'"><div class="mo8-date-head"><span>'+safe(plannerDayLabel(d))+'</span><b>'+safe(fmtDate(d))+'</b><small>'+n(dayMissions.length)+' '+tx('منطقة','areas')+'</small></div><div class="mo8-date-body">'+chips+'</div></div>';
+    }).join('')+'</div><div class="mo8-drag-status" id="moRepMoveHint">'+tx('اسحب أي منطقة قابلة للنقل إلى تاريخ آخر.','Drag any movable area to another date.')+'</div></section>';
 
     const planCards=rows.length?rows.map(m=>{
       const live=!['completed','cancelled'].includes(m.status);
@@ -654,9 +655,8 @@
         (canDelete?'<label class="mo6-check" data-mo-rep-check-wrap style="display:none"><input type="checkbox" data-mo-rep-select="'+safe(m.id)+'"><span></span></label>':'')+
         '<div class="mo4-card-top"><div><span>'+safe(fmtDate(m.scheduled_date))+'</span><h4>'+safe(m.area_name)+'</h4><small>'+safe(m.city)+' · '+tx('الهدف','Target')+' '+n(m.target_customers)+' · '+tx('المنجز','Done')+' '+n(progress(m))+'</small></div><span class="mo-status-pill">'+safe(statusText(m))+'</span></div>'+
         '<div class="mo-progress"><i style="width:'+pct(m)+'%"></i></div>'+
-        (movable?'<div class="mo7-drag-note">↥ '+tx('اسحب هذه المهمة للأعلى إلى التاريخ المطلوب','Drag this mission upward to the wanted date')+'</div>':(live&&progress(m)>0?'<div class="mo7-locked-note">'+tx('هذه المهمة عليها إنجاز عملاء؛ تغيير تاريخها يتم من التعديل الكامل فقط.','This mission has customer progress; change its date through full edit only.')+'</div>':''))+
+        (movable?'<div class="mo7-drag-note">⠿ '+tx('يمكن سحب هذه المنطقة مباشرة إلى أي تاريخ بالأعلى','Drag this area directly to any date above')+'</div>':(live&&progress(m)>0?'<div class="mo7-locked-note">'+tx('هذه المهمة عليها إنجاز عملاء؛ تغيير تاريخها يتم من التعديل الكامل فقط.','This mission has customer progress; change its date through full edit only.')+'</div>':''))+
         '<div class="mo4-card-actions"><button class="btn secondary mini" type="button" data-mo-rep-map="'+safe(m.id)+'">'+tx('عرض في الخريطة','View on map')+'</button><button class="btn secondary mini" type="button" data-mo-rep-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
-          (movable?'<button class="btn secondary mini" type="button" data-mo-pick-mission="'+safe(m.id)+'">'+tx('اختيار للنقل','Select to move')+'</button>':'')+
           (live?'<button class="btn secondary mini" type="button" data-mo-rep-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button>':'')+
           (canDelete?'<button class="btn bad mini" type="button" data-mo-rep-delete="'+safe(m.id)+'">'+tx('حذف','Delete')+'</button>':'')+
         '</div></article>';
@@ -674,37 +674,48 @@
     if(add)add.onclick=()=>{closeModal();openMissionForm(null,repId);};
 
     const hint=document.getElementById('moRepMoveHint');
-    const setPicked=id=>{
-      pickedMissionId=id||null;
-      document.querySelectorAll('[data-mo-drag-mission]').forEach(x=>x.classList.toggle('picked',x.dataset.moDragMission===pickedMissionId));
-      if(hint){
-        const m=mo.missions.find(x=>x.id===pickedMissionId);
-        hint.textContent=m?tx('تم اختيار: ','Selected: ')+m.area_name+tx(' — اضغط التاريخ المطلوب بالأعلى.',' — tap the wanted date above.'):tx('ما تم اختيار مهمة للنقل.','No mission selected for moving.');
-      }
-    };
-
-    document.querySelectorAll('[data-mo-pick-mission]').forEach(btn=>btn.onclick=()=>setPicked(btn.dataset.moPickMission));
-
+    let draggingMissionId=null;
     document.querySelectorAll('[data-mo-drag-mission]').forEach(card=>{
       card.addEventListener('dragstart',e=>{
-        pickedMissionId=card.dataset.moDragMission;
+        draggingMissionId=card.dataset.moDragMission;
+        const m=mo.missions.find(x=>x.id===draggingMissionId);
         e.dataTransfer.effectAllowed='move';
-        e.dataTransfer.setData('text/plain',pickedMissionId);
+        e.dataTransfer.setData('text/plain',draggingMissionId);
         card.classList.add('dragging');
+        document.querySelectorAll('[data-mo-drop-date]').forEach(x=>x.classList.add('drop-ready'));
+        if(hint&&m)hint.textContent=tx('جاري نقل: ','Moving: ')+m.area_name+tx(' — أفلتها فوق التاريخ المطلوب.',' — drop it on the wanted date.');
       });
-      card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+      card.addEventListener('dragend',()=>{
+        card.classList.remove('dragging');
+        draggingMissionId=null;
+        document.querySelectorAll('[data-mo-drop-date]').forEach(x=>x.classList.remove('dragover','drop-ready'));
+        if(hint)hint.textContent=tx('اسحب أي منطقة قابلة للنقل إلى تاريخ آخر.','Drag any movable area to another date.');
+      });
     });
 
     document.querySelectorAll('[data-mo-drop-date]').forEach(slot=>{
-      slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('dragover');if(e.dataTransfer)e.dataTransfer.dropEffect='move';});
-      slot.addEventListener('dragleave',()=>slot.classList.remove('dragover'));
-      slot.addEventListener('drop',async e=>{
-        e.preventDefault();slot.classList.remove('dragover');
-        const id=e.dataTransfer?.getData('text/plain')||pickedMissionId;
-        if(id)await moveMissionByDrag(id,slot.dataset.moDropDate,repId);
+      slot.addEventListener('dragenter',e=>{e.preventDefault();slot.classList.add('dragover');});
+      slot.addEventListener('dragover',e=>{
+        e.preventDefault();
+        slot.classList.add('dragover');
+        if(e.dataTransfer)e.dataTransfer.dropEffect='move';
       });
-      slot.addEventListener('click',async()=>{
-        if(pickedMissionId)await moveMissionByDrag(pickedMissionId,slot.dataset.moDropDate,repId);
+      slot.addEventListener('dragleave',e=>{
+        if(!slot.contains(e.relatedTarget))slot.classList.remove('dragover');
+      });
+      slot.addEventListener('drop',async e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        slot.classList.remove('dragover');
+        const id=e.dataTransfer?.getData('text/plain')||draggingMissionId;
+        if(!id)return;
+        const m=mo.missions.find(x=>x.id===id);
+        if(!m)return;
+        if(ymd(m.scheduled_date)===slot.dataset.moDropDate){
+          if(hint)hint.textContent=tx('المنطقة موجودة أصلًا في هذا التاريخ.','The area is already on this date.');
+          return;
+        }
+        await moveMissionByDrag(id,slot.dataset.moDropDate,repId);
       });
     });
 

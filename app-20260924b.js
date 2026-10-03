@@ -354,6 +354,8 @@ function inactiveVisitForCustomer(c){
 }
 function renderDormantDashboard(){
  const box=$('dormantList'),count=$('dormantCount'),sub=$('dormantSub');if(!box)return;
+ const holder=box.closest('details');if(holder)holder.open=true;
+ box.style.setProperty('display','grid','important');
  const repId=state.profile?.id;
  const rows=state.customers.filter(c=>c.status==='inactive'&&(canManage()||c.assigned_rep===repId))
    .slice().sort((a,b)=>new Date(a.inactive_since||a.updated_at||0)-new Date(b.inactive_since||b.updated_at||0));
@@ -416,6 +418,8 @@ async function saveInactiveVisit(id){
 }
 function renderTodayFollowupsDashboard(){
  const box=$('todayFollowupList'),count=$('todayFollowupCount'),sub=$('todayFollowupSub');if(!box)return;
+ const holder=box.closest('details');if(holder)holder.open=true;
+ box.style.setProperty('display','grid','important');
  const today=todayRiyadh(),repId=state.profile?.id;
  const customerById=new Map(state.customers.map(c=>[Number(c.id),c]));
  const rows=state.salesFollowupStates.map(fs=>({fs,c:customerById.get(Number(fs.customer_id))}))

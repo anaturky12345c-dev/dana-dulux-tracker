@@ -308,8 +308,10 @@ async function loadPaged(makeQuery,label){
 }
 
 async function refreshAll(){
-  await Promise.all([loadProfiles(),loadCustomers(),loadSales(),loadReports(),loadGoals(),loadDashboardFollowups()]);
-  state.activityCache.clear(); renderAll();
+  const results=await Promise.allSettled([loadProfiles(),loadCustomers(),loadSales(),loadReports(),loadGoals(),loadDashboardFollowups()]);
+  results.forEach((r,i)=>{if(r.status==='rejected')console.error('data load failed',i,r.reason);});
+  state.activityCache.clear();
+  renderAll();
 }
 async function loadProfiles(){const {data,error}=await sb.from('profiles').select('id,username,full_name,role,active').eq('active',true).order('full_name');state.profiles=error?[]:(data||[]);}
 async function loadCustomers(){
@@ -335,7 +337,27 @@ function activityForCustomer(cid){
  const out={monthSalesCount,monthSalesValue,lastSale};state.activityCache.set(cid,out);return out;
 }
 function customerCategory(c){const x=activityForCustomer(c.id);if(c.status==='inactive')return 'inactive';if(x.monthSalesCount>1)return 'frequent';return c.status||'hesitant';}
-function renderAll(){if(!$('mCustomers'))return;renderDashboard();renderCustomers();renderSales();renderReports();renderGoalsDashboard();renderRepPerformance();renderRepPasswordAdmin();window.dispatchEvent(new CustomEvent('dana:render'));}
+function safeRender(name,fn){
+ try{fn();}
+ catch(err){
+   console.error('render failed:',name,err);
+   const page=document.getElementById(name);
+   if(page)page.dataset.renderError='1';
+ }
+}
+function renderAll(){
+ if(!$('mCustomers'))return;
+ safeRender('dashboard',renderDashboard);
+ safeRender('dormant-dashboard',renderDormantDashboard);
+ safeRender('followup-dashboard',renderTodayFollowupsDashboard);
+ safeRender('customers',renderCustomers);
+ safeRender('sales',renderSales);
+ safeRender('reports',renderReports);
+ safeRender('goals-dashboard',renderGoalsDashboard);
+ safeRender('rep-performance',renderRepPerformance);
+ safeRender('rep-password-admin',renderRepPasswordAdmin);
+ try{window.dispatchEvent(new CustomEvent('dana:render'));}catch(err){console.error('dana:render dispatch failed',err);}
+}
 
 function badgeStatus(k){const cls={new:'b-info',active:'b-good',inactive:'b-purple',agreed_pending:'b-info',hesitant:'b-warn',rejected:'b-bad'}[k]||'b-gray';return `<span class="badge ${cls}">${esc(statusLabel(k))}</span>`;}
 

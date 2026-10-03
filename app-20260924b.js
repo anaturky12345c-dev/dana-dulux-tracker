@@ -627,7 +627,45 @@ function renderSales(){
 function reportVoiceDetails(r){
  return '<div class="voice-detail-cell">'+(r.audio_path?savedVoiceHtml(r.audio_path,r.audio_duration_seconds):'')+(r.note?'<div class="voice-written-detail">'+esc(r.note)+'</div>':'')+'</div>';
 }
+function renderRequiredFollowupsPage(){
+ const body=$('requiredFollowupBody'),mobile=$('requiredFollowupMobile'),count=$('requiredFollowupCount');
+ if(!body&&!mobile&&!count)return;
+ const repFilter=$('followupRepFilter')?.value||'';
+ const repId=state.profile?.id;
+ const customerById=new Map(state.customers.map(x=>[Number(x.id),x]));
+ const rows=state.salesFollowupStates
+   .map(fs=>({fs,c:customerById.get(Number(fs.customer_id))}))
+   .filter(x=>x.c&&['hesitant','rejected'].includes(x.c.status)&&x.fs.next_due_at)
+   .filter(x=>canManage()?(!repFilter||x.c.assigned_rep===repFilter):x.c.assigned_rep===repId)
+   .sort((a,b)=>new Date(a.fs.next_due_at)-new Date(b.fs.next_due_at));
+ if(count)count.textContent=String(rows.length);
+ const rowHtml=x=>{
+   const late=new Date(x.fs.next_due_at).getTime()<Date.now();
+   const rep=x.c.rep?.full_name||'-';
+   return `<tr class="${late?'workload-row-overdue':''}">
+     <td><b>${esc(x.c.name)}</b></td>
+     <td>${esc(rep)}</td>
+     <td>${badgeStatus(x.c.status)}</td>
+     <td>${dateTime(x.fs.next_due_at)}</td>
+     <td><b class="${late?'due-bad':'due-ok'}">${late?(lang==='ar'?'متأخرة':'Overdue'):(dateKeyRiyadh(x.fs.next_due_at)===todayRiyadh()?(lang==='ar'?'مطلوبة اليوم':'Due today'):(lang==='ar'?'قادمة':'Upcoming'))}</b></td>
+     <td><button class="btn secondary mini" type="button" data-core-sales-followup="${x.c.id}">${lang==='ar'?'تسجيل متابعة':'Record follow-up'}</button></td>
+   </tr>`;
+ };
+ if(body)body.innerHTML=rows.length?rows.map(rowHtml).join(''):`<tr><td colspan="6" class="empty">${lang==='ar'?'لا توجد متابعات مطلوبة حالياً.':'No required follow-ups right now.'}</td></tr>`;
+ if(mobile)mobile.innerHTML=rows.length?rows.map(x=>{
+   const late=new Date(x.fs.next_due_at).getTime()<Date.now();
+   return `<div class="followup-mobile-card">
+     <div class="dashboard-head" style="margin-bottom:5px"><b>${esc(x.c.name)}</b>${badgeStatus(x.c.status)}</div>
+     <div class="small">${lang==='ar'?'المندوب: ':'Representative: '}${esc(x.c.rep?.full_name||'-')}</div>
+     <div class="small">${lang==='ar'?'موعد المتابعة: ':'Follow-up due: '}${dateTime(x.fs.next_due_at)}</div>
+     <div class="small ${late?'due-bad':'due-ok'}"><b>${late?(lang==='ar'?'متأخرة':'Overdue'):(dateKeyRiyadh(x.fs.next_due_at)===todayRiyadh()?(lang==='ar'?'مطلوبة اليوم':'Due today'):(lang==='ar'?'قادمة':'Upcoming'))}</b></div>
+     <div style="margin-top:8px"><button class="btn secondary mini" type="button" data-core-sales-followup="${x.c.id}">${lang==='ar'?'تسجيل متابعة':'Record follow-up'}</button></div>
+   </div>`;
+ }).join(''):`<div class="small">${lang==='ar'?'لا توجد متابعات مطلوبة حالياً.':'No required follow-ups right now.'}</div>`;
+}
+
 function renderReports(){
+ renderRequiredFollowupsPage();
  const f=$('reportActionFilter')?.value||'',period=$('reportPeriodFilter')?.value||'all';
  const inPeriod=r=>periodMatchesDate(r.business_date||dateKeyRiyadh(r.created_at),period);
  const salesRows=state.reports.filter(r=>r.action_code==='sales_followup'&&inPeriod(r));
@@ -1785,11 +1823,12 @@ function gotoPage(id){
 $('loginBtn')?.addEventListener('click',login);$('loginPass')?.addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('logoutBtn')?.addEventListener('click',()=>logout());$('closeModalBtn')?.addEventListener('click',closeModal);$('modal')?.addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});
 $('langBtn')?.addEventListener('click',toggleLanguage);$('langBtnLogin')?.addEventListener('click',toggleLanguage);
 document.querySelectorAll('.nav-grid button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='customers'){state.customerMonthOnly=false;$('customerSearch').value='';$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';}if(b.dataset.page==='sales'){$('saleSearch').value='';$('salePeriodFilter').value='all';if($('saleProductFilter'))$('saleProductFilter').value='';if($('saleRepFilter'))$('saleRepFilter').value='';}if(b.dataset.page==='reports'){if($('reportActionFilter'))$('reportActionFilter').value='';if($('reportPeriodFilter'))$('reportPeriodFilter').value='all';}if(b.dataset.page==='audit'){if($('auditPeriodFilter'))$('auditPeriodFilter').value='all';}gotoPage(b.dataset.page);}));
-$('customerSearch')?.addEventListener('input',renderCustomers);$('customerStatusFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerRepFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerPeriodFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('saleSearch')?.addEventListener('input',renderSales);$('salePeriodFilter')?.addEventListener('change',renderSales);$('saleProductFilter')?.addEventListener('change',renderSales);$('saleRepFilter')?.addEventListener('change',renderSales);$('reportActionFilter')?.addEventListener('change',renderReports);$('reportPeriodFilter')?.addEventListener('change',renderReports);$('auditPeriodFilter')?.addEventListener('change',renderAudit);$('mapSearch')?.addEventListener('input',()=>drawMapMarkers(true));$('mapFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapRepFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapTypeFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapFitBtn')?.addEventListener('click',()=>fitMapRows(mapFilteredRows()));$('mapClearBtn')?.addEventListener('click',()=>{if($('mapSearch'))$('mapSearch').value='';if($('mapFilter'))$('mapFilter').value='';if($('mapRepFilter'))$('mapRepFilter').value='';if($('mapTypeFilter'))$('mapTypeFilter').value='';drawMapMarkers(true);});$('mapFullscreenBtn')?.addEventListener('click',async()=>{const el=$('mapExperience');if(!el)return;try{if(!document.fullscreenElement)await el.requestFullscreen();else await document.exitFullscreen();}catch(_){}});
+$('customerSearch')?.addEventListener('input',renderCustomers);$('customerStatusFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerRepFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('customerPeriodFilter')?.addEventListener('change',()=>{state.customerMonthOnly=false;renderCustomers();});$('saleSearch')?.addEventListener('input',renderSales);$('salePeriodFilter')?.addEventListener('change',renderSales);$('saleProductFilter')?.addEventListener('change',renderSales);$('saleRepFilter')?.addEventListener('change',renderSales);$('reportActionFilter')?.addEventListener('change',renderReports);$('reportPeriodFilter')?.addEventListener('change',renderReports);$('followupRepFilter')?.addEventListener('change',renderRequiredFollowupsPage);$('auditPeriodFilter')?.addEventListener('change',renderAudit);$('mapSearch')?.addEventListener('input',()=>drawMapMarkers(true));$('mapFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapRepFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapTypeFilter')?.addEventListener('change',()=>drawMapMarkers(true));$('mapFitBtn')?.addEventListener('click',()=>fitMapRows(mapFilteredRows()));$('mapClearBtn')?.addEventListener('click',()=>{if($('mapSearch'))$('mapSearch').value='';if($('mapFilter'))$('mapFilter').value='';if($('mapRepFilter'))$('mapRepFilter').value='';if($('mapTypeFilter'))$('mapTypeFilter').value='';drawMapMarkers(true);});$('mapFullscreenBtn')?.addEventListener('click',async()=>{const el=$('mapExperience');if(!el)return;try{if(!document.fullscreenElement)await el.requestFullscreen();else await document.exitFullscreen();}catch(_){}});
 $('editGoalsBtn')?.addEventListener('click',openGoalsEditor);$('generateReportBtn')?.addEventListener('click',generateAnalytics);$('printReportBtn')?.addEventListener('click',()=>{generateAnalytics();setTimeout(()=>window.print(),50);});$('analytics')?.addEventListener('click',e=>{const b=e.target.closest('[data-report-preset]');if(!b)return;const today=todayRiyadh(),mode=b.dataset.reportPreset;if(mode==='month'){$('analyticsFrom').value=today.slice(0,8)+'01';$('analyticsTo').value=today;}else if(mode==='week'){$('analyticsFrom').value=weekStartRiyadh();$('analyticsTo').value=today;}else if(mode==='30'){const d=new Date(today+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-29);$('analyticsFrom').value=d.toISOString().slice(0,10);$('analyticsTo').value=today;}generateAnalytics();});
 $('newCustomerBtn')?.addEventListener('click',openCustomerForm);$('newSaleBtn')?.addEventListener('click',()=>openSaleForm());$('newSalesFollowupBtn')?.addEventListener('click',()=>openSalesFollowupForm());$('newComplaintBtn')?.addEventListener('click',()=>openReportForm());$('changePasswordBtn')?.addEventListener('click',()=>changePassword(false));$('repPasswordAdminBtn')?.addEventListener('click',resetRepresentativePassword);
 $('customersBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-open-customer]');if(b)openCustomer(Number(b.dataset.openCustomer));});$('mapCustomerList')?.addEventListener('click',e=>{const b=e.target.closest('[data-map-customer]');if(b)focusMapCustomer(Number(b.dataset.mapCustomer));});document.addEventListener('fullscreenchange',()=>{if(state.map&&document.querySelector('#mapPage.section.active'))setTimeout(()=>state.map.invalidateSize(),120);});
 $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-sale]')))openSaleEditor(Number(b.dataset.editSale));else if((b=e.target.closest('[data-delete-sale]')))deleteSale(Number(b.dataset.deleteSale));});
+$('reports')?.addEventListener('click',e=>{const b=e.target.closest('[data-core-sales-followup]');if(b){openSalesFollowupForm(Number(b.dataset.coreSalesFollowup));return;}});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});$('salesFollowupsBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-delete-report]');if(b)deleteReport(Number(b.dataset.deleteReport));});
 $('dashboard')?.addEventListener('click',e=>{let el;
 if((el=e.target.closest('[data-dashboard-sales-followup]'))){openSalesFollowupForm(Number(el.dataset.dashboardSalesFollowup));return;}

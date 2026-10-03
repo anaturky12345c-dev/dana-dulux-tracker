@@ -65,15 +65,15 @@
           <div id="attentionList" class="attention-list priority-list"></div>
         </details>
 
-        <div class="card dashboard-dormant dashboard-dormant-priority dormant-inline-card">
-          <div class="dashboard-head attention-head">
+        <details class="card dashboard-dormant dashboard-dormant-priority priority-collapsible">
+          <summary class="dashboard-head attention-head priority-summary">
             <div><h3 id="dormantTitle">Inactive Customers – Visit Required</h3><div class="small" id="dormantSub"></div></div>
-            <div class="priority-side"><span class="attention-count dormant-count" id="dormantCount">0</span></div>
-          </div>
-          <div id="dormantList" class="dormant-list dormant-inline-list"></div>
-        </div>
+            <div class="priority-side"><span class="attention-count dormant-count" id="dormantCount">0</span><span class="priority-chevron" aria-hidden="true">⌄</span></div>
+          </summary>
+          <div id="dormantList" class="dormant-list priority-list"></div>
+        </details>
 
-        <details class="card dashboard-followup-today priority-collapsible" open>
+        <details class="card dashboard-followup-today priority-collapsible">
           <summary class="dashboard-head attention-head priority-summary">
             <div><h3 id="todayFollowupTitle">Required Follow-ups Today</h3><div class="small" id="todayFollowupSub"></div></div>
             <div class="priority-side"><span class="attention-count today-followup-count" id="todayFollowupCount">0</span><span class="priority-chevron" aria-hidden="true">⌄</span></div>

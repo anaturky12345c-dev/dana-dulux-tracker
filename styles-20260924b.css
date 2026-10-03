@@ -4393,3 +4393,19 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .dormant-launch-open{font-size:10px}
   .dormant-modal-list{max-height:72vh}
 }
+
+
+/* Dormant dashboard list — always visible, no collapse */
+.dormant-inline-card{overflow:hidden}
+.dormant-inline-list{
+  display:grid!important;
+  gap:8px;
+  max-height:430px;
+  overflow:auto;
+  padding-inline-end:3px;
+}
+.dormant-inline-list:empty::before{
+  content:"";
+  display:block;
+  min-height:1px;
+}

@@ -106,7 +106,7 @@
     const done=progress(m),min=Math.max(1,done),target=Math.max(min,Number(m.target_customers||min));
     return '<div class="mo-quick-target" data-mo-quick-target="'+safe(m.id)+'">'+
       '<div class="mo-quick-target-copy"><b>'+tx('عدد العملاء المطلوبين','Required customers')+'</b><small>'+tx('تعديل سريع بدون فتح المهمة','Quick edit without opening the mission')+' · '+tx('المنجز','Done')+' '+n(done)+'</small></div>'+
-      '<div class="mo-quick-target-control"><input type="number" inputmode="numeric" min="'+n(min)+'" max="50" step="1" value="'+n(target)+'" data-mo-target-input="'+safe(m.id)+'" aria-label="'+tx('عدد العملاء المطلوبين','Required customers')+'"><button class="btn good mini" type="button" data-mo-target-save="'+safe(m.id)+'">'+tx('حفظ','Save')+'</button></div>'+
+      '<div class="mo-quick-target-control"><input type="number" inputmode="numeric" min="'+min+'" max="50" step="1" value="'+target+'" data-mo-target-input="'+safe(m.id)+'" aria-label="'+tx('عدد العملاء المطلوبين','Required customers')+'"><button class="btn good mini" type="button" data-mo-target-save="'+safe(m.id)+'">'+tx('حفظ','Save')+'</button></div>'+
     '</div>';
   }
   async function saveQuickMissionTarget(missionId,wrap=null,afterSave=null){
@@ -869,7 +869,7 @@
     document.querySelectorAll('[data-mo-rep-delete]').forEach(btn=>btn.onclick=()=>{
       const m=mo.missions.find(x=>x.id===btn.dataset.moRepDelete);if(m)openPermanentDelete(m);
     });
-    document.querySelectorAll('[data-mo-quick-target]').forEach(wrap=>{
+    document.getElementById('modalContent')?.querySelectorAll('[data-mo-quick-target]').forEach(wrap=>{
       wrap.addEventListener('pointerdown',e=>e.stopPropagation());
       wrap.addEventListener('dragstart',e=>e.preventDefault());
       const input=wrap.querySelector('[data-mo-target-input]'),btn=wrap.querySelector('[data-mo-target-save]');

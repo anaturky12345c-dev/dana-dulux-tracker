@@ -381,16 +381,22 @@ function dormantRows(){
    .sort((a,b)=>new Date(a.inactive_since||a.updated_at||0)-new Date(b.inactive_since||b.updated_at||0));
 }
 function renderDormantDashboard(){
- const count=$('dormantCount'),sub=$('dormantSub'),launch=$('dormantDashboardLaunch');
+ const count=$('dormantCount'),sub=$('dormantSub'),box=$('dormantList');
  const rows=dormantRows();
  if(count)count.textContent=String(rows.length);
  if(sub)sub.textContent=lang==='ar'
-   ?(rows.length?'اضغط لعرض كل العملاء الخاملين وتسجيل الزيارة أو الطلبية.':'لا يوجد عملاء خاملون حالياً.')
-   :(rows.length?'Click to view all inactive customers and record a visit or order.':'No inactive customers right now.');
- if(launch){
-   launch.disabled=rows.length===0;
-   launch.setAttribute('aria-label',lang==='ar'?`فتح قائمة العملاء الخاملين — ${rows.length} عميل`:`Open inactive customers — ${rows.length}`);
- }
+   ?(rows.length?'القائمة ظاهرة مباشرة. اضغط على أي عميل لتسجيل زيارة أو طلبية.':'لا يوجد عملاء خاملون حالياً.')
+   :(rows.length?'The list is shown directly. Click any customer to record a visit or order.':'No inactive customers right now.');
+ if(!box)return;
+ box.innerHTML=rows.length?rows.map(c=>{
+   const ac=activityForCustomer(c.id),visit=inactiveVisitForCustomer(c),due=c.inactive_visit_due_at?new Date(c.inactive_visit_due_at).getTime():0,overdue=!!due&&due<Date.now();
+   const badgeText=overdue?(lang==='ar'?'زيارة متأخرة':'Visit overdue'):(visit?(lang==='ar'?'زيارة جديدة خلال 3 أيام عمل':'Next visit in 3 workdays'):(lang==='ar'?'مطلوب زيارة':'Visit required'));
+   return `<button type="button" class="dormant-item" data-dormant-customer="${c.id}">
+     <span class="dormant-main"><b>${esc(c.name)}</b><span>${esc(c.rep?.full_name||'-')}</span></span>
+     <span class="dormant-meta"><small>${lang==='ar'?'آخر طلبية':'Last order'}: ${ac.lastSale?dateOnly(ac.lastSale.business_date):'-'}</small><small>${lang==='ar'?'خامل منذ':'Inactive since'}: ${dateOnly(c.inactive_since||c.updated_at||c.created_at)}</small><small>${lang==='ar'?'موعد الزيارة':'Visit due'}: ${c.inactive_visit_due_at?dateTime(c.inactive_visit_due_at):'-'}</small></span>
+     <span class="dormant-visit ${overdue?'overdue':(visit?'done':'pending')}">${badgeText}</span>
+   </button>`;
+ }).join(''):`<div class="attention-empty">${lang==='ar'?'لا يوجد عملاء خاملون حالياً.':'No inactive customers right now.'}</div>`;
 }
 function openDormantList(){
  const rows=dormantRows();
@@ -1868,7 +1874,6 @@ $('salesBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data
 $('reports')?.addEventListener('click',e=>{const b=e.target.closest('[data-core-sales-followup]');if(b){openSalesFollowupForm(Number(b.dataset.coreSalesFollowup));return;}});
 $('reportsBody')?.addEventListener('click',e=>{let b;if((b=e.target.closest('[data-edit-report]')))openReportEditor(Number(b.dataset.editReport));else if((b=e.target.closest('[data-delete-report]')))deleteReport(Number(b.dataset.deleteReport));});$('salesFollowupsBody')?.addEventListener('click',e=>{const b=e.target.closest('[data-delete-report]');if(b)deleteReport(Number(b.dataset.deleteReport));});
 $('dashboard')?.addEventListener('click',e=>{let el;
-if((el=e.target.closest('#dormantDashboardLaunch'))){openDormantList();return;}
 if((el=e.target.closest('[data-dashboard-sales-followup]'))){openSalesFollowupForm(Number(el.dataset.dashboardSalesFollowup));return;}
 if((el=e.target.closest('[data-dormant-customer]'))){openDormantCustomer(Number(el.dataset.dormantCustomer));return;}if((el=e.target.closest('[data-attention-customer]'))){openCustomer(Number(el.dataset.attentionCustomer));return;}if((el=e.target.closest('[data-dashboard-link]'))){const k=el.dataset.dashboardLink;if(k==='customers'){state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerRepFilter'))$('customerRepFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}else if(k==='sales-day'){$('salePeriodFilter').value='day';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(k==='sales-month'){$('salePeriodFilter').value='month';$('saleSearch').value='';gotoPage('sales');renderSales();}else if(['active','inactive','agreed_pending','hesitant','rejected'].includes(k)){state.customerMonthOnly=false;$('customerStatusFilter').value=k;if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value='';gotoPage('customers');renderCustomers();}}else if((el=e.target.closest('[data-rep-customers]'))){const p=state.profiles.find(x=>x.id===el.dataset.repCustomers);state.customerMonthOnly=false;$('customerStatusFilter').value='';if($('customerPeriodFilter'))$('customerPeriodFilter').value='all';$('customerSearch').value=p?.full_name||'';gotoPage('customers');renderCustomers();}else if((el=e.target.closest('[data-goal-kind]'))){
    const kind=el.dataset.goalKind,scope=el.dataset.goalScope,isCompany=scope==='company',rep=isCompany?null:state.profiles.find(p=>p.id===scope);

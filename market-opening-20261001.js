@@ -563,40 +563,51 @@
   }
 
   function repHtml(preview=false){
-    const m=missionForToday(),over=overdueForRep(),next=nextForRep();
-    const active=m||over;
+    const todayMissions=preview?(previewMission()?[previewMission()]:[]):missionsForToday();
+    const over=overdueForRep(),next=nextForRep();
+    const activeRows=todayMissions.length?todayMissions:(over?[over]:[]);
     const previewBanner=preview?'<div class="mo5-preview-banner"><div><b>'+tx('معاينة تجربة المندوب','Representative experience preview')+'</b><span>'+tx('هذه المعاينة لا تنفذ أي إجراء فعلي. النظام الفعلي متاح للمناديب حسب خططهم المعتمدة.','This preview cannot perform real actions. The live system is available to representatives based on their assigned plans.')+'</span></div><button class="btn secondary mini" type="button" data-mo-exit-preview="1">'+tx('رجوع للإدارة','Back to management')+'</button></div>':'';
-    if(!active){
+
+    if(!activeRows.length){
       return '<div class="mo5-shell mo5-rep">'+previewBanner+
         '<section class="mo5-empty"><div class="mo5-empty-icon">✓</div><div><h2>'+tx('ما عندك مهمة الآن','No active mission right now')+'</h2><p>'+tx('إذا ما عندك مهمة اليوم، ما تحتاج تسوي شيء. المنطقة القادمة تظهر لك تلقائيًا بعد اعتماد الإدارة.','If you have no mission today, there is nothing to do. Your next approved area appears automatically.')+'</p>'+(next?'<div class="mo5-next">'+tx('المهمة القادمة','Next mission')+': <b>'+safe(next.area_name)+'</b> · '+safe(fmtDate(next.scheduled_date))+'</div>':'')+'</div></section>'+
       '</div>';
     }
 
-    const isOver=preview?ymd(active.scheduled_date)<today():(!!over&&!m);
-    const isFuture=preview?ymd(active.scheduled_date)>today():false;
-    const b=statusBreakdown(active),done=progress(active),left=remaining(active),pending=pendingRequestForMission(active.id);
+    const isOverdueMode=!todayMissions.length&&!!over;
     const disabled=preview?' disabled aria-disabled="true"':'';
-    const actionStart=!isOver&&active.status==='scheduled'
-      ?'<button class="mo5-step-action primary" type="button" '+(preview?'':('data-mo-start="'+safe(active.id)+'"'))+disabled+'>'+tx('ابدأ المهمة','Start mission')+'</button>'
-      :'<span class="mo5-step-done">'+tx('المهمة بدأت','Mission started')+'</span>';
-    const actionCustomer=!isOver
-      ?'<button class="mo5-step-action success" type="button" '+(preview?'':'data-mo-add-customer="1"')+disabled+'>'+tx('إضافة عميل من المهمة','Add customer from mission')+'</button>'
-      :'<span class="mo5-step-note">'+tx('انقل الموعد أولًا قبل تسجيل عملاء','Reschedule first before registering customers')+'</span>';
-    const actionDelay=pending
-      ?'<span class="mo5-step-wait">'+tx('طلب التأجيل تحت المراجعة','Reschedule request pending')+' · '+safe(fmtDate(pending.requested_date))+'</span>'
-      :'<button class="mo5-step-action warn" type="button" '+(preview?'':('data-mo-request-reschedule="'+safe(active.id)+'"'))+disabled+'>'+tx('اطلب تأجيل فقط إذا ما تقدر تروح','Request reschedule only if you cannot go')+'</button>';
+
+    const missionCards=activeRows.map((m,index)=>{
+      const b=statusBreakdown(m),done=progress(m),left=remaining(m),pending=pendingRequestForMission(m.id);
+      const isOver=preview?ymd(m.scheduled_date)<today():isOverdueMode;
+      const actionDelay=pending
+        ?'<span class="mo5-step-wait">'+tx('طلب التأجيل تحت المراجعة','Reschedule request pending')+' · '+safe(fmtDate(pending.requested_date))+'</span>'
+        :'<button class="mo5-step-action warn" type="button" '+(preview?'':('data-mo-request-reschedule="'+safe(m.id)+'"'))+disabled+'>'+tx('طلب تأجيل','Request reschedule')+'</button>';
+      return '<article class="mo-rep-live-mission '+statusClass(m)+'">'+
+        '<div class="mo-rep-live-head"><div><span>'+tx('منطقة ','Area ')+(index+1)+'</span><h2>'+safe(m.area_name)+'</h2><small>'+safe(m.city)+' · '+safe(fmtDate(m.scheduled_date))+' · '+safe(statusText(m))+'</small></div><strong>'+n(done)+'<small>/'+n(m.target_customers)+'</small></strong></div>'+
+        '<div class="mo-progress"><i style="width:'+pct(m)+'%"></i></div>'+
+        '<div class="mo-rep-live-meta"><span>'+tx('المتبقي','Remaining')+' <b>'+n(left)+'</b></span><span>'+tx('نشط','Active')+' <b>'+n(b.active)+'</b></span><span>'+tx('متردد','Hesitant')+' <b>'+n(b.hesitant)+'</b></span><span>'+tx('رافض','Rejected')+' <b>'+n(b.rejected)+'</b></span></div>'+
+        '<div class="mo-rep-live-actions">'+
+          '<button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('عرض المنطقة بالخريطة','Show area on map')+'</button>'+
+          (!isOver?'<button class="btn good mini" type="button" '+(preview?'':'data-mo-add-customer="1"')+disabled+'>'+tx('إضافة عميل','Add customer')+'</button>':'')+
+          actionDelay+
+        '</div>'+
+      '</article>';
+    }).join('');
+
+    const totalTarget=activeRows.reduce((s,m)=>s+Number(m.target_customers||0),0);
+    const totalDone=activeRows.reduce((s,m)=>s+progress(m),0);
+    const totalLeft=Math.max(0,totalTarget-totalDone);
 
     return '<div class="mo5-shell mo5-rep">'+previewBanner+
       (mo.demoPreview?'<div class="mo5-demo-banner"><b>🧪 '+tx('بيانات تجريبية','Demo data')+'</b><span>'+safe(mo.demoPreview.label)+' · '+tx('لن تُحفظ أي نتيجة','Nothing will be saved')+'</span></div>':'')+
-      '<section class="mo5-rep-hero '+statusClass(active)+'"><div><span class="mo5-kicker">'+(isOver?tx('مهمة تحتاج قرار','Mission needs action'):(isFuture?tx('مهمة قادمة — معاينة','Upcoming mission — preview'):tx('مهمة اليوم','Today’s mission')))+'</span><h1>'+safe(active.area_name)+'</h1><p>'+safe(active.city)+' · '+safe(fmtDate(active.scheduled_date))+'</p><div class="mo5-zone-chip">'+safe(zoneSummary(active))+'</div></div>'+
-        '<div class="mo5-progress-summary"><strong>'+n(done)+' <small>/ '+n(active.target_customers)+'</small></strong><span>'+tx('عميل مسجل','customers registered')+'</span><div class="mo-progress"><i style="width:'+pct(active)+'%"></i></div><b>'+n(left)+' '+tx('متبقي','remaining')+'</b></div></section>'+
-      '<section class="mo5-rep-steps"><div class="mo5-section-head"><div><span>'+tx('نفّذها بهذا الترتيب','Follow these steps in order')+'</span><h3>'+tx('ثلاث خطوات فقط','Only three steps')+'</h3></div></div>'+
-        '<article><em>1</em><div><b>'+tx('ابدأ المهمة','Start the mission')+'</b><span>'+tx('اضغط مرة واحدة عند وصولك للمنطقة.','Tap once when you reach the assigned area.')+'</span></div>'+actionStart+'</article>'+
-        '<article><em>2</em><div><b>'+tx('سجل العملاء الجدد','Register new customers')+'</b><span>'+tx('تقدر تضيف العميل من هنا أو بالطريقة القديمة من صفحة العملاء. إذا كان داخل منطقة المهمة، ينحسب تلقائيًا في التقدم بالطريقتين.','You can add the customer here or through the existing Customers page. If the customer is inside the mission area, it counts automatically either way.')+'</span></div>'+actionCustomer+'</article>'+
-        '<article><em>3</em><div><b>'+tx('إذا ما قدرت تروح','If you cannot go')+'</b><span>'+tx('أرسل طلب تأجيل. الموعد لا يتغير إلا بعد موافقة الإدارة.','Send a reschedule request. The date changes only after management approval.')+'</span></div>'+actionDelay+'</article>'+
-      '</section>'+
-      '<section class="mo5-mini-stats"><div><span>'+tx('نشط','Active')+'</span><b>'+n(b.active)+'</b></div><div><span>'+tx('متفق','Agreed')+'</span><b>'+n(b.agreed_pending)+'</b></div><div><span>'+tx('متردد','Hesitant')+'</span><b>'+n(b.hesitant)+'</b></div><div><span>'+tx('رافض','Rejected')+'</span><b>'+n(b.rejected)+'</b></div></section>'+
-      '<details class="mo5-map-panel" open><summary><div><b>'+tx('خريطة منطقة العمل','Work-area map')+'</b><span>'+tx('شوف حدود الحي والعملاء الموجودين داخله.','See the district boundary and customers inside it.')+'</span></div><span>⌄</span></summary>'+
+      '<section class="mo-rep-day-summary"><div><span>'+tx(isOverdueMode?'مهمة متأخرة':'مهام اليوم',isOverdueMode?'Overdue mission':'Today’s areas')+'</span><h1>'+(activeRows.length>1?n(activeRows.length)+' '+tx('مناطق اليوم','areas today'):safe(activeRows[0].area_name))+'</h1><p>'+tx('كل المناطق المحددة لك اليوم ظاهرة هنا. ما تحتاج تضغط بدء.','All areas assigned to you today are shown here. No start button is required.')+'</p></div><div class="mo-rep-day-total"><strong>'+n(totalDone)+' <small>/ '+n(totalTarget)+'</small></strong><span>'+tx('إجمالي العملاء','total customers')+'</span><b>'+n(totalLeft)+' '+tx('متبقي','remaining')+'</b></div></section>'+
+      '<section class="mo-rep-live-list">'+missionCards+'</section>'+
+      (!isOverdueMode?'<section class="mo5-rep-steps compact"><div class="mo5-section-head"><div><span>'+tx('طريقة العمل','Workflow')+'</span><h3>'+tx('خطوتان فقط','Only two steps')+'</h3></div></div>'+
+        '<article><em>1</em><div><b>'+tx('سجل العملاء الجدد','Register new customers')+'</b><span>'+tx('أضف العميل من فتح السوق أو من صفحة العملاء القديمة. النظام يحدد تلقائيًا أي منطقة من مناطق اليوم يقع داخلها.','Add the customer from Market Opening or the existing Customers page. The system automatically identifies which of today’s areas contains the customer.')+'</span></div><button class="mo5-step-action success" type="button" '+(preview?'':'data-mo-add-customer="1"')+disabled+'>'+tx('إضافة عميل','Add customer')+'</button></article>'+
+        '<article><em>2</em><div><b>'+tx('إذا ما قدرت تروح منطقة','If you cannot visit an area')+'</b><span>'+tx('استخدم زر طلب التأجيل الموجود داخل المنطقة نفسها.','Use the reschedule button inside that specific area.')+'</span></div></article>'+
+      '</section>':'')+
+      '<details class="mo5-map-panel" open><summary><div><b>'+tx('خريطة مناطق اليوم','Today’s areas map')+'</b><span>'+tx('اضغط عرض المنطقة من أي بطاقة للتنقل بينها.','Use Show area on map from any card to switch between areas.')+'</span></div><span>⌄</span></summary>'+
         '<div class="mo5-map-actions"><button class="btn secondary mini" type="button" data-mo-map-fit="1">'+tx('إظهار كامل المنطقة','Fit area')+'</button><button class="btn secondary mini" type="button" data-mo-map-full="1">'+tx('ملء الشاشة','Full screen')+'</button></div>'+
         '<div id="moCoverageCompass" class="mo-v2-coverage"></div><div id="marketOpeningMap" class="mo-map mo-v2-map mo5-map"></div><div id="moMapLegend" class="mo-map-legend"></div>'+
       '</details>'+
@@ -1143,7 +1154,6 @@
       b=e.target.closest('[data-mo-new-rep]');if(b){openMissionForm(null,b.dataset.moNewRep);return;}
       b=e.target.closest('[data-mo-rep-plans]');if(b){openRepPlans(b.dataset.moRepPlans);return;}
       b=e.target.closest('[data-mo-history]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moHistory);if(m)await openMissionHistory(m);return;}
-      b=e.target.closest('[data-mo-start]');if(b){await startMission(b.dataset.moStart);return;}
       b=e.target.closest('[data-mo-add-customer]');if(b){mo.customerFormMode='mission';openCustomerForm();return;}
       b=e.target.closest('[data-mo-map]');if(b){mo.selectedMissionId=b.dataset.moMap;const m=mo.missions.find(x=>x.id===mo.selectedMissionId);if(m){if(isManagementUser()){renderManagementOverviewMap(m.id);setTimeout(()=>document.getElementById('marketOpeningMap')?.scrollIntoView({behavior:'smooth',block:'center'}),20);}else renderMissionMap(m);}return;}
       b=e.target.closest('[data-mo-map-period]');if(b){mo.selectedMissionId=null;mo.managementMapFilter=b.dataset.moMapPeriod;if(mo.managementMapFilter==='custom'&&!mo.managementMapDate)mo.managementMapDate=today();renderPage();return;}

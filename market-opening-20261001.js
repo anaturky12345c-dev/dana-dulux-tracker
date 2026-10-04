@@ -699,7 +699,7 @@
           }).join('')+'</div>'
         :'<div class="empty">'+tx('لا توجد خطة لهذا المندوب اليوم.','No plan for this representative today.')+'</div>';
 
-      const nextBlock=nextMissions.length
+      const nextBlock=!todayMissions.length&&nextMissions.length
         ?'<div class="mo-rep-next-block"><div class="mo-rep-next-head"><span>'+tx('المهمة القادمة','Next mission')+'</span><b>'+safe(fmtDate(nextDate))+'</b></div><div class="mo-rep-next-list">'+nextMissions.map(m=>{
             const live=!['completed','cancelled'].includes(m.status);
             return '<div class="mo-rep-mission-shell">'+

@@ -17,12 +17,9 @@
     const btn = document.querySelector('[data-page="' + page + '"]');
     if(btn) btn.click();
   }
-  function clickAction(page, id){
-    go(page);
-    window.setTimeout(function(){
-      const el = byId(id);
-      if(el) el.click();
-    }, 100);
+  function openDirect(id){
+    const el = byId(id);
+    if(el) el.click();
   }
 
   const style = document.createElement('style');
@@ -42,6 +39,9 @@
     '.rep-quick-action:active{transform:translateY(1px)}',
     '.rep-quick-action .q-icon{font-size:22px;line-height:1}',
     '.rep-quick-action.primary{background:#0f766e;color:#fff;border-color:#0f766e}',
+    'body.rep-quick-mode .app{grid-template-columns:1fr!important}',
+    'body.rep-quick-mode .app>aside{display:none!important}',
+    'body.rep-quick-mode main{width:100%;max-width:none}',
     'body.rep-quick-mode #dashboard.active #repQuickHome,body.rep-quick-mode #dashboard.active #repQuickActions{display:block}',
     'body.rep-quick-mode #dashboard.active .dashboard-cards,body.rep-quick-mode #dashboard.active .rep-summary-panel,body.rep-quick-mode #dashboard.active .goals-v2-shell,body.rep-quick-mode #dashboard.active > .management-only{display:none!important}',
     'body.rep-quick-mode #dashboard.active .dashboard-priority-grid{margin-top:10px}',
@@ -69,7 +69,7 @@
 
   const quickHome = document.createElement('div');
   quickHome.id = 'repQuickHome';
-  quickHome.innerHTML = '<div class="rep-quick-home-title"><div><h2>شغلي اليوم</h2><div class="small">المهام والمتابعات المطلوبة منك اليوم في مكان واحد</div></div><span class="rep-quick-badge">الوضع السريع</span></div>';
+  quickHome.innerHTML = '<div class="rep-quick-home-title"><div><h2>شغلي اليوم</h2><div class="small">المهام والمتابعات المطلوبة منك اليوم في مكان واحد</div></div></div>';
   if(dashboard && slot) dashboard.insertBefore(quickHome, slot);
 
   const quickActions = document.createElement('div');
@@ -91,9 +91,9 @@
     const btn = e.target.closest('[data-quick-action]');
     if(!btn) return;
     const action = btn.dataset.quickAction;
-    if(action === 'customer') clickAction('customers','newCustomerBtn');
-    if(action === 'sale') clickAction('sales','newSaleBtn');
-    if(action === 'complaint') clickAction('reports','newComplaintBtn');
+    if(action === 'customer') openDirect('newCustomerBtn');
+    if(action === 'sale') openDirect('newSaleBtn');
+    if(action === 'complaint') openDirect('newComplaintBtn');
   });
 
   bottom.addEventListener('click', function(e){

@@ -26,6 +26,7 @@
     missions:[],
     links:[],
     requests:[],
+    customerLocations:[],
     selectedMissionId:null,
     map:null,
     mapPoints:[],
@@ -281,21 +282,24 @@
     const seq=++mo.loadSeq;
     mo.loading=true;
     try{
-      const [s,m,l,r]=await Promise.all([
+      const [s,m,l,r,cl]=await Promise.all([
         sb.from('market_opening_settings').select('enabled,rep_access_enabled,strict_rep_customer_creation,default_radius_m,updated_at').eq('id',true).maybeSingle(),
         sb.from('market_opening_missions').select('id,rep_id,scheduled_date,original_date,city,area_name,target_customers,center_lat,center_lng,radius_m,zone_type,district_no,municipality_name,zone_geojson,status,notes,reschedule_count,started_at,completed_at,cancelled_at,created_at,updated_at').order('scheduled_date',{ascending:false}).order('created_at',{ascending:false}),
         sb.from('market_opening_mission_customers').select('mission_id,customer_id,rep_id,customer_status_at_creation,distance_m,created_at').order('created_at',{ascending:false}),
-        sb.from('market_opening_reschedule_requests').select('id,mission_id,requested_by,requested_date,reason,status,reviewed_by,review_note,created_at,reviewed_at').order('created_at',{ascending:false})
+        sb.from('market_opening_reschedule_requests').select('id,mission_id,requested_by,requested_date,reason,status,reviewed_by,review_note,created_at,reviewed_at').order('created_at',{ascending:false}),
+        isManagementUser()?sb.from('customer_locations').select('customer_id,lat,lng'):Promise.resolve({data:[],error:null})
       ]);
       if(seq!==mo.loadSeq)return;
       if(s.error)throw s.error;
       if(m.error)throw m.error;
       if(l.error)throw l.error;
       if(r.error)throw r.error;
+      if(cl.error)throw cl.error;
       mo.settings=s.data||{enabled:false,rep_access_enabled:false,strict_rep_customer_creation:false,default_radius_m:2500};
       mo.missions=m.data||[];
       mo.links=l.data||[];
       mo.requests=r.data||[];
+      mo.customerLocations=cl.data||[];
       mo.lastLoadedAt=Date.now();
       renderDashboardSlot();
       if(document.getElementById('marketOpening')?.classList.contains('active'))renderPage();
@@ -621,7 +625,7 @@
       representativesPanelHtml(activeReps)+
       '<section class="mo-management-map-section"><div class="mo5-section-head"><div><span>'+tx('الخريطة التشغيلية','Operations map')+'</span><h3>'+tx('كل مناطق المناديب','All representative areas')+'</h3><small>'+tx('كل المناطق تبقى مرسومة دائمًا. الفلتر يبرز فقط مناطق اليوم أو التاريخ الذي تختاره ولا يخفي الباقي.','Every assigned area stays drawn at all times. The filter only highlights today or the selected date and never hides the rest.')+'</small></div><button class="btn secondary mini" type="button" data-mo-map-full="1">'+tx('ملء الشاشة','Full screen')+'</button></div>'+
         '<div class="mo-management-map-toolbar"><div class="mo-map-periods">'+filterBtn('all','الكل','All')+filterBtn('today','اليوم','Today')+filterBtn('tomorrow','غدًا','Tomorrow')+filterBtn('week','هذا الأسبوع','This week')+filterBtn('custom','تاريخ محدد','Custom date')+'</div><div class="mo-map-filter-inputs"><select id="moMapRepFilter">'+repOptions+'</select><input type="date" id="moMapCustomDate" value="'+safe(mapDate)+'" aria-label="'+tx('تاريخ الخريطة','Map date')+'"><button class="btn secondary mini" type="button" data-mo-map-fit="1">'+tx('إظهار كل المناطق','Fit all areas')+'</button></div></div>'+
-        '<div id="marketOpeningMap" class="mo-map mo-v2-map mo5-map mo-management-map"></div><div id="moMapLegend" class="mo-map-legend mo-management-legend"></div></section>'+
+        '<div id="moOverviewCustomerStats" class="mo-overview-customer-stats"></div><div id="marketOpeningMap" class="mo-map mo-v2-map mo5-map mo-management-map"></div><div id="moMapLegend" class="mo-map-legend mo-management-legend"></div></section>'+
       '<div class="mo5-secondary-actions"><button class="btn secondary mini" type="button" data-mo-disable="1">'+tx('إيقاف نظام فتح السوق','Disable Market Opening system')+'</button></div>'+
     '</div>';
   }
@@ -1815,6 +1819,7 @@
       'permanent delete not allowed':tx('الحذف النهائي متاح فقط للحساب الأساسي ومحسن.','Permanent deletion is limited to the primary account and Mohsen.'),
       'choose at least one zone':tx('اختر منطقة واحدة على الأقل للمندوب.','Choose at least one zone for the representative.'),
       'invalid assignment count':tx('توزيع المناطق غير صالح.','Invalid territory assignment.'),
+      'duplicate open district for representative':tx('هذه المنطقة موجودة مسبقًا ضمن خطة مفتوحة لنفس المندوب. أكمل أو ألغِ المهمة القديمة قبل إضافتها مرة ثانية.','This area already exists in an open plan for the same representative. Complete or cancel the existing mission before assigning it again.'),
       'invalid representative assignment':tx('يوجد توزيع غير صالح لأحد المناديب.','One representative assignment is invalid.'),
       'invalid zone in planner':tx('إحدى المناطق المحددة غير صالحة. أعد تحديدها من الخريطة.','One selected zone is invalid. Re-select it on the map.'),
       'market opening preview locked':tx('فتح السوق ما زال في وضع التجربة ومغلق عن المناديب.','Market Opening is still in internal preview and locked for representatives.'),
@@ -1825,6 +1830,19 @@
       'district already assigned on source date':tx('التبديل سيصنع تعارضًا في الحي على التاريخ القديم. اختر تاريخًا آخر.','The swap would create a district conflict on the old date. Choose another date.')
     };
     return dict[m]||m;
+  }
+
+  function customerInsideMarketMission(m,loc){
+    if(!m||!loc)return false;
+    const lat=Number(loc.lat),lng=Number(loc.lng);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng))return false;
+    if(m.zone_type==='district_polygon'&&m.zone_geojson)return pointInZoneGeojson(m.zone_geojson,lat,lng);
+    return haversine(Number(m.center_lat),Number(m.center_lng),lat,lng)<=Number(m.radius_m||0);
+  }
+
+  function marketCustomerMarkerColor(status){
+    const colors={active:'#16a34a',hesitant:'#d97706',rejected:'#dc2626',agreed_pending:'#2563eb',inactive:'#64748b',new:'#7c3aed'};
+    return colors[status]||'#475569';
   }
 
   function managementRepColor(repId){
@@ -1841,6 +1859,8 @@
     destroyMap();el.innerHTML='';
     mo.map=L.map(el,{zoomControl:true,preferCanvas:true}).setView([24.7136,46.6753],11);
     addBaseMap(mo.map);addPickerMapLayers(mo.map);
+    mo.mapExistingLayer=L.layerGroup().addTo(mo.map);
+    mo.mapNewLayer=L.layerGroup().addTo(mo.map);
 
     const rows=mo.missions.filter(m=>m.status!=='cancelled'&&Number.isFinite(Number(m.center_lat))&&Number.isFinite(Number(m.center_lng)));
     const groups=new Map();
@@ -1884,6 +1904,64 @@
       }catch(err){console.warn('management zone render',err);}
     });
 
+    const selectedMission=focusMissionId?rows.find(m=>m.id===focusMissionId):null;
+    const activeMissions=selectedMission?[selectedMission]:rows.filter(managementMapMatches);
+    const activeMissionIds=new Set(activeMissions.map(m=>m.id));
+    const countedIds=new Set(mo.links.filter(x=>activeMissionIds.has(x.mission_id)).map(x=>Number(x.customer_id)));
+    const customersById=new Map((state.customers||[]).map(x=>[Number(x.id),x]));
+    const customerRows=[];
+    const seenCustomerIds=new Set();
+
+    (mo.customerLocations||[]).forEach(loc=>{
+      const cid=Number(loc.customer_id);
+      if(seenCustomerIds.has(cid))return;
+      if(!activeMissions.some(m=>customerInsideMarketMission(m,loc)))return;
+      const customer=customersById.get(cid);
+      if(!customer)return;
+      seenCustomerIds.add(cid);
+      customerRows.push({loc,customer,counted:countedIds.has(cid)});
+    });
+
+    let existingCustomers=0,countedCustomers=0;
+    const statusCounts={active:0,hesitant:0,rejected:0,agreed_pending:0,inactive:0,new:0};
+    customerRows.forEach(row=>{
+      const c=row.customer,isCounted=row.counted;
+      if(isCounted)countedCustomers++;else existingCustomers++;
+      if(statusCounts[c.status]!==undefined)statusCounts[c.status]++;
+      const baseColor=marketCustomerMarkerColor(c.status);
+      const marker=L.circleMarker([Number(row.loc.lat),Number(row.loc.lng)],{
+        radius:isCounted?7:5,
+        weight:isCounted?3:2,
+        color:isCounted?'#047857':baseColor,
+        fillColor:isCounted?'#10b981':baseColor,
+        fillOpacity:isCounted?.95:.72,
+        opacity:.95
+      }).addTo(isCounted?mo.mapNewLayer:mo.mapExistingLayer);
+      marker.bindPopup(
+        '<b>'+safe(c.name)+'</b><br>'+
+        safe(typeof statusLabel==='function'?statusLabel(c.status):c.status)+'<br>'+
+        safe(c.rep?.full_name||repName(c.assigned_rep))+'<br>'+
+        '<small>'+safe(isCounted?tx('عميل محسوب في مهمة فتح السوق المبرزة','Counted in the highlighted Market Opening mission'):tx('عميل موجود عندنا مسبقًا داخل المنطقة','Existing customer already in this area'))+'</small>'
+      );
+    });
+
+    const customerStats=document.getElementById('moOverviewCustomerStats');
+    if(customerStats){
+      customerStats.innerHTML='<div><span>'+tx('إجمالي عملائنا داخل المناطق المبرزة','Customers inside highlighted areas')+'</span><b>'+n(customerRows.length)+'</b></div>'+
+        '<div><span>'+tx('موجودون مسبقًا','Existing customers')+'</span><b>'+n(existingCustomers)+'</b></div>'+
+        '<div><span>'+tx('جدد محسوبون','New counted')+'</span><b>'+n(countedCustomers)+'</b></div>'+
+        '<div><span>'+tx('نشط','Active')+'</span><b>'+n(statusCounts.active)+'</b></div>'+
+        '<div><span>'+tx('متردد','Hesitant')+'</span><b>'+n(statusCounts.hesitant)+'</b></div>'+
+        '<div><span>'+tx('رافض','Rejected')+'</span><b>'+n(statusCounts.rejected)+'</b></div>';
+    }
+
+    try{
+      const customerLayers={};
+      customerLayers[tx('عملاؤنا الموجودون داخل المنطقة','Existing customers in area')]=mo.mapExistingLayer;
+      customerLayers[tx('عملاء فتح السوق المحسوبون','Counted Market Opening customers')]=mo.mapNewLayer;
+      L.control.layers(null,customerLayers,{collapsed:true,position:'topright'}).addTo(mo.map);
+    }catch(_){}
+
     mo.activeBounds=allBounds;
     if(!focusMissionId&&allBounds?.isValid())mo.map.fitBounds(allBounds,{padding:[24,24],maxZoom:12});
 
@@ -1892,7 +1970,7 @@
     const legend=document.getElementById('moMapLegend');
     if(legend){
       const reps=state.profiles.filter(p=>p.role==='rep'&&p.active!==false).filter(p=>!mo.managementMapRep||p.id===mo.managementMapRep);
-      legend.innerHTML='<div class="mo-management-legend-head"><b>'+safe(label)+'</b><span>'+n(highlighted)+' '+tx('منطقة مبرزة','highlighted areas')+' · '+n(groups.size)+' '+tx('منطقة ظاهرة','areas visible')+'</span></div><div class="mo-management-rep-legend">'+reps.map(p=>'<span><i style="background:'+managementRepColor(p.id)+'"></i>'+safe(p.full_name)+'</span>').join('')+'<span class="muted-zone"><i></i>'+tx('باقي المناطق: نفس لون المندوب بشكل خفيف','Other areas: same representative color, lighter')+'</span></div>';
+      legend.innerHTML='<div class="mo-management-legend-head"><b>'+safe(label)+'</b><span>'+n(highlighted)+' '+tx('منطقة مبرزة','highlighted areas')+' · '+n(groups.size)+' '+tx('منطقة ظاهرة','areas visible')+'</span></div><div class="mo-management-rep-legend">'+reps.map(p=>'<span><i style="background:'+managementRepColor(p.id)+'"></i>'+safe(p.full_name)+'</span>').join('')+'<span class="muted-zone"><i></i>'+tx('باقي المناطق: نفس لون المندوب بشكل خفيف','Other areas: same representative color, lighter')+'</span><span class="customer-dot existing-dot"><i></i>'+tx('عميل موجود','Existing customer')+'</span><span class="customer-dot counted-dot"><i></i>'+tx('عميل محسوب','Counted customer')+'</span></div>';
     }
   }
 

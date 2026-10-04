@@ -4678,3 +4678,46 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo-rep-reschedule-row>div:last-child .btn{flex:1}
   .mo-rep-external-target{margin-inline:0}
 }
+
+
+/* Market Opening — customer coverage stats on management map */
+.mo-overview-customer-stats{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:8px;
+}
+.mo-overview-customer-stats>div{
+  display:grid;
+  gap:3px;
+  padding:9px 10px;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  background:#f8fafc;
+}
+.mo-overview-customer-stats span{
+  font-size:9px;
+  color:#64748b;
+  line-height:1.35;
+}
+.mo-overview-customer-stats b{
+  font-size:16px;
+  color:#0f172a;
+}
+.mo-management-rep-legend .customer-dot i{
+  border-radius:50%;
+  border:2px solid transparent;
+}
+.mo-management-rep-legend .existing-dot i{
+  background:#64748b;
+  border-color:#475569;
+}
+.mo-management-rep-legend .counted-dot i{
+  background:#10b981;
+  border-color:#047857;
+}
+@media(max-width:900px){
+  .mo-overview-customer-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .mo-overview-customer-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

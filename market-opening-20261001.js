@@ -616,14 +616,12 @@
 
     return '<div class="mo5-shell mo5-management">'+
       accessBanner+
-      '<section class="mo5-admin-hero"><div><span class="mo5-kicker">'+tx('إدارة فتح السوق','Market Opening')+'</span><h1>'+tx('الخريطة والخطط في شاشة واحدة','Map and plans in one screen')+'</h1><p>'+tx('كل المناطق تبقى ظاهرة، والفلتر يبرز المناطق التي تهمك الآن.','All assigned areas remain visible while the filter highlights what matters now.')+'</p></div>'+
-        '<div class="mo5-hero-metrics"><div><strong>'+n(todayRows.length)+'</strong><span>'+tx('مهام اليوم','today missions')+'</span></div><div><strong>'+n(todayDone)+' / '+n(todayTarget)+'</strong><span>'+tx('إنجاز اليوم','today progress')+'</span></div><div class="'+(actionCount?'needs-action':'')+'"><strong>'+n(actionCount)+'</strong><span>'+tx('تحتاج انتباه','need attention')+'</span></div></div></section>'+
+      '<section class="mo-management-attention"><div class="mo5-section-head"><div><span>'+tx('مختصر الإدارة','Management shortcut')+'</span><h3>'+tx('ما يحتاج تدخلك الآن','What needs your action now')+'</h3><small>'+tx('هذه أول خانة عندك: أي شيء يحتاج قرار أو متابعة يظهر هنا مباشرة.','This is your first section: anything needing a decision or follow-up appears here immediately.')+'</small></div><strong class="'+(actionCount?'attention':'clear')+'">'+n(actionCount)+'</strong></div><div class="mo-action-alert-list">'+attentionHtml+'</div></section>'+
       '<section class="mo5-primary-actions compact"><button class="mo5-primary-card" type="button" data-mo-auto-plan="1"><span class="icon">⌖</span><div><b>'+tx('توزيع مناطق المناديب','Assign rep territories')+'</b><small>'+tx('إضافة عدة مناطق وترتيبها تلقائيًا','Add multiple areas and schedule them automatically')+'</small></div></button><button class="mo5-primary-card secondary-card" type="button" data-mo-new="1"><span class="icon">＋</span><div><b>'+tx('إضافة مهمة','Add mission')+'</b><small>'+tx('إضافة منطقة أو مهمة مفردة','Add a single area or mission')+'</small></div></button></section>'+
-      '<section class="mo-management-map-section"><div class="mo5-section-head"><div><span>'+tx('الخريطة التشغيلية','Operations map')+'</span><h3>'+tx('كل مناطق المناديب','All representative areas')+'</h3><small>'+tx('المناطق غير المطابقة للفلتر تبقى ظاهرة بلون خفيف.','Areas outside the selected filter remain visible in a lighter shade.')+'</small></div><button class="btn secondary mini" type="button" data-mo-map-full="1">'+tx('ملء الشاشة','Full screen')+'</button></div>'+
+      representativesPanelHtml(activeReps)+
+      '<section class="mo-management-map-section"><div class="mo5-section-head"><div><span>'+tx('الخريطة التشغيلية','Operations map')+'</span><h3>'+tx('كل مناطق المناديب','All representative areas')+'</h3><small>'+tx('كل المناطق تبقى مرسومة دائمًا. الفلتر يبرز فقط مناطق اليوم أو التاريخ الذي تختاره ولا يخفي الباقي.','Every assigned area stays drawn at all times. The filter only highlights today or the selected date and never hides the rest.')+'</small></div><button class="btn secondary mini" type="button" data-mo-map-full="1">'+tx('ملء الشاشة','Full screen')+'</button></div>'+
         '<div class="mo-management-map-toolbar"><div class="mo-map-periods">'+filterBtn('all','الكل','All')+filterBtn('today','اليوم','Today')+filterBtn('tomorrow','غدًا','Tomorrow')+filterBtn('week','هذا الأسبوع','This week')+filterBtn('custom','تاريخ محدد','Custom date')+'</div><div class="mo-map-filter-inputs"><select id="moMapRepFilter">'+repOptions+'</select><input type="date" id="moMapCustomDate" value="'+safe(mapDate)+'" aria-label="'+tx('تاريخ الخريطة','Map date')+'"><button class="btn secondary mini" type="button" data-mo-map-fit="1">'+tx('إظهار كل المناطق','Fit all areas')+'</button></div></div>'+
         '<div id="marketOpeningMap" class="mo-map mo-v2-map mo5-map mo-management-map"></div><div id="moMapLegend" class="mo-map-legend mo-management-legend"></div></section>'+
-      '<section class="mo-management-attention"><div class="mo5-section-head"><div><span>'+tx('مختصر الإدارة','Management shortcut')+'</span><h3>'+tx('ما يحتاج تدخلك الآن','What needs your action now')+'</h3><small>'+tx('بدل ما تدخل على كل مندوب، الحالات التي تحتاج قرار أو متابعة تظهر هنا.','Instead of checking every representative, items needing a decision or follow-up appear here.')+'</small></div><strong class="'+(actionCount?'attention':'clear')+'">'+n(actionCount)+'</strong></div><div class="mo-action-alert-list">'+attentionHtml+'</div></section>'+
-      representativesPanelHtml(activeReps)+
       '<div class="mo5-secondary-actions"><button class="btn secondary mini" type="button" data-mo-disable="1">'+tx('إيقاف نظام فتح السوق','Disable Market Opening system')+'</button></div>'+
     '</div>';
   }
@@ -631,31 +629,44 @@
   function representativesPanelHtml(activeReps){
     const todayKey=today();
     const cards=activeReps.map(rep=>{
-      const plans=mo.missions.filter(m=>m.rep_id===rep.id&&m.status!=='cancelled').sort((a,b)=>ymd(a.scheduled_date).localeCompare(ymd(b.scheduled_date))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
-      const todayMission=plans.find(m=>ymd(m.scheduled_date)===todayKey)||null;
-      const overdue=plans.find(m=>ymd(m.scheduled_date)<todayKey&&['scheduled','in_progress'].includes(m.status))||null;
-      const next=plans.find(m=>ymd(m.scheduled_date)>todayKey&&!['completed','cancelled'].includes(m.status))||null;
-      const focus=todayMission||overdue||next||null;
-      const pending=plans.map(m=>({m,r:pendingRequestForMission(m.id)})).find(x=>x.r)||null;
-      const upcoming=plans.filter(m=>ymd(m.scheduled_date)>todayKey&&m.status!=='completed').length;
+      const plans=mo.missions
+        .filter(m=>m.rep_id===rep.id&&m.status!=='cancelled')
+        .sort((a,b)=>{
+          const da=ymd(a.scheduled_date),db=ymd(b.scheduled_date);
+          const rank=d=>d<todayKey?0:d===todayKey?1:2;
+          return rank(da)-rank(db)||da.localeCompare(db)||String(a.created_at||'').localeCompare(String(b.created_at||''));
+        });
+      const todayCount=plans.filter(m=>ymd(m.scheduled_date)===todayKey).length;
+      const openCount=plans.filter(m=>!['completed','cancelled'].includes(m.status)).length;
       const completed=plans.filter(m=>m.status==='completed').length;
-      const live=focus&&!['completed','cancelled'].includes(focus.status);
-      const focusLabel=focus===todayMission?tx('مهمة اليوم','Today mission'):focus===overdue?tx('مهمة متأخرة','Overdue mission'):focus?tx('المهمة القادمة','Next mission'):tx('لا توجد خطة','No plan');
-      const missionBlock=focus
-        ?'<div class="mo-rep-focus '+(focus===overdue?'overdue':'')+'"><div class="mo4-card-progress"><div><span>'+focusLabel+'</span><b>'+safe(focus.area_name)+'</b><small>'+safe(fmtDate(focus.scheduled_date))+'</small></div><strong>'+n(progress(focus))+'/'+n(focus.target_customers)+'</strong></div><div class="mo-progress"><i style="width:'+pct(focus)+'%"></i></div><div class="mo4-card-meta"><span>'+tx('الحالة','Status')+' <b>'+safe(statusText(focus))+'</b></span><span>'+tx('متبقي','Remaining')+' <b>'+n(remaining(focus))+'</b></span></div>'+(live?quickTargetHtml(focus):'')+'</div>'
-        :'<div class="empty">'+tx('لا توجد مهام لهذا المندوب.','No missions for this representative.')+'</div>';
-      const pendingBlock=pending?'<div class="mo-rep-pending"><div><b>'+tx('طلب تأجيل معلق','Pending reschedule')+'</b><span>'+safe(pending.m.area_name)+' · '+safe(fmtDate(pending.m.scheduled_date))+' → '+safe(fmtDate(pending.r.requested_date))+'</span><small>'+safe(pending.r.reason)+'</small></div><div><button class="btn good mini" type="button" data-mo-request-approve="'+safe(pending.r.id)+'">'+tx('موافقة','Approve')+'</button><button class="btn bad mini" type="button" data-mo-request-reject="'+safe(pending.r.id)+'">'+tx('رفض','Reject')+'</button></div></div>':'';
-      return '<article class="mo4-mission-card mo-rep-management-card '+(focus?statusClass(focus):'empty')+'">'+
-        '<div class="mo4-card-top"><div><span>'+tx('المندوب','Representative')+'</span><h4>'+safe(rep.full_name)+'</h4><small>'+tx('قادمة','Upcoming')+' '+n(upcoming)+' · '+tx('مكتملة','Completed')+' '+n(completed)+'</small></div><span class="mo-status-pill">'+focusLabel+'</span></div>'+
-        pendingBlock+missionBlock+
-        '<div class="mo4-card-actions">'+
-          (focus?'<button class="btn secondary mini" type="button" data-mo-map="'+safe(focus.id)+'">'+tx('عرض على الخريطة','Show on map')+'</button><button class="btn secondary mini" type="button" data-mo-history="'+safe(focus.id)+'">'+tx('السجل','History')+'</button>':'')+
-          (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(focus.id)+'">'+tx('تعديل','Edit')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(focus.id)+'">'+(focus===overdue?tx('نقل الموعد','Move date'):tx('تأجيل','Reschedule'))+'</button>':'')+
-          '<button class="btn secondary mini" type="button" data-mo-new-rep="'+safe(rep.id)+'">+ '+tx('إضافة خطة','Add plan')+'</button>'+
-          '<button class="btn secondary mini" type="button" data-mo-rep-plans="'+safe(rep.id)+'">'+tx('كل الخطط','All plans')+'</button>'+
-        '</div></article>';
+
+      const missionRows=plans.map(m=>{
+        const d=ymd(m.scheduled_date),isToday=d===todayKey,isOverdue=d<todayKey&&['scheduled','in_progress'].includes(m.status);
+        const live=!['completed','cancelled'].includes(m.status);
+        const pending=pendingRequestForMission(m.id);
+        const dateTag=isToday?tx('اليوم','Today'):isOverdue?tx('متأخرة','Overdue'):fmtDate(m.scheduled_date);
+        return '<div class="mo-rep-plan-row '+(isToday?'today ':'')+(isOverdue?'overdue ':'')+statusClass(m)+'">'+
+          '<div class="mo-rep-plan-main"><div class="mo-rep-plan-title"><b>'+safe(m.area_name)+'</b><span>'+safe(dateTag)+'</span></div>'+
+          '<div class="mo-rep-plan-meta"><span>'+safe(statusText(m))+'</span><span>'+tx('المنجز ','Done ')+n(progress(m))+'/'+n(m.target_customers)+'</span><span>'+tx('متبقي ','Remaining ')+n(remaining(m))+'</span></div>'+
+          '<div class="mo-progress"><i style="width:'+pct(m)+'%"></i></div>'+
+          (pending?'<div class="mo-rep-plan-request"><b>'+tx('طلب تأجيل','Reschedule request')+'</b><span>'+safe(fmtDate(m.scheduled_date))+' → '+safe(fmtDate(pending.requested_date))+'</span><small>'+safe(pending.reason)+'</small><div><button class="btn good mini" type="button" data-mo-request-approve="'+safe(pending.id)+'">'+tx('موافقة','Approve')+'</button><button class="btn bad mini" type="button" data-mo-request-reject="'+safe(pending.id)+'">'+tx('رفض','Reject')+'</button></div></div>':'')+
+          (live?quickTargetHtml(m):'')+
+          '</div>'+
+          '<div class="mo-rep-plan-actions">'+
+            '<button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button>'+
+            '<button class="btn secondary mini" type="button" data-mo-history="'+safe(m.id)+'">'+tx('السجل','History')+'</button>'+
+            (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(m.id)+'">'+(isOverdue?tx('نقل الموعد','Move date'):tx('تأجيل','Reschedule'))+'</button>':'')+
+          '</div>'+
+        '</div>';
+      }).join('');
+
+      return '<article class="mo4-mission-card mo-rep-management-card all-plans">'+
+        '<div class="mo4-card-top"><div><span>'+tx('المندوب','Representative')+'</span><h4>'+safe(rep.full_name)+'</h4><small>'+tx('كل المهام','All missions')+' '+n(plans.length)+' · '+tx('مفتوحة','Open')+' '+n(openCount)+' · '+tx('مكتملة','Completed')+' '+n(completed)+'</small></div><span class="mo-status-pill">'+(todayCount?n(todayCount)+' '+tx('اليوم','today'):tx('لا توجد مهمة اليوم','No mission today'))+'</span></div>'+
+        '<div class="mo-rep-all-plans">'+(missionRows||'<div class="empty">'+tx('لا توجد مهام لهذا المندوب.','No missions for this representative.')+'</div>')+'</div>'+
+        '<div class="mo4-card-actions"><button class="btn secondary mini" type="button" data-mo-new-rep="'+safe(rep.id)+'">+ '+tx('إضافة خطة','Add plan')+'</button><button class="btn secondary mini" type="button" data-mo-rep-plans="'+safe(rep.id)+'">'+tx('عرض جدول الخطط','Open schedule')+'</button></div>'+
+      '</article>';
     }).join('');
-    return '<section class="mo5-missions-board mo-representatives-hub"><div class="mo5-section-head"><div><span>'+tx('مركز الإدارة','Management hub')+'</span><h3>'+tx('المناديب','Representatives')+'</h3><small>'+tx('المهمة الحالية والتأجيل والتعديل والسجل والخطط كلها من بطاقة المندوب.','Current mission, rescheduling, editing, history, and all plans are handled from each representative card.')+'</small></div></div><div class="mo4-mission-grid">'+(cards||'<div class="empty">'+tx('لا يوجد مناديب نشطون.','No active representatives.')+'</div>')+'</div></section>';
+    return '<section class="mo5-missions-board mo-representatives-hub"><div class="mo5-section-head"><div><span>'+tx('كل شيء حسب المندوب','Everything by representative')+'</span><h3>'+tx('المناديب وكل المناطق المسندة لهم','Representatives and all assigned areas')+'</h3><small>'+tx('كل مهمة وكل منطقة للمندوب ظاهرة داخل بطاقته، وليس فقط مهمة واحدة.','Every mission and assigned area is visible inside the representative card, not just one mission.')+'</small></div></div><div class="mo4-mission-grid">'+(cards||'<div class="empty">'+tx('لا يوجد مناديب نشطون.','No active representatives.')+'</div>')+'</div></section>';
   }
 
   function plannerDayLabel(dateStr){
@@ -1082,7 +1093,7 @@
       b=e.target.closest('[data-mo-start]');if(b){await startMission(b.dataset.moStart);return;}
       b=e.target.closest('[data-mo-add-customer]');if(b){mo.customerFormMode='mission';openCustomerForm();return;}
       b=e.target.closest('[data-mo-map]');if(b){mo.selectedMissionId=b.dataset.moMap;const m=mo.missions.find(x=>x.id===mo.selectedMissionId);if(m){if(isManagementUser()){renderManagementOverviewMap(m.id);setTimeout(()=>document.getElementById('marketOpeningMap')?.scrollIntoView({behavior:'smooth',block:'center'}),20);}else renderMissionMap(m);}return;}
-      b=e.target.closest('[data-mo-map-period]');if(b){mo.managementMapFilter=b.dataset.moMapPeriod;if(mo.managementMapFilter==='custom'&&!mo.managementMapDate)mo.managementMapDate=today();renderPage();return;}
+      b=e.target.closest('[data-mo-map-period]');if(b){mo.selectedMissionId=null;mo.managementMapFilter=b.dataset.moMapPeriod;if(mo.managementMapFilter==='custom'&&!mo.managementMapDate)mo.managementMapDate=today();renderPage();return;}
       b=e.target.closest('[data-mo-map-fit]');if(b){if(mo.map&&mo.activeBounds?.isValid?.())mo.map.fitBounds(mo.activeBounds,{padding:[24,24]});return;}
       b=e.target.closest('[data-mo-map-full]');if(b){toggleMissionMapFullscreen();return;}
       b=e.target.closest('[data-mo-edit]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moEdit);if(m)openMissionForm(m);return;}
@@ -1102,8 +1113,8 @@
       if(input&&e.key==='Enter'){e.preventDefault();await saveQuickMissionTarget(input.dataset.moTargetInput,input.closest('[data-mo-quick-target]'));}
     };
     const mapRep=document.getElementById('moMapRepFilter'),mapDate=document.getElementById('moMapCustomDate');
-    if(mapRep)mapRep.onchange=()=>{mo.managementMapRep=mapRep.value||'';renderPage();};
-    if(mapDate)mapDate.onchange=()=>{mo.managementMapDate=mapDate.value||today();mo.managementMapFilter='custom';renderPage();};
+    if(mapRep)mapRep.onchange=()=>{mo.selectedMissionId=null;mo.managementMapRep=mapRep.value||'';renderPage();};
+    if(mapDate)mapDate.onchange=()=>{mo.selectedMissionId=null;mo.managementMapDate=mapDate.value||today();mo.managementMapFilter='custom';renderPage();};
   }
 
     function toggleMissionMapFullscreen(){

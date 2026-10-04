@@ -724,7 +724,7 @@
           }).join('')+'</div></div>'
         :'';
 
-      return '<article class="mo4-mission-card '+(todayMissions.length?statusClass(todayMissions[0]):'empty')+'">'+
+      return '<article class="mo4-mission-card '+(todayMissions.length?statusClass(todayMissions[0])+' mo-has-today-mission':'empty')+'">'+
         '<div class="mo4-card-top"><div><span>'+tx('المندوب','Representative')+'</span><h4>'+safe(rep.full_name)+'</h4><small>'+tx('قادمة','Upcoming')+' '+n(upcoming)+' · '+tx('مكتملة','Completed')+' '+n(completed)+'</small></div><span class="mo-status-pill">'+(todayMissions.length?n(todayMissions.length)+' '+tx('مهام اليوم','Today missions'):tx('بدون خطة اليوم','No plan today'))+'</span></div>'+
         rescheduleBox+
         todayBlock+

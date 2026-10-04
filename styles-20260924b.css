@@ -4568,3 +4568,20 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo-rep-plan-actions{max-width:none;width:100%;justify-content:stretch}
   .mo-rep-plan-actions .btn{flex:1}
 }
+
+
+/* Market Opening — multiple same-day areas in the original rep card */
+.mo-rep-today-list{display:grid;gap:9px}
+.mo-rep-today-item{
+  display:grid;
+  gap:7px;
+  border:1px solid #e2e8f0;
+  border-radius:11px;
+  padding:9px;
+  background:#f8fafc;
+}
+.mo-rep-today-item+.mo-rep-today-item{margin-top:1px}
+.mo-rep-today-item .mo4-card-actions{padding-top:2px}
+@media(max-width:760px){
+  .mo-rep-today-item .mo4-card-actions .btn{flex:1}
+}

@@ -5039,3 +5039,70 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
 @media(max-width:700px){
   .mo-overview-customer-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Market Opening — selected area insight popup */
+.mo-area-popup{
+  width:100%;
+  min-width:250px;
+  display:grid;
+  gap:10px;
+  direction:rtl;
+}
+.mo-area-popup-head{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:2px 10px;
+  align-items:end;
+}
+.mo-area-popup-head>div{display:grid;gap:1px}
+.mo-area-popup-head span{font-size:9px;color:#64748b;font-weight:800}
+.mo-area-popup-head h4{margin:0;font-size:16px;color:#0f172a}
+.mo-area-popup-head>strong{font-size:22px;color:#0f172a;line-height:1}
+.mo-area-popup-head>small{grid-column:2;font-size:8px;color:#64748b}
+.mo-area-popup-stats{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:5px;
+}
+.mo-area-popup-stats>div{
+  display:grid;
+  gap:1px;
+  padding:6px 5px;
+  border-radius:8px;
+  border:1px solid #e2e8f0;
+  background:#f8fafc;
+  text-align:center;
+}
+.mo-area-popup-stats span{font-size:8px;color:#64748b}
+.mo-area-popup-stats b{font-size:14px;color:#0f172a}
+.mo-area-popup-stats .active{background:#ecfdf5;border-color:#bbf7d0}
+.mo-area-popup-stats .hesitant{background:#fffbeb;border-color:#fde68a}
+.mo-area-popup-stats .rejected{background:#fef2f2;border-color:#fecaca}
+.mo-area-popup-stats .agreed{background:#eff6ff;border-color:#bfdbfe}
+.mo-area-popup-assignments{
+  display:grid;
+  gap:5px;
+  padding-top:7px;
+  border-top:1px solid #e2e8f0;
+}
+.mo-area-popup-assignments>.title{
+  font-size:9px;
+  font-weight:800;
+  color:#64748b;
+}
+.mo-area-assignment-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px 7px;
+  border-radius:8px;
+  background:#f8fafc;
+  border:1px solid #eef2f7;
+}
+.mo-area-assignment-row>div{display:grid;gap:1px}
+.mo-area-assignment-row>div:last-child{text-align:left}
+.mo-area-assignment-row b{font-size:10px;color:#0f172a}
+.mo-area-assignment-row span,.mo-area-assignment-row small{font-size:8px;color:#64748b}
+.mo-area-assignment-row strong{font-size:9px;color:#334155}

@@ -634,9 +634,11 @@
         .filter(m=>m.rep_id===rep.id&&m.status!=='cancelled')
         .sort((a,b)=>ymd(a.scheduled_date).localeCompare(ymd(b.scheduled_date))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
       const todayMissions=plans.filter(m=>ymd(m.scheduled_date)===todayKey);
-      const upcoming=plans.filter(m=>ymd(m.scheduled_date)>todayKey&&m.status!=='completed').length;
+      const futurePlans=plans.filter(m=>ymd(m.scheduled_date)>todayKey&&m.status!=='completed');
+      const upcoming=futurePlans.length;
       const completed=plans.filter(m=>m.status==='completed').length;
-      const next=plans.find(m=>ymd(m.scheduled_date)>todayKey&&m.status!=='completed')||null;
+      const nextDate=futurePlans.length?ymd(futurePlans[0].scheduled_date):null;
+      const nextMissions=nextDate?futurePlans.filter(m=>ymd(m.scheduled_date)===nextDate):[];
 
       const todayBlock=todayMissions.length
         ?'<div class="mo-rep-today-list">'+todayMissions.map(m=>{
@@ -656,11 +658,18 @@
               '</div>'+
             '</div>';
           }).join('')+'</div>'
-        :'<div class="empty">'+tx('لا توجد خطة لهذا المندوب اليوم.','No plan for this representative today.')+(next?'<br><small>'+tx('الخطة القادمة','Next plan')+': '+safe(next.area_name)+' · '+safe(fmtDate(next.scheduled_date))+'</small>':'')+'</div>';
+        :'<div class="empty">'+tx('لا توجد خطة لهذا المندوب اليوم.','No plan for this representative today.')+'</div>';
+
+      const nextBlock=nextMissions.length
+        ?'<div class="mo-rep-next-block"><div class="mo-rep-next-head"><span>'+tx('المهمة القادمة','Next mission')+'</span><b>'+safe(fmtDate(nextDate))+'</b></div><div class="mo-rep-next-list">'+nextMissions.map(m=>{
+            return '<div class="mo-rep-next-item"><div><b>'+safe(m.area_name)+'</b><small>'+safe(statusText(m))+' · '+tx('الهدف ','Target ')+n(m.target_customers)+'</small></div><div class="mo-rep-next-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button><button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button></div></div>';
+          }).join('')+'</div></div>'
+        :'';
 
       return '<article class="mo4-mission-card '+(todayMissions.length?statusClass(todayMissions[0]):'empty')+'">'+
         '<div class="mo4-card-top"><div><span>'+tx('المندوب','Representative')+'</span><h4>'+safe(rep.full_name)+'</h4><small>'+tx('قادمة','Upcoming')+' '+n(upcoming)+' · '+tx('مكتملة','Completed')+' '+n(completed)+'</small></div><span class="mo-status-pill">'+(todayMissions.length?n(todayMissions.length)+' '+tx('مهام اليوم','Today missions'):tx('بدون خطة اليوم','No plan today'))+'</span></div>'+
         todayBlock+
+        nextBlock+
         '<div class="mo4-card-actions">'+
           '<button class="btn secondary mini" type="button" data-mo-new-rep="'+safe(rep.id)+'">+ '+tx('إضافة خطة','Add plan')+'</button>'+
           '<button class="btn secondary mini" type="button" data-mo-rep-plans="'+safe(rep.id)+'">'+tx('خطط المندوب','Representative plans')+'</button>'+
@@ -1837,10 +1846,10 @@
       const primary=selected||matches[0]||group.slice().sort((a,b)=>ymd(b.scheduled_date).localeCompare(ymd(a.scheduled_date)))[0];
       const isHighlight=!!selected||matches.length>0;
       if(isHighlight){highlighted++;(selected?[selected]:matches).forEach(m=>highlightedReps.add(m.rep_id));}
-      const color=isHighlight?managementRepColor((selected||matches[0]||primary).rep_id):'#94a3b8';
+      const color=managementRepColor((selected||matches[0]||primary).rep_id);
       const style=isHighlight
-        ?{color,weight:selected?5:3,fillColor:color,fillOpacity:selected?.24:.16,opacity:1}
-        :{color:'#94a3b8',weight:1.5,fillColor:'#cbd5e1',fillOpacity:.035,opacity:.48,dashArray:'5 6'};
+        ?{color,weight:selected?5:4,fillColor:color,fillOpacity:selected?.26:.18,opacity:1}
+        :{color,weight:2,fillColor:color,fillOpacity:.035,opacity:.42};
       let layer;
       try{
         if(primary.zone_type==='district_polygon'&&primary.zone_geojson){
@@ -1871,7 +1880,7 @@
     const legend=document.getElementById('moMapLegend');
     if(legend){
       const reps=state.profiles.filter(p=>p.role==='rep'&&p.active!==false).filter(p=>!mo.managementMapRep||p.id===mo.managementMapRep);
-      legend.innerHTML='<div class="mo-management-legend-head"><b>'+safe(label)+'</b><span>'+n(highlighted)+' '+tx('منطقة مبرزة','highlighted areas')+' · '+n(groups.size)+' '+tx('منطقة ظاهرة','areas visible')+'</span></div><div class="mo-management-rep-legend">'+reps.map(p=>'<span><i style="background:'+managementRepColor(p.id)+'"></i>'+safe(p.full_name)+'</span>').join('')+'<span class="muted-zone"><i></i>'+tx('خارج الفلتر','Outside filter')+'</span></div>';
+      legend.innerHTML='<div class="mo-management-legend-head"><b>'+safe(label)+'</b><span>'+n(highlighted)+' '+tx('منطقة مبرزة','highlighted areas')+' · '+n(groups.size)+' '+tx('منطقة ظاهرة','areas visible')+'</span></div><div class="mo-management-rep-legend">'+reps.map(p=>'<span><i style="background:'+managementRepColor(p.id)+'"></i>'+safe(p.full_name)+'</span>').join('')+'<span class="muted-zone"><i></i>'+tx('باقي المناطق: نفس لون المندوب بشكل خفيف','Other areas: same representative color, lighter')+'</span></div>';
     }
   }
 

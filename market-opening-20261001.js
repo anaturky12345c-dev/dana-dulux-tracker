@@ -60,7 +60,7 @@
     selectedMissionIds:new Set(),
     customerFormMode:'normal',
     managementMapFilter:'today',
-    managementMapDate:today?.()||'',
+    managementMapDate:'',
     managementMapRep:''
   };
 

@@ -1947,12 +1947,16 @@
 
     const customerStats=document.getElementById('moOverviewCustomerStats');
     if(customerStats){
+      const activeSystemTotal=(state.customers||[]).filter(x=>x.status==='active').length;
+      const activeOutsideHighlighted=Math.max(0,activeSystemTotal-statusCounts.active);
       customerStats.innerHTML='<div><span>'+tx('إجمالي عملائنا داخل المناطق المبرزة','Customers inside highlighted areas')+'</span><b>'+n(customerRows.length)+'</b></div>'+
         '<div><span>'+tx('موجودون مسبقًا','Existing customers')+'</span><b>'+n(existingCustomers)+'</b></div>'+
         '<div><span>'+tx('جدد محسوبون','New counted')+'</span><b>'+n(countedCustomers)+'</b></div>'+
-        '<div><span>'+tx('نشط','Active')+'</span><b>'+n(statusCounts.active)+'</b></div>'+
-        '<div><span>'+tx('متردد','Hesitant')+'</span><b>'+n(statusCounts.hesitant)+'</b></div>'+
-        '<div><span>'+tx('رافض','Rejected')+'</span><b>'+n(statusCounts.rejected)+'</b></div>';
+        '<div class="system-total"><span>'+tx('نشط في النظام','Active in system')+'</span><b>'+n(activeSystemTotal)+'</b></div>'+
+        '<div class="highlight-total"><span>'+tx('نشط داخل المناطق المبرزة','Active inside highlighted areas')+'</span><b>'+n(statusCounts.active)+'</b></div>'+
+        '<div><span>'+tx('نشط خارج المناطق المبرزة','Active outside highlighted areas')+'</span><b>'+n(activeOutsideHighlighted)+'</b></div>'+
+        '<div><span>'+tx('متردد داخل المناطق','Hesitant inside areas')+'</span><b>'+n(statusCounts.hesitant)+'</b></div>'+
+        '<div><span>'+tx('رافض داخل المناطق','Rejected inside areas')+'</span><b>'+n(statusCounts.rejected)+'</b></div>';
     }
 
     try{

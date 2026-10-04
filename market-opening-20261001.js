@@ -1905,6 +1905,24 @@
 
     let allBounds=null,highlighted=0;
     const highlightedReps=new Set();
+    const overviewCustomersById=new Map((state.customers||[]).map(x=>[Number(x.id),x]));
+    const overviewLocations=mo.customerLocations||[];
+
+    function zoneCustomerStats(mission){
+      const seen=new Set();
+      const counts={total:0,active:0,hesitant:0,rejected:0,agreed_pending:0,inactive:0,new:0};
+      overviewLocations.forEach(loc=>{
+        const cid=Number(loc.customer_id);
+        if(seen.has(cid)||!customerInsideMarketMission(mission,loc))return;
+        const customer=overviewCustomersById.get(cid);
+        if(!customer)return;
+        seen.add(cid);
+        counts.total++;
+        if(Object.prototype.hasOwnProperty.call(counts,customer.status))counts[customer.status]++;
+      });
+      return counts;
+    }
+
     groups.forEach(group=>{
       const matches=group.filter(managementMapMatches);
       const selected=mo.selectedMissionId?group.find(m=>m.id===mo.selectedMissionId):null;
@@ -1925,8 +1943,25 @@
         layer.addTo(mo.map);
         const sorted=group.slice().sort((a,b)=>ymd(a.scheduled_date).localeCompare(ymd(b.scheduled_date)));
         const visible=sorted.filter(m=>ymd(m.scheduled_date)>=addCalendarDays(today(),-7)).slice(0,8);
-        const popupRows=(visible.length?visible:sorted.slice(-5)).map(m=>'<div class="mo-map-popup-row"><b>'+safe(repName(m.rep_id))+'</b><span>'+safe(fmtDate(m.scheduled_date))+' · '+safe(statusText(m))+'</span></div>').join('');
-        layer.bindPopup('<div class="mo-map-popup"><strong>'+safe(primary.area_name)+'</strong>'+popupRows+'</div>');
+        const stats=zoneCustomerStats(primary);
+        const popupRows=(visible.length?visible:sorted.slice(-5)).map(m=>
+          '<div class="mo-area-assignment-row">'+
+            '<div><b>'+safe(repName(m.rep_id))+'</b><span>'+safe(fmtDate(m.scheduled_date))+'</span></div>'+
+            '<div><small>'+safe(statusText(m))+'</small><strong>'+tx('الهدف ','Target ')+n(m.target_customers)+'</strong></div>'+
+          '</div>'
+        ).join('');
+        const areaPopup=
+          '<div class="mo-area-popup">'+
+            '<div class="mo-area-popup-head"><div><span>'+tx('بيانات المنطقة','Area details')+'</span><h4>'+safe(primary.area_name)+'</h4></div><strong>'+n(stats.total)+'</strong><small>'+tx('عميل داخل المنطقة','customers in area')+'</small></div>'+
+            '<div class="mo-area-popup-stats">'+
+              '<div class="active"><span>'+tx('نشط','Active')+'</span><b>'+n(stats.active)+'</b></div>'+
+              '<div class="hesitant"><span>'+tx('متردد','Hesitant')+'</span><b>'+n(stats.hesitant)+'</b></div>'+
+              '<div class="rejected"><span>'+tx('رافض','Rejected')+'</span><b>'+n(stats.rejected)+'</b></div>'+
+              '<div class="agreed"><span>'+tx('متفق','Agreed')+'</span><b>'+n(stats.agreed_pending)+'</b></div>'+
+            '</div>'+
+            '<div class="mo-area-popup-assignments"><span class="title">'+tx('الجدولة','Schedule')+'</span>'+popupRows+'</div>'+
+          '</div>';
+        layer.bindPopup(areaPopup,{maxWidth:360,minWidth:270});
         layer.bindTooltip(safe(primary.area_name)+' · '+safe(repName((selected||matches[0]||primary).rep_id)));
         const b=layer.getBounds?.();
         if(b?.isValid())allBounds=allBounds?allBounds.extend(b):L.latLngBounds(b);
@@ -1941,7 +1976,7 @@
     const activeMissions=selectedMission?[selectedMission]:rows.filter(managementMapMatches);
     const activeMissionIds=new Set(activeMissions.map(m=>m.id));
     const countedIds=new Set(mo.links.filter(x=>activeMissionIds.has(x.mission_id)).map(x=>Number(x.customer_id)));
-    const customersById=new Map((state.customers||[]).map(x=>[Number(x.id),x]));
+    const customersById=overviewCustomersById;
     const customerRows=[];
     const seenCustomerIds=new Set();
 

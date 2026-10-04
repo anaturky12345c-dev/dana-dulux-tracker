@@ -2211,14 +2211,19 @@
 
     if(state.pickerMap&&window.L){
       try{
-        let zone;
-        if(m.zone_type==='district_polygon'&&m.zone_geojson){
-          zone=L.geoJSON({type:'Feature',properties:{},geometry:m.zone_geojson},{style:{color:'#0f766e',weight:4,fillColor:'#14b8a6',fillOpacity:.10}}).addTo(state.pickerMap);
-          state.pickerMap.fitBounds(zone.getBounds(),{padding:[18,18]});
-        }else{
-          zone=L.circle([Number(m.center_lat),Number(m.center_lng)],{radius:Number(m.radius_m),weight:3,fillOpacity:.06}).addTo(state.pickerMap);
-          state.pickerMap.fitBounds(zone.getBounds(),{padding:[15,15]});
-        }
+        let bounds=null;
+        todayMissions.forEach((mission,index)=>{
+          let zone;
+          if(mission.zone_type==='district_polygon'&&mission.zone_geojson){
+            zone=L.geoJSON({type:'Feature',properties:{},geometry:mission.zone_geojson},{style:{color:index===0?'#0f766e':'#2563eb',weight:3,fillColor:index===0?'#14b8a6':'#60a5fa',fillOpacity:.08}}).addTo(state.pickerMap);
+          }else{
+            zone=L.circle([Number(mission.center_lat),Number(mission.center_lng)],{radius:Number(mission.radius_m),color:index===0?'#0f766e':'#2563eb',weight:3,fillOpacity:.05}).addTo(state.pickerMap);
+          }
+          zone.bindTooltip(safe(mission.area_name));
+          const b=zone.getBounds?.();
+          if(b?.isValid())bounds=bounds?bounds.extend(b):L.latLngBounds(b);
+        });
+        if(bounds?.isValid())state.pickerMap.fitBounds(bounds,{padding:[18,18]});
       }catch(_){}
     }
   }

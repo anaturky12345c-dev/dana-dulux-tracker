@@ -321,16 +321,20 @@
     }
 
     if(isRepUser()){
-      const m=missionForToday(),over=overdueForRep(),next=nextForRep();
-      if(m){
-        const done=progress(m),left=remaining(m);
+      const todayRows=missionsForToday(),over=overdueForRep(),next=nextForRep();
+      if(todayRows.length){
+        const done=todayRows.reduce((s,m)=>s+progress(m),0);
+        const target=todayRows.reduce((s,m)=>s+Number(m.target_customers||0),0);
+        const left=Math.max(0,target-done);
+        const pctAll=target?Math.min(100,Math.round(done/target*100)):0;
+        const areas=todayRows.map(m=>m.area_name).join('، ');
         slot.innerHTML='<div class="card mo-dashboard-card">'+
-          '<div class="mo-dashboard-main"><div><span class="mo-eyebrow">'+tx('مهمة فتح السوق اليوم','Today market-opening mission')+'</span>'+
-          '<h3>'+safe(m.area_name)+' · '+safe(m.city)+'</h3>'+
-          '<div class="small">'+tx('الهدف','Target')+': <b>'+n(m.target_customers)+'</b> · '+tx('أنجزت','Done')+': <b>'+n(done)+'</b> · '+tx('باقي','Remaining')+': <b>'+n(left)+'</b></div></div>'+
-          '<div class="mo-dashboard-progress"><strong>'+n(done)+'/'+n(m.target_customers)+'</strong><span>'+pct(m)+'%</span></div></div>'+
-          '<div class="mo-progress"><i style="width:'+pct(m)+'%"></i></div>'+
-          '<button class="btn good mini" type="button" data-mo-open-page="1">'+tx('فتح المهمة','Open mission')+'</button>'+
+          '<div class="mo-dashboard-main"><div><span class="mo-eyebrow">'+tx('مناطق فتح السوق اليوم','Today market-opening areas')+'</span>'+
+          '<h3>'+n(todayRows.length)+' '+tx('مناطق','areas')+' · '+safe(areas)+'</h3>'+
+          '<div class="small">'+tx('إجمالي الهدف','Total target')+': <b>'+n(target)+'</b> · '+tx('أنجزت','Done')+': <b>'+n(done)+'</b> · '+tx('باقي','Remaining')+': <b>'+n(left)+'</b></div></div>'+
+          '<div class="mo-dashboard-progress"><strong>'+n(done)+'/'+n(target)+'</strong><span>'+n(pctAll)+'%</span></div></div>'+
+          '<div class="mo-progress"><i style="width:'+pctAll+'%"></i></div>'+
+          '<button class="btn good mini" type="button" data-mo-open-page="1">'+tx('عرض كل مناطق اليوم','View all today areas')+'</button>'+
         '</div>';
       }else if(over){
         slot.innerHTML='<div class="card mo-dashboard-card overdue"><div><span class="mo-eyebrow">'+tx('مهمة تحتاج إعادة جدولة','Mission needs rescheduling')+'</span><h3>'+safe(over.area_name)+' · '+safe(over.city)+'</h3><div class="small">'+tx('كان موعدها','Was scheduled')+': '+safe(fmtDate(over.scheduled_date))+' · '+tx('راجع الإدارة قبل إضافة عملاء جدد.','Contact management before adding new customers.')+'</div></div><button class="btn secondary mini" type="button" data-mo-open-page="1">'+tx('عرض المهمة','View mission')+'</button></div>';
@@ -2081,22 +2085,26 @@
       primaryBounds=circle.getBounds();
     }
 
-    if(isManagementUser()){
-      mo.missions.filter(x=>x.id!==m.id&&x.scheduled_date===m.scheduled_date&&x.status!=='cancelled').forEach(x=>{
-        try{
-          let layer;
-          if(x.zone_type==='district_polygon'&&x.zone_geojson){
-            layer=L.geoJSON({type:'Feature',properties:{},geometry:x.zone_geojson},{style:{color:'#94a3b8',weight:2,dashArray:'6 6',fillOpacity:.015}});
-          }else{
-            layer=L.circle([Number(x.center_lat),Number(x.center_lng)],{radius:Number(x.radius_m),color:'#94a3b8',weight:2,dashArray:'6 6',fillOpacity:.01});
-          }
-          layer.addTo(mo.mapPeerLayer).bindTooltip(safe(repName(x.rep_id))+' · '+safe(x.area_name));
-        }catch(_){}
-      });
-    }
+    const peerRows=isManagementUser()
+      ?mo.missions.filter(x=>x.id!==m.id&&x.scheduled_date===m.scheduled_date&&x.status!=='cancelled')
+      :missionsForToday().filter(x=>x.id!==m.id);
+    let combinedBounds=primaryBounds;
+    peerRows.forEach(x=>{
+      try{
+        let layer;
+        if(x.zone_type==='district_polygon'&&x.zone_geojson){
+          layer=L.geoJSON({type:'Feature',properties:{},geometry:x.zone_geojson},{style:{color:isManagementUser()?'#94a3b8':'#2563eb',weight:2,dashArray:isManagementUser()?'6 6':'4 4',fillColor:isManagementUser()?'#cbd5e1':'#60a5fa',fillOpacity:isManagementUser()?.015:.06}});
+        }else{
+          layer=L.circle([Number(x.center_lat),Number(x.center_lng)],{radius:Number(x.radius_m),color:isManagementUser()?'#94a3b8':'#2563eb',weight:2,dashArray:isManagementUser()?'6 6':'4 4',fillColor:isManagementUser()?'#cbd5e1':'#60a5fa',fillOpacity:isManagementUser()?.01:.04});
+        }
+        layer.addTo(mo.mapPeerLayer).bindTooltip((isManagementUser()?safe(repName(x.rep_id))+' · ':'')+safe(x.area_name));
+        const pb=layer.getBounds?.();
+        if(pb?.isValid())combinedBounds=combinedBounds?combinedBounds.extend(pb):L.latLngBounds(pb);
+      }catch(_){}
+    });
 
-    mo.activeBounds=primaryBounds;
-    if(primaryBounds?.isValid())mo.map.fitBounds(primaryBounds,{padding:[24,24]});
+    mo.activeBounds=combinedBounds;
+    if(combinedBounds?.isValid())mo.map.fitBounds(combinedBounds,{padding:[24,24]});
 
     const text=document.getElementById('moSelectedMissionText');
     if(text)text.textContent=repName(m.rep_id)+' · '+m.area_name+' · '+m.city+' · '+fmtDate(m.scheduled_date)+' · '+zoneSummary(m);
@@ -2161,6 +2169,7 @@
       overlays[tx('العملاء الجدد في المهمة','New mission customers')]=mo.mapNewLayer;
       overlays[tx('عملاؤنا الحاليون','Existing customers')]=mo.mapExistingLayer;
       if(isManagementUser())overlays[tx('مناطق بقية المناديب اليوم','Other reps zones today')]=mo.mapPeerLayer;
+      else if(missionsForToday().length>1)overlays[tx('مناطقك الأخرى اليوم','Your other areas today')]=mo.mapPeerLayer;
       L.control.layers(null,overlays,{collapsed:true,position:'topright'}).addTo(mo.map);
     }catch(_){}
     const count=document.getElementById('moMapCount');if(count)count.textContent=n(mo.mapPoints.length);

@@ -4585,3 +4585,43 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
 @media(max-width:760px){
   .mo-rep-today-item .mo4-card-actions .btn{flex:1}
 }
+
+
+/* Market Opening — upcoming mission block */
+.mo-rep-next-block{
+  display:grid;
+  gap:7px;
+  margin-top:2px;
+  padding-top:9px;
+  border-top:1px dashed #cbd5e1;
+}
+.mo-rep-next-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.mo-rep-next-head span{font-size:10px;font-weight:800;color:#64748b}
+.mo-rep-next-head b{font-size:11px;color:#0f172a}
+.mo-rep-next-list{display:grid;gap:6px}
+.mo-rep-next-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:8px 9px;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  background:#fff;
+}
+.mo-rep-next-item>div:first-child{display:grid;gap:2px;min-width:0}
+.mo-rep-next-item b{font-size:11px;color:#0f172a}
+.mo-rep-next-item small{font-size:9px;color:#64748b}
+.mo-rep-next-actions{display:flex;gap:5px;flex-wrap:wrap}
+.mo-management-rep-legend .muted-zone{opacity:.62}
+.mo-management-rep-legend .muted-zone i{opacity:.45}
+@media(max-width:760px){
+  .mo-rep-next-item{align-items:stretch;flex-direction:column}
+  .mo-rep-next-actions{width:100%}
+  .mo-rep-next-actions .btn{flex:1}
+}

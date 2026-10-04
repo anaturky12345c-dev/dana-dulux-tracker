@@ -4625,3 +4625,56 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo-rep-next-actions{width:100%}
   .mo-rep-next-actions .btn{flex:1}
 }
+
+
+/* Market Opening — external target control + rep reschedule box */
+.mo-rep-mission-shell{display:grid;gap:6px}
+.mo-rep-external-target{
+  margin:0 6px 2px;
+  padding:0;
+}
+.mo-rep-external-target .mo-quick-target{
+  border:1px solid #cbd5e1;
+  background:#fff;
+  box-shadow:0 3px 10px rgba(15,23,42,.04);
+}
+.mo-rep-reschedule-box{
+  display:grid;
+  gap:7px;
+  border:1px solid #fed7aa;
+  background:#fff7ed;
+  border-radius:12px;
+  padding:9px;
+}
+.mo-rep-reschedule-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.mo-rep-reschedule-head span{font-size:10px;font-weight:800;color:#9a3412}
+.mo-rep-reschedule-head b{
+  min-width:26px;height:26px;border-radius:8px;
+  display:grid;place-items:center;
+  background:#ffedd5;color:#c2410c;font-size:11px
+}
+.mo-rep-reschedule-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:8px;
+  border-radius:9px;
+  background:#fff;
+  border:1px solid #fed7aa;
+}
+.mo-rep-reschedule-row>div:first-child{display:grid;gap:2px;min-width:0}
+.mo-rep-reschedule-row b{font-size:10px;color:#7c2d12}
+.mo-rep-reschedule-row span,.mo-rep-reschedule-row small{font-size:9px;color:#9a3412}
+.mo-rep-reschedule-row>div:last-child{display:flex;gap:5px;flex-wrap:wrap}
+@media(max-width:760px){
+  .mo-rep-reschedule-row{align-items:stretch;flex-direction:column}
+  .mo-rep-reschedule-row>div:last-child{width:100%}
+  .mo-rep-reschedule-row>div:last-child .btn{flex:1}
+  .mo-rep-external-target{margin-inline:0}
+}

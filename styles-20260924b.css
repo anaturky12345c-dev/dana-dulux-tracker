@@ -4721,3 +4721,190 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
 @media(max-width:520px){
   .mo-overview-customer-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Market Opening — compact representative cards */
+.mo-representatives-hub .mo4-mission-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  padding:0 10px 10px;
+}
+.mo-representatives-hub .mo4-mission-card{
+  border-radius:14px;
+}
+.mo-representatives-hub .mo4-card-top{
+  padding:9px 10px 7px;
+  align-items:center;
+}
+.mo-representatives-hub .mo4-card-top h4{
+  font-size:14px;
+  margin:1px 0;
+}
+.mo-representatives-hub .mo4-card-top small{
+  font-size:8px;
+}
+.mo-representatives-hub .mo-status-pill{
+  font-size:8px;
+  padding:4px 7px;
+}
+.mo-representatives-hub .mo-rep-today-list{
+  gap:5px;
+  padding-inline:7px;
+}
+.mo-representatives-hub .mo-rep-mission-shell{
+  gap:3px;
+}
+.mo-representatives-hub .mo-rep-today-item{
+  gap:4px;
+  padding:6px 7px;
+  border-radius:9px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-progress{
+  padding:0;
+  align-items:center;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-progress b{
+  font-size:11px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-progress strong{
+  font-size:12px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo-progress{
+  height:4px;
+  margin:0;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-meta{
+  padding:0;
+  gap:8px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-meta span{
+  font-size:8px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-actions{
+  padding:1px 0 0;
+  gap:4px;
+}
+.mo-representatives-hub .mo-rep-today-item .btn.mini,
+.mo-representatives-hub .mo-rep-next-actions .btn.mini{
+  min-height:26px;
+  padding:4px 7px;
+  font-size:8px;
+}
+.mo-representatives-hub .mo-rep-external-target{
+  margin:0 4px 2px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target{
+  margin:0;
+  min-height:32px;
+  padding:4px 6px;
+  gap:6px;
+  border-radius:8px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-copy{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-copy>b{
+  font-size:9px;
+  white-space:nowrap;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-copy>small{
+  display:none;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-control{
+  gap:4px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-control input{
+  width:52px;
+  min-width:52px;
+  height:27px;
+  padding:3px 5px;
+  font-size:12px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-control .btn{
+  min-height:27px;
+  padding:3px 7px;
+  font-size:8px;
+}
+.mo-representatives-hub .mo-rep-next-block{
+  gap:4px;
+  margin:5px 7px 0;
+  padding-top:6px;
+}
+.mo-representatives-hub .mo-rep-next-head{
+  min-height:22px;
+}
+.mo-representatives-hub .mo-rep-next-head span,
+.mo-representatives-hub .mo-rep-next-head b{
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-next-list{
+  gap:4px;
+}
+.mo-representatives-hub .mo-rep-next-item{
+  padding:5px 6px;
+  border-radius:8px;
+}
+.mo-representatives-hub .mo-rep-next-item b{
+  font-size:10px;
+}
+.mo-representatives-hub .mo-rep-next-item small{
+  font-size:8px;
+}
+.mo-representatives-hub .mo-rep-reschedule-box{
+  margin:0 7px 5px;
+  gap:4px;
+  padding:6px;
+  border-radius:9px;
+}
+.mo-representatives-hub .mo-rep-reschedule-head span{
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-reschedule-head b{
+  min-width:22px;
+  height:22px;
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-reschedule-row{
+  padding:5px 6px;
+  border-radius:7px;
+}
+.mo-representatives-hub .mo-rep-reschedule-row b{
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-reschedule-row span,
+.mo-representatives-hub .mo-rep-reschedule-row small{
+  font-size:8px;
+}
+.mo-representatives-hub>.mo5-section-head{
+  margin-bottom:6px;
+}
+.mo-representatives-hub>.mo5-section-head>span{
+  display:none;
+}
+.mo-representatives-hub .mo4-mission-card>.mo4-card-actions{
+  padding:6px 8px 7px;
+  gap:5px;
+}
+.mo-representatives-hub .mo4-mission-card>.mo4-card-actions .btn{
+  min-height:28px;
+  padding:4px 8px;
+  font-size:8px;
+}
+@media(max-width:900px){
+  .mo-representatives-hub .mo4-mission-grid{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .mo-representatives-hub .mo-rep-external-target .mo-quick-target{
+    flex-direction:row;
+    align-items:center;
+  }
+  .mo-representatives-hub .mo-rep-external-target .mo-quick-target-control{
+    width:auto;
+  }
+  .mo-representatives-hub .mo-rep-today-item .mo4-card-actions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}

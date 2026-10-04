@@ -579,9 +579,12 @@
     const todayDone=todayRows.reduce((s,m)=>s+progress(m),0);
     const overdue=mo.missions.filter(m=>ymd(m.scheduled_date)<todayKey&&['scheduled','in_progress'].includes(m.status));
     const pendingRequests=mo.requests.filter(r=>r.status==='pending');
-    const notStarted=todayRows.filter(m=>m.status==='scheduled');
-    const inProgress=todayRows.filter(m=>m.status==='in_progress'&&remaining(m)>0);
-    const actionCount=pendingRequests.length+overdue.length+notStarted.length+inProgress.length;
+    const pendingMissionIds=new Set(pendingRequests.map(r=>r.mission_id));
+    const riyadhHour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Riyadh',hour:'2-digit',hour12:false}).format(new Date()));
+    const overdueAction=overdue.filter(m=>!pendingMissionIds.has(m.id));
+    const notStarted=riyadhHour>=11?todayRows.filter(m=>m.status==='scheduled'&&!pendingMissionIds.has(m.id)):[];
+    const inProgress=riyadhHour>=15?todayRows.filter(m=>m.status==='in_progress'&&remaining(m)>0&&!pendingMissionIds.has(m.id)):[];
+    const actionCount=pendingRequests.length+overdueAction.length+notStarted.length+inProgress.length;
     const accessLive=!!mo.settings?.rep_access_enabled;
     const repOptions='<option value="">'+tx('كل المناديب','All representatives')+'</option>'+activeReps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===mo.managementMapRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('');
     const mapDate=mo.managementMapDate||today();
@@ -594,7 +597,7 @@
       if(!m)return;
       attentionItems.push('<article class="mo-action-alert warn"><div><span>'+tx('طلب تأجيل','Reschedule request')+'</span><b>'+safe(repName(m.rep_id))+' — '+safe(m.area_name)+'</b><small>'+tx('من ','From ')+safe(fmtDate(m.scheduled_date))+' → '+safe(fmtDate(r.requested_date))+' · '+safe(r.reason)+'</small></div><div class="mo-action-alert-actions"><button class="btn good mini" type="button" data-mo-request-approve="'+safe(r.id)+'">'+tx('موافقة','Approve')+'</button><button class="btn bad mini" type="button" data-mo-request-reject="'+safe(r.id)+'">'+tx('رفض','Reject')+'</button></div></article>');
     });
-    overdue.forEach(m=>{
+    overdueAction.forEach(m=>{
       attentionItems.push('<article class="mo-action-alert bad"><div><span>'+tx('مهمة متأخرة','Overdue mission')+'</span><b>'+safe(repName(m.rep_id))+' — '+safe(m.area_name)+'</b><small>'+safe(fmtDate(m.scheduled_date))+' · '+tx('المنجز ','Done ')+n(progress(m))+'/'+n(m.target_customers)+'</small></div><div class="mo-action-alert-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(m.id)+'">'+tx('نقل الموعد','Move date')+'</button></div></article>');
     });
     notStarted.forEach(m=>{

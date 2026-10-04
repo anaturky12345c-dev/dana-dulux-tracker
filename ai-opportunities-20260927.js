@@ -14,7 +14,8 @@ function boot(){
   const isManagement=()=>app.canManage();
   const isPrimaryAdmin=()=>state.profile?.role==='admin'&&state.profile?.username==='admin';
   const isRep=()=>state.profile?.role==='rep';
-  const canSee=()=>!!state.profile;
+  const HIDDEN_REP_USERNAMES=new Set(['majdi','saeed','yaqoub','omar']);
+  const canSee=()=>!!state.profile && !(state.profile?.role==='rep' && HIDDEN_REP_USERNAMES.has(String(state.profile?.username||'').toLowerCase()));
   const safeUrl=v=>{if(!v)return '';try{const u=new URL(v);return(u.protocol==='https:'||u.protocol==='http:')?u.href:'';}catch(_){return '';}};
   const googleMapsSearchUrl=x=>{
     if(x.google_maps_verified!==true)return '';

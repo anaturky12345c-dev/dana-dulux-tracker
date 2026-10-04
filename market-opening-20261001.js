@@ -421,6 +421,34 @@
     });
   }
 
+  function pointToSegmentMeters(lat,lng,lat1,lng1,lat2,lng2){
+    const refLat=(Number(lat)+Number(lat1)+Number(lat2))/3*Math.PI/180;
+    const mx=111320*Math.cos(refLat),my=110540;
+    const px=Number(lng)*mx,py=Number(lat)*my;
+    const ax=Number(lng1)*mx,ay=Number(lat1)*my;
+    const bx=Number(lng2)*mx,by=Number(lat2)*my;
+    const dx=bx-ax,dy=by-ay;
+    const den=dx*dx+dy*dy;
+    const t=den?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/den)):0;
+    const qx=ax+t*dx,qy=ay+t*dy;
+    return Math.hypot(px-qx,py-qy);
+  }
+
+  function distanceToZoneGeojsonMeters(geom,lat,lng){
+    if(!geom)return Infinity;
+    const polys=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
+    let best=Infinity;
+    polys.forEach(poly=>(poly||[]).forEach(ring=>{
+      if(!Array.isArray(ring)||ring.length<2)return;
+      for(let i=1;i<ring.length;i++){
+        const a=ring[i-1],b=ring[i];
+        if(!Array.isArray(a)||!Array.isArray(b))continue;
+        best=Math.min(best,pointToSegmentMeters(lat,lng,a[1],a[0],b[1],b[0]));
+      }
+    }));
+    return best;
+  }
+
   async function loadDistrictData(){
     if(mo.districtData)return mo.districtData;
     if(mo.districtDataPromise)return mo.districtDataPromise;
@@ -1836,7 +1864,12 @@
     if(!m||!loc)return false;
     const lat=Number(loc.lat),lng=Number(loc.lng);
     if(!Number.isFinite(lat)||!Number.isFinite(lng))return false;
-    if(m.zone_type==='district_polygon'&&m.zone_geojson)return pointInZoneGeojson(m.zone_geojson,lat,lng);
+    if(m.zone_type==='district_polygon'&&m.zone_geojson){
+      if(pointInZoneGeojson(m.zone_geojson,lat,lng))return true;
+      // Map display tolerance only: customers on boundary roads can sit a few metres
+      // outside municipal polygons. This does NOT affect mission counting/targets.
+      return distanceToZoneGeojsonMeters(m.zone_geojson,lat,lng)<=100;
+    }
     return haversine(Number(m.center_lat),Number(m.center_lng),lat,lng)<=Number(m.radius_m||0);
   }
 

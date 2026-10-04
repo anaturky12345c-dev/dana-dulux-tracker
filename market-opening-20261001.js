@@ -58,7 +58,10 @@
     lastLoadedAt:0,
     bulkSelectMode:false,
     selectedMissionIds:new Set(),
-    customerFormMode:'normal'
+    customerFormMode:'normal',
+    managementMapFilter:'today',
+    managementMapDate:today?.()||'',
+    managementMapRep:''
   };
 
   const ar=()=>app.getLang()==='ar';
@@ -189,6 +192,32 @@
     let d=new Date((base||today())+'T00:00:00Z');
     do{d.setUTCDate(d.getUTCDate()+1);}while(d.getUTCDay()===5);
     return d.toISOString().slice(0,10);
+  }
+  function addCalendarDays(base,days){
+    const d=new Date((base||today())+'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate()+Number(days||0));
+    return d.toISOString().slice(0,10);
+  }
+  function currentWorkWeekRange(base=today()){
+    const d=new Date(base+'T00:00:00Z'),dow=d.getUTCDay();
+    const sinceSaturday=(dow+1)%7;
+    const start=new Date(d);start.setUTCDate(d.getUTCDate()-sinceSaturday);
+    const end=new Date(start);end.setUTCDate(start.getUTCDate()+5);
+    return [start.toISOString().slice(0,10),end.toISOString().slice(0,10)];
+  }
+  function managementMapMatches(m){
+    if(!m||m.status==='cancelled')return false;
+    if(mo.managementMapRep&&m.rep_id!==mo.managementMapRep)return false;
+    const d=ymd(m.scheduled_date),mode=mo.managementMapFilter||'today';
+    if(mode==='all')return true;
+    if(mode==='today')return d===today();
+    if(mode==='tomorrow')return d===addCalendarDays(today(),1);
+    if(mode==='week'){
+      const [a,b]=currentWorkWeekRange();
+      return d>=a&&d<=b;
+    }
+    if(mode==='custom')return d===(mo.managementMapDate||today());
+    return d===today();
   }
   function workDateOnOrAfter(base){
     let d=new Date((base||today())+'T00:00:00Z');
@@ -341,12 +370,20 @@
     const preview=isManagementUser()&&!!mo.previewRepId;
     root.innerHTML=preview?repHtml(true):(isManagementUser()?managementHtml():repHtml(false));
     bindPageControls();
-    const candidate=preview?previewMission():(isManagementUser()?selectedManagementMission():missionForToday());
-    if(candidate){
-      mo.selectedMissionId=candidate.id;
-      if(mo.demoPreview?.mission?.id===candidate.id)setTimeout(()=>renderDemoMissionMap(candidate),60);
-      else setTimeout(()=>renderMissionMap(candidate),60);
-    }else destroyMap();
+    if(preview){
+      const candidate=previewMission();
+      if(candidate){
+        mo.selectedMissionId=candidate.id;
+        if(mo.demoPreview?.mission?.id===candidate.id)setTimeout(()=>renderDemoMissionMap(candidate),60);
+        else setTimeout(()=>renderMissionMap(candidate),60);
+      }else destroyMap();
+    }else if(isManagementUser()){
+      setTimeout(()=>renderManagementOverviewMap(),60);
+    }else{
+      const candidate=missionForToday();
+      if(candidate){mo.selectedMissionId=candidate.id;setTimeout(()=>renderMissionMap(candidate),60);}
+      else destroyMap();
+    }
   }
 
 
@@ -535,94 +572,87 @@
   }
 
   function managementHtml(){
-    const filterDate=document.getElementById('moDateFilter')?.value||today();
-    const filterRep=document.getElementById('moRepFilter')?.value||'';
     const activeReps=state.profiles.filter(p=>p.role==='rep'&&p.active!==false);
-    const dateRows=mo.missions.filter(m=>ymd(m.scheduled_date)===filterDate&&m.status!=='cancelled'&&(!filterRep||m.rep_id===filterRep));
-    const overdue=mo.missions.filter(m=>ymd(m.scheduled_date)<today()&&['scheduled','in_progress'].includes(m.status)&&(!filterRep||m.rep_id===filterRep));
+    const todayKey=today();
+    const todayRows=mo.missions.filter(m=>ymd(m.scheduled_date)===todayKey&&m.status!=='cancelled');
+    const todayTarget=todayRows.reduce((s,m)=>s+Number(m.target_customers||0),0);
+    const todayDone=todayRows.reduce((s,m)=>s+progress(m),0);
+    const overdue=mo.missions.filter(m=>ymd(m.scheduled_date)<todayKey&&['scheduled','in_progress'].includes(m.status));
     const pendingRequests=mo.requests.filter(r=>r.status==='pending');
-    const target=dateRows.reduce((s,m)=>s+Number(m.target_customers||0),0);
-    const done=dateRows.reduce((s,m)=>s+progress(m),0);
-    const completed=dateRows.filter(m=>m.status==='completed').length;
-    const underway=dateRows.filter(m=>m.status==='in_progress').length;
-    const assignedIds=new Set(dateRows.map(m=>m.rep_id));
-    const noMission=activeReps.filter(r=>(!filterRep||r.id===filterRep)&&!assignedIds.has(r.id));
-    const conflicts=(()=>{
-      const seenRep=new Set(),seenDistrict=new Set();let c=0;
-      dateRows.forEach(m=>{
-        const rk=m.rep_id+'|'+ymd(m.scheduled_date);if(seenRep.has(rk))c++;else seenRep.add(rk);
-        if(m.district_no){const dk=m.district_no+'|'+ymd(m.scheduled_date);if(seenDistrict.has(dk))c++;else seenDistrict.add(dk);}
-      });
-      return c;
-    })();
-    const totalLive=mo.missions.filter(m=>!['cancelled','completed'].includes(m.status)).length;
-    const repOptionsHtml='<option value="">'+tx('كل المناديب','All representatives')+'</option>'+activeReps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===filterRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('');
-
-    const boardRows=(filterRep?activeReps.filter(r=>r.id===filterRep):activeReps).map(rep=>{
-      const m=dateRows.find(x=>x.rep_id===rep.id);
-      if(!m)return '<article class="mo4-mission-card empty"><div class="mo4-card-top"><div><span>'+safe(rep.full_name)+'</span><h4>'+tx('بدون مهمة','No mission')+'</h4></div><button class="btn secondary mini" type="button" data-mo-new-rep="'+safe(rep.id)+'">+ '+tx('إضافة مهمة','Add mission')+'</button></div><p>'+tx('لا توجد مهمة لهذا المندوب في اليوم المحدد.','No mission for this rep on the selected day.')+'</p></article>';
-      return missionCard(m,ymd(m.scheduled_date)<today());
-    }).join('');
-
-    const requestPanel=pendingRequests.length?'<section class="mo5-requests"><div class="mo5-section-head"><div><span>'+tx('تحتاج قرارك','Needs your decision')+'</span><h3>'+tx('طلبات تأجيل معلقة','Pending reschedule requests')+'</h3></div><strong>'+n(pendingRequests.length)+'</strong></div><div class="mo4-request-grid">'+pendingRequests.map(r=>{const m=mo.missions.find(x=>x.id===r.mission_id);return '<article class="mo4-request-card"><div><span>'+safe(m?repName(m.rep_id):repName(r.requested_by))+'</span><h4>'+safe(m?.area_name||'-')+'</h4><p>'+safe(fmtDate(m?.scheduled_date))+' → <b>'+safe(fmtDate(r.requested_date))+'</b></p><small>'+safe(r.reason)+'</small></div><div><button class="btn good mini" type="button" data-mo-request-approve="'+safe(r.id)+'">'+tx('موافقة','Approve')+'</button><button class="btn bad mini" type="button" data-mo-request-reject="'+safe(r.id)+'">'+tx('رفض','Reject')+'</button></div></article>';}).join('')+'</div></section>':'';
-
+    const notStarted=todayRows.filter(m=>m.status==='scheduled');
+    const inProgress=todayRows.filter(m=>m.status==='in_progress'&&remaining(m)>0);
+    const actionCount=pendingRequests.length+overdue.length+notStarted.length+inProgress.length;
     const accessLive=!!mo.settings?.rep_access_enabled;
+    const repOptions='<option value="">'+tx('كل المناديب','All representatives')+'</option>'+activeReps.map(p=>'<option value="'+safe(p.id)+'" '+(p.id===mo.managementMapRep?'selected':'')+'>'+safe(p.full_name)+'</option>').join('');
+    const mapDate=mo.managementMapDate||today();
+    const mode=mo.managementMapFilter||'today';
+    const filterBtn=(key,arLabel,enLabel)=>'<button type="button" class="mo-map-filter-btn '+(mode===key?'active':'')+'" data-mo-map-period="'+key+'">'+tx(arLabel,enLabel)+'</button>';
+
+    const attentionItems=[];
+    pendingRequests.forEach(r=>{
+      const m=mo.missions.find(x=>x.id===r.mission_id);
+      if(!m)return;
+      attentionItems.push('<article class="mo-action-alert warn"><div><span>'+tx('طلب تأجيل','Reschedule request')+'</span><b>'+safe(repName(m.rep_id))+' — '+safe(m.area_name)+'</b><small>'+tx('من ','From ')+safe(fmtDate(m.scheduled_date))+' → '+safe(fmtDate(r.requested_date))+' · '+safe(r.reason)+'</small></div><div class="mo-action-alert-actions"><button class="btn good mini" type="button" data-mo-request-approve="'+safe(r.id)+'">'+tx('موافقة','Approve')+'</button><button class="btn bad mini" type="button" data-mo-request-reject="'+safe(r.id)+'">'+tx('رفض','Reject')+'</button></div></article>');
+    });
+    overdue.forEach(m=>{
+      attentionItems.push('<article class="mo-action-alert bad"><div><span>'+tx('مهمة متأخرة','Overdue mission')+'</span><b>'+safe(repName(m.rep_id))+' — '+safe(m.area_name)+'</b><small>'+safe(fmtDate(m.scheduled_date))+' · '+tx('المنجز ','Done ')+n(progress(m))+'/'+n(m.target_customers)+'</small></div><div class="mo-action-alert-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(m.id)+'">'+tx('نقل الموعد','Move date')+'</button></div></article>');
+    });
+    notStarted.forEach(m=>{
+      attentionItems.push('<article class="mo-action-alert neutral"><div><span>'+tx('لم يبدأ مهمة اليوم','Today mission not started')+'</span><b>'+safe(repName(m.rep_id))+' — '+safe(m.area_name)+'</b><small>'+tx('الهدف ','Target ')+n(m.target_customers)+'</small></div><div class="mo-action-alert-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button><button class="btn secondary mini" type="button" data-mo-edit="'+safe(m.id)+'">'+tx('تعديل','Edit')+'</button></div></article>');
+    });
+    inProgress.forEach(m=>{
+      attentionItems.push('<article class="mo-action-alert progress"><div><span>'+tx('مهمة اليوم جارية','Today mission in progress')+'</span><b>'+safe(repName(m.rep_id))+' — '+safe(m.area_name)+'</b><small>'+tx('باقي ','Remaining ')+n(remaining(m))+' · '+tx('المنجز ','Done ')+n(progress(m))+'/'+n(m.target_customers)+'</small></div><div class="mo-action-alert-actions"><button class="btn secondary mini" type="button" data-mo-map="'+safe(m.id)+'">'+tx('الخريطة','Map')+'</button><button class="btn secondary mini" type="button" data-mo-rep-plans="'+safe(m.rep_id)+'">'+tx('خطط المندوب','Rep plans')+'</button></div></article>');
+    });
+    const attentionHtml=attentionItems.length
+      ?attentionItems.join('')
+      :'<div class="mo-all-clear"><b>✓ '+tx('ما فيه شيء يحتاج تدخل الآن','Nothing needs management action right now')+'</b><span>'+tx('لا يوجد تأجيل معلق، ولا مهمة متأخرة، ومهام اليوم ليست بحاجة لتدخل إداري.','No pending reschedules, overdue missions, or today missions requiring management action.')+'</span></div>';
+
     const accessBanner=accessLive
-      ?'<div class="mo5-pilot-banner mo5-live-banner"><div><b>✓ '+tx('النظام مفعل للمناديب','System live for representatives')+'</b><span>'+tx('كل مندوب يشوف خطته، ويقدر يضيف العميل من المهمة أو بالطريقة القديمة من صفحة العملاء.','Each representative can see their plan and add customers either from the mission or through the existing Customers page.')+'</span></div><span class="mo5-lock-state">'+tx('وصول المناديب: مفتوح','Rep access: live')+'</span></div>'
-      :'<div class="mo5-pilot-banner"><div><b>🔒 '+tx('نسخة تجريبية داخلية','Internal pilot')+'</b><span>'+tx('صفحة فتح السوق مخفية عن المناديب حاليًا.','Market Opening is currently hidden from representatives.')+'</span></div><span class="mo5-lock-state">'+tx('وصول المناديب: مغلق','Rep access: locked')+'</span></div>';
+      ?'<div class="mo5-pilot-banner mo5-live-banner"><div><b>✓ '+tx('النظام مفعل للمناديب','System live for representatives')+'</b><span>'+tx('المهام الحالية ظاهرة للمناديب حسب جدولهم.','Current missions are visible to representatives based on their schedule.')+'</span></div><span class="mo5-lock-state">'+tx('مفتوح','Live')+'</span></div>'
+      :'<div class="mo5-pilot-banner"><div><b>🔒 '+tx('وصول المناديب مغلق','Representative access is locked')+'</b></div><span class="mo5-lock-state">'+tx('مغلق','Locked')+'</span></div>';
+
     return '<div class="mo5-shell mo5-management">'+
       accessBanner+
-      '<section class="mo5-admin-hero"><div><span class="mo5-kicker">'+tx('إدارة فتح السوق','Market Opening')+'</span><h1>'+tx('خطط المناطق وتابع التنفيذ من مكان واحد','Plan territories and track execution in one place')+'</h1><p>'+tx('وزّع أحياء الرياض، راجع الطلبات، وعدّل أي خطة بدون ما تضيع بياناتها السابقة.','Assign Riyadh districts, review requests, and edit any plan without losing its history.')+'</p></div>'+
-        '<div class="mo5-hero-metrics"><div><strong>'+n(dateRows.length)+'</strong><span>'+tx('مهام اليوم المحدد','missions on selected day')+'</span></div><div><strong>'+n(done)+' / '+n(target)+'</strong><span>'+tx('التقدم','progress')+'</span></div><div><strong>'+n(totalLive)+'</strong><span>'+tx('مهام قادمة/جارية','upcoming/in progress')+'</span></div></div></section>'+
-      '<section class="mo5-primary-actions">'+
-        '<button class="mo5-primary-card" type="button" data-mo-auto-plan="1"><span class="icon">⌖</span><div><b>'+tx('توزيع مناطق المناديب','Assign rep territories')+'</b><small>'+tx('حدد كل أحياء الرياض ثم خل النظام يرتب الأيام تلقائيًا','Select Riyadh districts and auto-build the schedule')+'</small></div></button>'+
-        '<button class="mo5-primary-card" type="button" data-mo-preview-picker="1"><span class="icon">◉</span><div><b>'+tx('معاينة كمندوب','Preview as representative')+'</b><small>'+tx('شوف الصفحة كما ستظهر للمندوب قبل فتحها لهم','See exactly what a rep will see before launch')+'</small></div></button>'+
-        '<button class="mo5-primary-card demo" type="button" data-mo-demo-picker="1"><span class="icon">🧪</span><div><b>'+tx('بيانات تجريبية','Demo scenarios')+'</b><small>'+tx('جرب حالات مختلفة بدون لمس البيانات الحقيقية','Test different situations without touching real data')+'</small></div></button>'+
-        '<button class="mo5-primary-card secondary-card" type="button" data-mo-new="1"><span class="icon">＋</span><div><b>'+tx('مهمة مفردة','Single mission')+'</b><small>'+tx('أضف أو عدل مهمة واحدة يدويًا','Add one mission manually')+'</small></div></button>'+
-      '</section>'+
-      '<section class="mo5-readiness"><div class="mo5-section-head"><div><span>'+tx('فحص سريع','Quick checks')+'</span><h3>'+tx('الأشياء التي تحتاج انتباه الإدارة','Items that need management attention')+'</h3></div></div><div class="mo5-check-grid">'+
-        '<div class="'+(pendingRequests.length?'warn':'ok')+'"><span>'+tx('طلبات التأجيل','Reschedule requests')+'</span><b>'+n(pendingRequests.length)+'</b><small>'+(pendingRequests.length?tx('راجعها قبل بداية اليوم','Review before the day starts'):tx('لا يوجد طلب معلق','No pending requests'))+'</small></div>'+
-        '<div class="'+(overdue.length?'bad':'ok')+'"><span>'+tx('مهام متأخرة','Overdue missions')+'</span><b>'+n(overdue.length)+'</b><small>'+(overdue.length?tx('تحتاج نقل موعد أو متابعة','Need rescheduling or follow-up'):tx('لا توجد مهام متأخرة','No overdue missions'))+'</small></div>'+
-        '<div class="'+(noMission.length?'neutral':'ok')+'"><span>'+tx('بدون مهمة في اليوم','Unassigned reps')+'</span><b>'+n(noMission.length)+'</b><small>'+tx('حسب التاريخ والفلتر الحالي','Based on current date/filter')+'</small></div>'+
-        '<div class="'+(conflicts?'bad':'ok')+'"><span>'+tx('تعارضات مكتشفة','Detected conflicts')+'</span><b>'+n(conflicts)+'</b><small>'+(conflicts?tx('راجع قبل الاعتماد','Review before approval'):tx('لا يوجد تعارض ظاهر','No visible conflicts'))+'</small></div>'+
-      '</div></section>'+
-      requestPanel+
-      (overdue.length?'<section class="mo5-overdue"><div class="mo5-section-head"><div><span>'+tx('تحتاج متابعة','Needs attention')+'</span><h3>'+tx('مهام فات موعدها','Overdue missions')+'</h3></div><strong>'+n(overdue.length)+'</strong></div><div class="mo4-overdue-grid">'+overdue.map(m=>missionCard(m,true)).join('')+'</div></section>':'')+
-      '<section class="mo5-missions-board"><div class="mo5-section-head"><div><span>'+tx('المناديب','Representatives')+'</span><h3>'+tx('مهام اليوم المحدد','Missions for selected day')+'</h3></div><span>'+tx('اضغط تعديل لتغيير المندوب أو التاريخ أو المنطقة أو الهدف','Use Edit to change rep, date, area, or target')+'</span></div><div class="mo4-mission-grid">'+boardRows+'</div></section>'+
-      representativesPanelHtml(activeReps,filterRep)+
-      '<details class="mo5-map-panel management-map" open><summary><div><b>'+tx('الخريطة التشغيلية','Operations map')+'</b><span id="moSelectedMissionText">'+tx('اختر مهمة من البطاقات لعرض حدودها وعملائها.','Select a mission card to inspect its area and customers.')+'</span></div><span>⌄</span></summary><div class="mo5-map-actions"><span class="badge b-info" id="moMapCount">0</span><button class="btn secondary mini" type="button" data-mo-map-fit="1">'+tx('إظهار كامل المنطقة','Fit area')+'</button><button class="btn secondary mini" type="button" data-mo-map-full="1">'+tx('ملء الشاشة','Full screen')+'</button></div><div id="moIntegrityBox"></div><div id="moCoverageCompass" class="mo-v2-coverage"></div><div id="marketOpeningMap" class="mo-map mo-v2-map mo5-map"></div><div id="moMapLegend" class="mo-map-legend"></div></details>'+
+      '<section class="mo5-admin-hero"><div><span class="mo5-kicker">'+tx('إدارة فتح السوق','Market Opening')+'</span><h1>'+tx('الخريطة والخطط في شاشة واحدة','Map and plans in one screen')+'</h1><p>'+tx('كل المناطق تبقى ظاهرة، والفلتر يبرز المناطق التي تهمك الآن.','All assigned areas remain visible while the filter highlights what matters now.')+'</p></div>'+
+        '<div class="mo5-hero-metrics"><div><strong>'+n(todayRows.length)+'</strong><span>'+tx('مهام اليوم','today missions')+'</span></div><div><strong>'+n(todayDone)+' / '+n(todayTarget)+'</strong><span>'+tx('إنجاز اليوم','today progress')+'</span></div><div class="'+(actionCount?'needs-action':'')+'"><strong>'+n(actionCount)+'</strong><span>'+tx('تحتاج انتباه','need attention')+'</span></div></div></section>'+
+      '<section class="mo5-primary-actions compact"><button class="mo5-primary-card" type="button" data-mo-auto-plan="1"><span class="icon">⌖</span><div><b>'+tx('توزيع مناطق المناديب','Assign rep territories')+'</b><small>'+tx('إضافة عدة مناطق وترتيبها تلقائيًا','Add multiple areas and schedule them automatically')+'</small></div></button><button class="mo5-primary-card secondary-card" type="button" data-mo-new="1"><span class="icon">＋</span><div><b>'+tx('إضافة مهمة','Add mission')+'</b><small>'+tx('إضافة منطقة أو مهمة مفردة','Add a single area or mission')+'</small></div></button></section>'+
+      '<section class="mo-management-map-section"><div class="mo5-section-head"><div><span>'+tx('الخريطة التشغيلية','Operations map')+'</span><h3>'+tx('كل مناطق المناديب','All representative areas')+'</h3><small>'+tx('المناطق غير المطابقة للفلتر تبقى ظاهرة بلون خفيف.','Areas outside the selected filter remain visible in a lighter shade.')+'</small></div><button class="btn secondary mini" type="button" data-mo-map-full="1">'+tx('ملء الشاشة','Full screen')+'</button></div>'+
+        '<div class="mo-management-map-toolbar"><div class="mo-map-periods">'+filterBtn('all','الكل','All')+filterBtn('today','اليوم','Today')+filterBtn('tomorrow','غدًا','Tomorrow')+filterBtn('week','هذا الأسبوع','This week')+filterBtn('custom','تاريخ محدد','Custom date')+'</div><div class="mo-map-filter-inputs"><select id="moMapRepFilter">'+repOptions+'</select><input type="date" id="moMapCustomDate" value="'+safe(mapDate)+'" aria-label="'+tx('تاريخ الخريطة','Map date')+'"><button class="btn secondary mini" type="button" data-mo-map-fit="1">'+tx('إظهار كل المناطق','Fit all areas')+'</button></div></div>'+
+        '<div id="marketOpeningMap" class="mo-map mo-v2-map mo5-map mo-management-map"></div><div id="moMapLegend" class="mo-map-legend mo-management-legend"></div></section>'+
+      '<section class="mo-management-attention"><div class="mo5-section-head"><div><span>'+tx('مختصر الإدارة','Management shortcut')+'</span><h3>'+tx('ما يحتاج تدخلك الآن','What needs your action now')+'</h3><small>'+tx('بدل ما تدخل على كل مندوب، الحالات التي تحتاج قرار أو متابعة تظهر هنا.','Instead of checking every representative, items needing a decision or follow-up appear here.')+'</small></div><strong class="'+(actionCount?'attention':'clear')+'">'+n(actionCount)+'</strong></div><div class="mo-action-alert-list">'+attentionHtml+'</div></section>'+
+      representativesPanelHtml(activeReps)+
       '<div class="mo5-secondary-actions"><button class="btn secondary mini" type="button" data-mo-disable="1">'+tx('إيقاف نظام فتح السوق','Disable Market Opening system')+'</button></div>'+
     '</div>';
   }
 
-  function representativesPanelHtml(activeReps,filterRep=''){
-    const reps=filterRep?activeReps.filter(r=>r.id===filterRep):activeReps;
+  function representativesPanelHtml(activeReps){
     const todayKey=today();
-    const cards=reps.map(rep=>{
-      const plans=mo.missions
-        .filter(m=>m.rep_id===rep.id&&m.status!=='cancelled')
-        .sort((a,b)=>ymd(a.scheduled_date).localeCompare(ymd(b.scheduled_date))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
+    const cards=activeReps.map(rep=>{
+      const plans=mo.missions.filter(m=>m.rep_id===rep.id&&m.status!=='cancelled').sort((a,b)=>ymd(a.scheduled_date).localeCompare(ymd(b.scheduled_date))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
       const todayMission=plans.find(m=>ymd(m.scheduled_date)===todayKey)||null;
+      const overdue=plans.find(m=>ymd(m.scheduled_date)<todayKey&&['scheduled','in_progress'].includes(m.status))||null;
+      const next=plans.find(m=>ymd(m.scheduled_date)>todayKey&&!['completed','cancelled'].includes(m.status))||null;
+      const focus=todayMission||overdue||next||null;
+      const pending=plans.map(m=>({m,r:pendingRequestForMission(m.id)})).find(x=>x.r)||null;
       const upcoming=plans.filter(m=>ymd(m.scheduled_date)>todayKey&&m.status!=='completed').length;
       const completed=plans.filter(m=>m.status==='completed').length;
-      const next=plans.find(m=>ymd(m.scheduled_date)>todayKey&&m.status!=='completed')||null;
-      const todayBlock=todayMission
-        ?'<div class="mo4-card-progress"><div><b>'+safe(todayMission.area_name)+'</b><span> · '+safe(fmtDate(todayMission.scheduled_date))+'</span></div><strong>'+n(progress(todayMission))+'/'+n(todayMission.target_customers)+'</strong></div><div class="mo-progress"><i style="width:'+pct(todayMission)+'%"></i></div><div class="mo4-card-meta"><span>'+tx('حالة اليوم','Today')+' <b>'+safe(statusText(todayMission))+'</b></span><span>'+tx('متبقي','Remaining')+' <b>'+n(remaining(todayMission))+'</b></span></div>'
-        :'<div class="empty">'+tx('لا توجد خطة لهذا المندوب اليوم.','No plan for this representative today.')+(next?'<br><small>'+tx('الخطة القادمة','Next plan')+': '+safe(next.area_name)+' · '+safe(fmtDate(next.scheduled_date))+'</small>':'')+'</div>';
-      const live=todayMission&&!['completed','cancelled'].includes(todayMission.status);
-      return '<article class="mo4-mission-card '+(todayMission?statusClass(todayMission):'empty')+'">'+
-        '<div class="mo4-card-top"><div><span>'+tx('المندوب','Representative')+'</span><h4>'+safe(rep.full_name)+'</h4><small>'+tx('قادمة','Upcoming')+' '+n(upcoming)+' · '+tx('مكتملة','Completed')+' '+n(completed)+'</small></div><span class="mo-status-pill">'+(todayMission?tx('خطة اليوم','Today plan'):tx('بدون خطة اليوم','No plan today'))+'</span></div>'+
-        todayBlock+
-        (live?quickTargetHtml(todayMission):'')+
+      const live=focus&&!['completed','cancelled'].includes(focus.status);
+      const focusLabel=focus===todayMission?tx('مهمة اليوم','Today mission'):focus===overdue?tx('مهمة متأخرة','Overdue mission'):focus?tx('المهمة القادمة','Next mission'):tx('لا توجد خطة','No plan');
+      const missionBlock=focus
+        ?'<div class="mo-rep-focus '+(focus===overdue?'overdue':'')+'"><div class="mo4-card-progress"><div><span>'+focusLabel+'</span><b>'+safe(focus.area_name)+'</b><small>'+safe(fmtDate(focus.scheduled_date))+'</small></div><strong>'+n(progress(focus))+'/'+n(focus.target_customers)+'</strong></div><div class="mo-progress"><i style="width:'+pct(focus)+'%"></i></div><div class="mo4-card-meta"><span>'+tx('الحالة','Status')+' <b>'+safe(statusText(focus))+'</b></span><span>'+tx('متبقي','Remaining')+' <b>'+n(remaining(focus))+'</b></span></div>'+(live?quickTargetHtml(focus):'')+'</div>'
+        :'<div class="empty">'+tx('لا توجد مهام لهذا المندوب.','No missions for this representative.')+'</div>';
+      const pendingBlock=pending?'<div class="mo-rep-pending"><div><b>'+tx('طلب تأجيل معلق','Pending reschedule')+'</b><span>'+safe(pending.m.area_name)+' · '+safe(fmtDate(pending.m.scheduled_date))+' → '+safe(fmtDate(pending.r.requested_date))+'</span><small>'+safe(pending.r.reason)+'</small></div><div><button class="btn good mini" type="button" data-mo-request-approve="'+safe(pending.r.id)+'">'+tx('موافقة','Approve')+'</button><button class="btn bad mini" type="button" data-mo-request-reject="'+safe(pending.r.id)+'">'+tx('رفض','Reject')+'</button></div></div>':'';
+      return '<article class="mo4-mission-card mo-rep-management-card '+(focus?statusClass(focus):'empty')+'">'+
+        '<div class="mo4-card-top"><div><span>'+tx('المندوب','Representative')+'</span><h4>'+safe(rep.full_name)+'</h4><small>'+tx('قادمة','Upcoming')+' '+n(upcoming)+' · '+tx('مكتملة','Completed')+' '+n(completed)+'</small></div><span class="mo-status-pill">'+focusLabel+'</span></div>'+
+        pendingBlock+missionBlock+
         '<div class="mo4-card-actions">'+
-          (todayMission?'<button class="btn secondary mini" type="button" data-mo-map="'+safe(todayMission.id)+'">'+tx('عرض في الخريطة','View on map')+'</button>':'')+
-          (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(todayMission.id)+'">'+tx('تعديل خطة اليوم','Edit today plan')+'</button>':'')+
-          (todayMission&&canPermanentDelete()?'<button class="btn bad mini" type="button" data-mo-delete="'+safe(todayMission.id)+'">'+tx('حذف خطة اليوم','Delete today plan')+'</button>':'')+
+          (focus?'<button class="btn secondary mini" type="button" data-mo-map="'+safe(focus.id)+'">'+tx('عرض على الخريطة','Show on map')+'</button><button class="btn secondary mini" type="button" data-mo-history="'+safe(focus.id)+'">'+tx('السجل','History')+'</button>':'')+
+          (live?'<button class="btn secondary mini" type="button" data-mo-edit="'+safe(focus.id)+'">'+tx('تعديل','Edit')+'</button><button class="btn warn mini" type="button" data-mo-reschedule="'+safe(focus.id)+'">'+(focus===overdue?tx('نقل الموعد','Move date'):tx('تأجيل','Reschedule'))+'</button>':'')+
           '<button class="btn secondary mini" type="button" data-mo-new-rep="'+safe(rep.id)+'">+ '+tx('إضافة خطة','Add plan')+'</button>'+
-          '<button class="btn secondary mini" type="button" data-mo-rep-plans="'+safe(rep.id)+'">'+tx('خطط المندوب','Representative plans')+'</button>'+
+          '<button class="btn secondary mini" type="button" data-mo-rep-plans="'+safe(rep.id)+'">'+tx('كل الخطط','All plans')+'</button>'+
         '</div></article>';
     }).join('');
-    return '<section class="mo5-missions-board"><div class="mo5-section-head"><div><span>'+tx('إدارة الخطط من مكان واحد','Manage plans in one place')+'</span><h3>'+tx('المناديب','Representatives')+'</h3></div><span>'+tx('خطة اليوم تظهر مباشرة، وكل باقي الخطط والتقرير الكامل داخل زر خطط المندوب.','Today’s plan appears directly; all other plans and the full report are inside Representative plans.')+'</span></div><div class="mo4-mission-grid">'+(cards||'<div class="empty">'+tx('لا يوجد مناديب نشطون.','No active representatives.')+'</div>')+'</div></section>';
+    return '<section class="mo5-missions-board mo-representatives-hub"><div class="mo5-section-head"><div><span>'+tx('مركز الإدارة','Management hub')+'</span><h3>'+tx('المناديب','Representatives')+'</h3><small>'+tx('المهمة الحالية والتأجيل والتعديل والسجل والخطط كلها من بطاقة المندوب.','Current mission, rescheduling, editing, history, and all plans are handled from each representative card.')+'</small></div></div><div class="mo4-mission-grid">'+(cards||'<div class="empty">'+tx('لا يوجد مناديب نشطون.','No active representatives.')+'</div>')+'</div></section>';
   }
 
   function plannerDayLabel(dateStr){
@@ -1048,7 +1078,8 @@
       b=e.target.closest('[data-mo-history]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moHistory);if(m)await openMissionHistory(m);return;}
       b=e.target.closest('[data-mo-start]');if(b){await startMission(b.dataset.moStart);return;}
       b=e.target.closest('[data-mo-add-customer]');if(b){mo.customerFormMode='mission';openCustomerForm();return;}
-      b=e.target.closest('[data-mo-map]');if(b){mo.selectedMissionId=b.dataset.moMap;const m=mo.missions.find(x=>x.id===mo.selectedMissionId);if(m)renderMissionMap(m);return;}
+      b=e.target.closest('[data-mo-map]');if(b){mo.selectedMissionId=b.dataset.moMap;const m=mo.missions.find(x=>x.id===mo.selectedMissionId);if(m){if(isManagementUser()){renderManagementOverviewMap(m.id);setTimeout(()=>document.getElementById('marketOpeningMap')?.scrollIntoView({behavior:'smooth',block:'center'}),20);}else renderMissionMap(m);}return;}
+      b=e.target.closest('[data-mo-map-period]');if(b){mo.managementMapFilter=b.dataset.moMapPeriod;if(mo.managementMapFilter==='custom'&&!mo.managementMapDate)mo.managementMapDate=today();renderPage();return;}
       b=e.target.closest('[data-mo-map-fit]');if(b){if(mo.map&&mo.activeBounds?.isValid?.())mo.map.fitBounds(mo.activeBounds,{padding:[24,24]});return;}
       b=e.target.closest('[data-mo-map-full]');if(b){toggleMissionMapFullscreen();return;}
       b=e.target.closest('[data-mo-edit]');if(b){const m=mo.missions.find(x=>x.id===b.dataset.moEdit);if(m)openMissionForm(m);return;}
@@ -1067,9 +1098,9 @@
       const input=e.target.closest?.('[data-mo-target-input]');
       if(input&&e.key==='Enter'){e.preventDefault();await saveQuickMissionTarget(input.dataset.moTargetInput,input.closest('[data-mo-quick-target]'));}
     };
-    const df=document.getElementById('moDateFilter'),rf=document.getElementById('moRepFilter');
-    if(df)df.onchange=()=>{mo.selectedMissionId=null;renderPage();};
-    if(rf)rf.onchange=()=>{mo.selectedMissionId=null;renderPage();};
+    const mapRep=document.getElementById('moMapRepFilter'),mapDate=document.getElementById('moMapCustomDate');
+    if(mapRep)mapRep.onchange=()=>{mo.managementMapRep=mapRep.value||'';renderPage();};
+    if(mapDate)mapDate.onchange=()=>{mo.managementMapDate=mapDate.value||today();mo.managementMapFilter='custom';renderPage();};
   }
 
     function toggleMissionMapFullscreen(){
@@ -1759,6 +1790,75 @@
       'district already assigned on source date':tx('التبديل سيصنع تعارضًا في الحي على التاريخ القديم. اختر تاريخًا آخر.','The swap would create a district conflict on the old date. Choose another date.')
     };
     return dict[m]||m;
+  }
+
+  function managementRepColor(repId){
+    const palette=['#0f766e','#2563eb','#7c3aed','#c2410c','#be123c','#0369a1','#4d7c0f','#a16207'];
+    const reps=state.profiles.filter(p=>p.role==='rep'&&p.active!==false);
+    const i=Math.max(0,reps.findIndex(p=>p.id===repId));
+    return palette[i%palette.length];
+  }
+
+  function renderManagementOverviewMap(focusMissionId=null){
+    const el=document.getElementById('marketOpeningMap');
+    if(!el||!window.L||!isManagementUser())return;
+    if(focusMissionId)mo.selectedMissionId=focusMissionId;
+    destroyMap();el.innerHTML='';
+    mo.map=L.map(el,{zoomControl:true,preferCanvas:true}).setView([24.7136,46.6753],11);
+    addBaseMap(mo.map);addPickerMapLayers(mo.map);
+
+    const rows=mo.missions.filter(m=>m.status!=='cancelled'&&Number.isFinite(Number(m.center_lat))&&Number.isFinite(Number(m.center_lng)));
+    const groups=new Map();
+    rows.forEach(m=>{
+      const key=m.district_no?'d:'+m.district_no:'r:'+Number(m.center_lat).toFixed(4)+':'+Number(m.center_lng).toFixed(4)+':'+Number(m.radius_m||0);
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(m);
+    });
+
+    let allBounds=null,highlighted=0;
+    const highlightedReps=new Set();
+    groups.forEach(group=>{
+      const matches=group.filter(managementMapMatches);
+      const selected=mo.selectedMissionId?group.find(m=>m.id===mo.selectedMissionId):null;
+      const primary=selected||matches[0]||group.slice().sort((a,b)=>ymd(b.scheduled_date).localeCompare(ymd(a.scheduled_date)))[0];
+      const isHighlight=!!selected||matches.length>0;
+      if(isHighlight){highlighted++;(selected?[selected]:matches).forEach(m=>highlightedReps.add(m.rep_id));}
+      const color=isHighlight?managementRepColor((selected||matches[0]||primary).rep_id):'#94a3b8';
+      const style=isHighlight
+        ?{color,weight:selected?5:3,fillColor:color,fillOpacity:selected?.24:.16,opacity:1}
+        :{color:'#94a3b8',weight:1.5,fillColor:'#cbd5e1',fillOpacity:.035,opacity:.48,dashArray:'5 6'};
+      let layer;
+      try{
+        if(primary.zone_type==='district_polygon'&&primary.zone_geojson){
+          layer=L.geoJSON({type:'Feature',properties:{},geometry:primary.zone_geojson},{style});
+        }else{
+          layer=L.circle([Number(primary.center_lat),Number(primary.center_lng)],{radius:Number(primary.radius_m),...style});
+        }
+        layer.addTo(mo.map);
+        const sorted=group.slice().sort((a,b)=>ymd(a.scheduled_date).localeCompare(ymd(b.scheduled_date)));
+        const visible=sorted.filter(m=>ymd(m.scheduled_date)>=addCalendarDays(today(),-7)).slice(0,8);
+        const popupRows=(visible.length?visible:sorted.slice(-5)).map(m=>'<div class="mo-map-popup-row"><b>'+safe(repName(m.rep_id))+'</b><span>'+safe(fmtDate(m.scheduled_date))+' · '+safe(statusText(m))+'</span></div>').join('');
+        layer.bindPopup('<div class="mo-map-popup"><strong>'+safe(primary.area_name)+'</strong>'+popupRows+'</div>');
+        layer.bindTooltip(safe(primary.area_name)+' · '+safe(repName((selected||matches[0]||primary).rep_id)));
+        const b=layer.getBounds?.();
+        if(b?.isValid())allBounds=allBounds?allBounds.extend(b):L.latLngBounds(b);
+        if(selected){
+          const center=layer.getBounds?.().getCenter?.();
+          if(center)setTimeout(()=>mo.map?.setView(center,13),80);
+        }
+      }catch(err){console.warn('management zone render',err);}
+    });
+
+    mo.activeBounds=allBounds;
+    if(!focusMissionId&&allBounds?.isValid())mo.map.fitBounds(allBounds,{padding:[24,24],maxZoom:12});
+
+    const mode=mo.managementMapFilter||'today';
+    const label=mode==='all'?tx('كل المهام','All missions'):mode==='today'?tx('مهام اليوم','Today missions'):mode==='tomorrow'?tx('مهام غدًا','Tomorrow missions'):mode==='week'?tx('مهام هذا الأسبوع','This week missions'):tx('مهام تاريخ ','Missions on ')+fmtDate(mo.managementMapDate||today());
+    const legend=document.getElementById('moMapLegend');
+    if(legend){
+      const reps=state.profiles.filter(p=>p.role==='rep'&&p.active!==false).filter(p=>!mo.managementMapRep||p.id===mo.managementMapRep);
+      legend.innerHTML='<div class="mo-management-legend-head"><b>'+safe(label)+'</b><span>'+n(highlighted)+' '+tx('منطقة مبرزة','highlighted areas')+' · '+n(groups.size)+' '+tx('منطقة ظاهرة','areas visible')+'</span></div><div class="mo-management-rep-legend">'+reps.map(p=>'<span><i style="background:'+managementRepColor(p.id)+'"></i>'+safe(p.full_name)+'</span>').join('')+'<span class="muted-zone"><i></i>'+tx('خارج الفلتر','Outside filter')+'</span></div>';
+    }
   }
 
   async function renderMissionMap(m){

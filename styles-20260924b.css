@@ -4908,3 +4908,134 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
+
+
+/* Market Opening — readable representative cards */
+.mo-representatives-hub .mo4-mission-grid{
+  grid-template-columns:repeat(auto-fit,minmax(420px,1fr));
+  gap:10px;
+  padding:0 12px 12px;
+}
+.mo-representatives-hub .mo4-card-top{
+  padding:11px 12px 9px;
+}
+.mo-representatives-hub .mo4-card-top h4{
+  font-size:16px;
+}
+.mo-representatives-hub .mo4-card-top small{
+  font-size:10px;
+}
+.mo-representatives-hub .mo-status-pill{
+  font-size:9px;
+  padding:5px 8px;
+}
+.mo-representatives-hub .mo-rep-today-list{
+  gap:7px;
+  padding-inline:9px;
+}
+.mo-representatives-hub .mo-rep-today-item{
+  gap:6px;
+  padding:8px 9px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-progress b{
+  font-size:13px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-progress strong{
+  font-size:14px;
+}
+.mo-representatives-hub .mo-rep-today-item .mo4-card-meta span{
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-today-item .btn.mini,
+.mo-representatives-hub .mo-rep-next-actions .btn.mini{
+  min-height:30px;
+  padding:5px 9px;
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-external-target{
+  margin:0 6px 3px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target{
+  min-height:38px;
+  padding:6px 8px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-copy>b{
+  font-size:10px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-control input{
+  width:60px;
+  min-width:60px;
+  height:31px;
+  font-size:13px;
+}
+.mo-representatives-hub .mo-rep-external-target .mo-quick-target-control .btn{
+  min-height:31px;
+  padding:4px 9px;
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-next-block{
+  margin:7px 9px 0;
+  padding-top:8px;
+  gap:6px;
+}
+.mo-representatives-hub .mo-rep-next-head span,
+.mo-representatives-hub .mo-rep-next-head b{
+  font-size:10px;
+}
+.mo-representatives-hub .mo-rep-next-item{
+  padding:7px 8px;
+}
+.mo-representatives-hub .mo-rep-next-item b{
+  font-size:11px;
+}
+.mo-representatives-hub .mo-rep-next-item small{
+  font-size:9px;
+}
+.mo-representatives-hub .mo-rep-reschedule-box{
+  margin:0 9px 7px;
+  gap:6px;
+  padding:8px;
+}
+.mo-representatives-hub .mo-rep-reschedule-head span{
+  font-size:10px;
+}
+.mo-representatives-hub .mo-rep-reschedule-head b{
+  min-width:24px;
+  height:24px;
+  font-size:10px;
+}
+.mo-representatives-hub .mo-rep-reschedule-row{
+  padding:7px 8px;
+}
+.mo-representatives-hub .mo-rep-reschedule-row b{
+  font-size:10px;
+}
+.mo-representatives-hub .mo-rep-reschedule-row span,
+.mo-representatives-hub .mo-rep-reschedule-row small{
+  font-size:9px;
+}
+.mo-representatives-hub .mo4-mission-card>.mo4-card-actions{
+  padding:8px 10px 9px;
+}
+.mo-representatives-hub .mo4-mission-card>.mo4-card-actions .btn{
+  min-height:30px;
+  padding:5px 9px;
+  font-size:9px;
+}
+.mo-overview-customer-stats{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+.mo-overview-customer-stats .system-total{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+}
+.mo-overview-customer-stats .highlight-total{
+  background:#ecfdf5;
+  border-color:#a7f3d0;
+}
+@media(max-width:980px){
+  .mo-representatives-hub .mo4-mission-grid{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .mo-overview-customer-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

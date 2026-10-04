@@ -124,8 +124,11 @@
     if(rep !== lastRepState){
       lastRepState = rep;
       toggle.classList.toggle('rep-quick-visible', rep);
-      if(rep) applyMode(localStorage.getItem(STORAGE_KEY) === 'quick' ? 'quick' : 'full', false);
-      else applyMode('full', false);
+      if(rep){
+        applyMode('quick', false);
+        localStorage.setItem(STORAGE_KEY, 'quick');
+        go('dashboard');
+      }else applyMode('full', false);
     }
   }
 

@@ -4522,3 +4522,49 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   .mo-action-alert-actions,.mo-rep-pending>div:last-child{width:100%}
   .mo-action-alert-actions .btn,.mo-rep-pending>div:last-child .btn{flex:1}
 }
+
+
+/* Market Opening — all missions inside each representative card */
+.mo-rep-management-card.all-plans{gap:12px;min-width:0}
+.mo-rep-all-plans{
+  display:grid;
+  gap:8px;
+  max-height:520px;
+  overflow:auto;
+  padding-inline-end:3px;
+}
+.mo-rep-plan-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:start;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  padding:10px;
+  background:#fff;
+}
+.mo-rep-plan-row.today{border-color:#93c5fd;background:#eff6ff;box-shadow:inset 3px 0 0 #2563eb}
+[dir="rtl"] .mo-rep-plan-row.today{box-shadow:inset -3px 0 0 #2563eb}
+.mo-rep-plan-row.overdue{border-color:#fecaca;background:#fef2f2}
+.mo-rep-plan-main{display:grid;gap:7px;min-width:0}
+.mo-rep-plan-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mo-rep-plan-title b{font-size:12px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mo-rep-plan-title span{font-size:10px;font-weight:800;color:#475569;white-space:nowrap}
+.mo-rep-plan-meta{display:flex;gap:8px;flex-wrap:wrap}
+.mo-rep-plan-meta span{font-size:9px;color:#64748b}
+.mo-rep-plan-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:190px}
+.mo-rep-plan-actions .btn{white-space:nowrap}
+.mo-rep-plan-request{
+  display:grid;gap:4px;
+  padding:8px;border-radius:9px;
+  border:1px solid #fed7aa;background:#fff7ed;
+}
+.mo-rep-plan-request>b{font-size:10px;color:#9a3412}
+.mo-rep-plan-request>span,.mo-rep-plan-request>small{font-size:9px;color:#7c2d12}
+.mo-rep-plan-request>div{display:flex;gap:5px;flex-wrap:wrap}
+@media(max-width:760px){
+  .mo-rep-all-plans{max-height:none}
+  .mo-rep-plan-row{grid-template-columns:1fr}
+  .mo-rep-plan-actions{max-width:none;width:100%;justify-content:stretch}
+  .mo-rep-plan-actions .btn{flex:1}
+}

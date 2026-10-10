@@ -278,7 +278,7 @@ async function enforceSecurityBeforeData(){
     if(aal.error){ showSecurityGate('تعذر التحقق من حماية الإدارة','<div class="security-error">تعذر فحص التحقق بخطوتين.</div>','mfa-error'); return; }
     if(aal.data.currentLevel!=='aal2'){ if(aal.data.nextLevel==='aal2') await showMFAChallengeGate(); else await showMFAEnrollGate(); return; }
   }
-  hideSecurityGate(); showApp(); if(state.profile?.role==='accounts'){ if(window.DANA_DEBT_AGING) await window.DANA_DEBT_AGING.reload(); return; } await refreshAll(); await renderSecurityStatus();
+  hideSecurityGate(); showApp(); if(state.profile?.role==='accounts') return; await refreshAll(); await renderSecurityStatus();
 }
 
 async function login(){

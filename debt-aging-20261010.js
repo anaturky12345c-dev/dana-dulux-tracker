@@ -319,7 +319,8 @@
     const payment=Number(document.getElementById('debtPaymentAmount')?.value||0),cash=Number(document.getElementById('debtCashAmount')?.value||0),paymentReceipt=document.getElementById('debtPaymentReceipt')?.value.trim()||'',cashReceipt=document.getElementById('debtCashReceipt')?.value.trim()||'',date=document.getElementById('debtEntryDate')?.value||APP.todayRiyadh(),note=document.getElementById('debtEntryNote')?.value.trim()||null;
     const errorBox=document.getElementById('debtEntryError');
     if(payment<0||cash<0||(!payment&&!cash)){errorBox.textContent='أدخل مبلغاً للدفعة أو الطلبية الكاش.';return;}
-    if(payment>0&&!paymentReceipt){errorBox.textContent='أدخل رقم سند دفعة التحصيل.';return;}\n    if(cash>0&&!cashReceipt){errorBox.textContent='أدخل رقم سند طلبية الكاش.';return;}
+    if(payment>0&&!paymentReceipt){errorBox.textContent='أدخل رقم سند دفعة التحصيل.';return;}
+    if(cash>0&&!cashReceipt){errorBox.textContent='أدخل رقم سند طلبية الكاش.';return;}
     if(payment>Number(row.current_total)||cash>Number(row.current_overdue)){errorBox.textContent='المبلغ أكبر من الرصيد المتاح.';return;}
     const items=[];if(payment>0)items.push({customer_id:row.id,entry_type:'payment',amount:payment,business_date:date,receipt_number:paymentReceipt,rep_id:APP.state.profile.id,created_by:APP.state.profile.id,note});if(cash>0)items.push({customer_id:row.id,entry_type:'cash_order',amount:cash,business_date:date,receipt_number:cashReceipt,rep_id:APP.state.profile.id,created_by:APP.state.profile.id,note});
     const {error}=await APP.sb.from('debt_aging_entries').insert(items);

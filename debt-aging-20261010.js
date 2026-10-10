@@ -47,7 +47,7 @@
     #debtAging .debt-request-card{padding:16px;margin:10px 0;border:1px solid var(--debt-line);border-radius:14px;background:var(--debt-surface);box-shadow:0 2px 8px rgba(15,23,42,.035);font-size:14px;line-height:1.65}
     #debtAging .debt-request-top{align-items:center;margin-bottom:5px}
     #debtAging .debt-request-top b{font-size:15px}
-    #debtAging .debt-requests-shell{margin-top:16px;padding:16px;border:1px solid var(--debt-line);border-radius:16px;background:var(--debt-soft)}
+    #debtAging .debt-requests-shell{margin-top:16px;padding:16px;border:1px solid var(--debt-line);border-radius:16px;background:var(--debt-soft)}\n    #debtRequestsWrap{margin-top:16px!important;padding:16px;border:1px solid var(--debt-line);border-radius:16px;background:var(--debt-soft);box-shadow:none}
     #debtAging .debt-table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;font-size:13px}
     #debtAging .table-wrap{border:1px solid var(--debt-line);border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
     #debtAging .debt-table th{position:sticky;top:0;z-index:1;background:#f1f5f9;color:#334155;font-size:12px;font-weight:700;line-height:1.45;white-space:normal}

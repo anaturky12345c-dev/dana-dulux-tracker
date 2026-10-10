@@ -137,10 +137,3 @@
   syncAvailability();
   window.setInterval(syncAvailability,1200);
 })();
-
-(function(){
-  const s=document.createElement('script');
-  s.src='./status-product-ui-20261010.js?v=20261010-status1';
-  s.defer=true;
-  document.head.appendChild(s);
-})();

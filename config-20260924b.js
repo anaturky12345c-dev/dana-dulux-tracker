@@ -7,6 +7,6 @@ window.addEventListener('load', function(){
   if(document.getElementById('danaStatusProductSafeScript')) return;
   var s=document.createElement('script');
   s.id='danaStatusProductSafeScript';
-  s.src='./status-product-safe-20261010.js?v=20261010-stable1';
+  s.src='./status-product-safe-20261010.js?v=20261010-pcmvoice1';
   document.body.appendChild(s);
 });

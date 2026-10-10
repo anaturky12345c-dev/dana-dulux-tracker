@@ -12,7 +12,7 @@
     #debtAging .debt-metric b{font-size:21px;display:block;margin-top:5px}
     #debtAging .debt-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
     #debtAging .debt-toolbar input,#debtAging .debt-toolbar select{flex:1;min-width:150px}
-    #debtAging .debt-table{min-width:850px}
+    #debtAging .debt-table{min-width:1450px}
     #debtAging .debt-actions{display:flex;gap:6px;flex-wrap:wrap}
     #debtAging .debt-request-card{border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:8px 0;background:#fff}
     #debtAging .debt-request-top{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
@@ -20,7 +20,7 @@
     #debtAging .debt-rec-status{font-size:12px;color:#64748b;margin-top:6px}
     #debtAging .debt-danger{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:10px;padding:10px;font-size:12px}
     @media(max-width:720px){#debtAging .debt-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#debtAging .debt-metric b{font-size:18px}#debtAging .debt-toolbar input,#debtAging .debt-toolbar select{min-width:100%}#debtAging .debt-head .btn{width:100%;min-height:46px}}
-    @media print{@page{size:A4 landscape;margin:10mm}body.debt-printing>*{display:none!important}body.debt-printing #debtPrintRoot{display:block!important;position:static!important;width:100%;direction:rtl;font-family:Tahoma,Arial,sans-serif;color:#111}#debtPrintRoot h1{font-size:18pt;margin:0 0 4mm}#debtPrintRoot p{font-size:9pt;margin:0 0 4mm;color:#444}#debtPrintRoot table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}#debtPrintRoot th,#debtPrintRoot td{border:1px solid #888;padding:4px 5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}#debtPrintRoot th{background:#e8edf3!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}#debtPrintRoot tr{break-inside:avoid;page-break-inside:avoid}#debtPrintRoot .debt-print-total{font-weight:bold;margin-top:4mm;font-size:10pt}}
+    @media print{@page{size:A3 landscape;margin:12mm}body.debt-printing>*{display:none!important}body.debt-printing #debtPrintRoot{display:block!important;position:static!important;width:100%;direction:rtl;font-family:Tahoma,Arial,sans-serif;color:#111}#debtPrintRoot h1{font-size:18pt;margin:0 0 4mm}#debtPrintRoot p{font-size:9pt;margin:0 0 4mm;color:#444}#debtPrintRoot table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}#debtPrintRoot th,#debtPrintRoot td{border:1px solid #888;padding:4px 5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}#debtPrintRoot th{background:#e8edf3!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}#debtPrintRoot tr{break-inside:avoid;page-break-inside:avoid}#debtPrintRoot .debt-print-total{font-weight:bold;margin-top:4mm;font-size:10pt}}
   `;
   document.head.appendChild(style);
 
@@ -33,19 +33,19 @@
   const page = document.createElement('section');
   page.id = 'debtAging'; page.className = 'section'; page.dir = 'rtl';
   page.innerHTML = `
-    <div class="debt-head"><div><h2 style="margin:0 0 4px">أعمار الديون</h2><div class="small">بيانات مستقلة عن المبيعات والمتابعات</div></div><div id="debtAdminActions" class="debt-actions"></div></div>
+    <div class="debt-head"><div><h2 style="margin:0 0 4px">أعمار الديون</h2><div class="small">بيانات مستقلة عن المبيعات والمتابعات. تُمسح بيانات الصفحة وطلبات الإدارة بالكامل كل جمعة.</div></div><div id="debtAdminActions" class="debt-actions"></div></div>
     <div id="debtResetNote" class="notice hidden"></div>
-    <div class="debt-metrics"><div class="debt-metric"><span>إجمالي الدين الظاهر</span><b id="debtTotal">0</b></div><div class="debt-metric"><span>إجمالي المتأخرات</span><b id="debtOverdue">0</b></div><div class="debt-metric"><span>المطلوب الأسبوعي</span><b id="debtRequired">0</b></div><div class="debt-metric"><span>المحصّل/المخفّض هذا الأسبوع</span><b id="debtRecovered">0</b></div></div>
-    <div id="debtImportBox" class="card hidden" style="margin-bottom:12px"><h3>رفع ملف أعمار الديون</h3><p class="small">يستبدل الملف السابق داخل صفحة أعمار الديون فقط. لا يغيّر العملاء أو المبيعات أو المتابعات.</p><input id="debtFile" type="file" accept=".xlsx,.xls,.csv"/><div id="debtMapping" class="form-grid" style="margin-top:10px"></div><div class="debt-actions" style="margin-top:10px"><button class="btn" id="debtImportBtn" type="button">استيراد البيانات</button></div><div id="debtImportMsg" class="small" style="margin-top:8px"></div></div>
-    <div class="debt-toolbar"><input id="debtSearch" placeholder="ابحث باسم العميل أو الحي أو الجوال"/><select id="debtRepFilter"><option value="">كل المندوبين</option></select><select id="debtAgingFilter"><option value="all">كل العملاء</option><option value="overdue">لديهم متأخرات</option><option value="over60">أكثر من 60 يوم</option></select><button class="btn secondary" id="debtPdf" type="button">تقرير PDF</button></div>
-    <div class="table-wrap"><table class="debt-table"><thead><tr><th>العميل</th><th>الحي</th><th>المندوب</th><th>إجمالي الدين</th><th>المتأخرات</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>عمر أقدم دين</th><th>الإجراء</th></tr></thead><tbody id="debtRows"></tbody></table></div>
+    <div class="debt-metrics"><div class="debt-metric"><span>إجمالي الدين</span><b id="debtTotal">0</b></div><div class="debt-metric"><span>إجمالي شرائح الأعمار</span><b id="debtOverdue">0</b></div><div class="debt-metric"><span>المطلوب الأسبوعي</span><b id="debtRequired">0</b></div><div class="debt-metric"><span>المحصّل/المخفّض هذا الأسبوع</span><b id="debtRecovered">0</b></div></div>
+    <div id="debtImportBox" class="card hidden" style="margin-bottom:12px"><h3>رفع ملف أعمار الديون</h3><p class="small">مطابقة أعمدة الملف الأسبوعي. يستبدل بيانات أعمار الديون فقط، ولا يغيّر المبيعات أو المتابعات.</p><input id="debtFile" type="file" accept=".xlsx,.xls,.csv"/><div id="debtMapping" class="form-grid" style="margin-top:10px"></div><div id="debtRepMapping" class="form-grid" style="margin-top:10px"></div><div class="debt-actions" style="margin-top:10px"><button class="btn" id="debtImportBtn" type="button">استيراد البيانات</button></div><div id="debtImportMsg" class="small" style="margin-top:8px"></div></div>
+    <div class="debt-toolbar"><input id="debtSearch" placeholder="ابحث باسم العميل أو رقم العميل"/><select id="debtRepFilter"><option value="">كل المندوبين</option></select><select id="debtAgingFilter"><option value="all">كل العملاء</option><option value="overdue">لديهم رصيد في شرائح الأعمار</option><option value="over60">أكثر من 60 يوم</option></select><button class="btn secondary" id="debtPdf" type="button">تقرير PDF</button></div>
+    <div class="table-wrap"><table class="debt-table"><thead><tr><th>العميل</th><th>رقم العميل</th><th>المندوب</th><th>المبلغ الحالي</th><th>0–15</th><th>16–30</th><th>31–45</th><th>46–60</th><th>أكثر من 60</th><th>مجموع الشرائح</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>الإجراء</th></tr></thead><tbody id="debtRows"></tbody></table></div>
     <div id="debtRequestsWrap" class="card" style="margin-top:14px"><div class="debt-head"><div><h3 style="margin:0">طلبات زيارة الإدارة ومشاكل المندوبين</h3><div class="small">تظهر للإدارة لمتابعتها والرد عليها.</div></div><button id="debtNewRequest" class="btn" type="button">طلب زيارة / متابعة مشكلة</button></div><div id="debtRequests"></div></div>
     <div id="debtPrintRoot" hidden></div>`;
   main.appendChild(page);
 
   const $ = id => document.getElementById(id);
   const escText = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const fmt = value => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:2}).format(Number(value||0));
+  const fmt = value => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:4}).format(Number(value||0));
   const money = value => `${fmt(value)} ر.س`;
   const isFull = () => ['admin','accounts'].includes(APP.state.profile?.role);
   const isManagement = () => ['admin','manager','accounts'].includes(APP.state.profile?.role);
@@ -53,6 +53,13 @@
   let rows = [], reps = [], requests = [], entries = [], currentFileRows = [], recorder = null, recordedBlob = null;
   let lastRole = null;
   const audioCache = new Map();
+  const AGE_BUCKETS = [
+    {key:'opening_0_15', current:'current_0_15', label:'0–15', aliases:['0 - 15','0-15','0–15']},
+    {key:'opening_16_30', current:'current_16_30', label:'16–30', aliases:['16 - 30','16-30','16–30']},
+    {key:'opening_31_45', current:'current_31_45', label:'31–45', aliases:['31 - 45','31-45','31–45']},
+    {key:'opening_46_60', current:'current_46_60', label:'46–60', aliases:['46 - 60','46-60','46–60']},
+    {key:'opening_over_60', current:'current_over_60', label:'أكثر من 60', aliases:['more than 60','أكثر من 60','61+']}
+  ];
 
   function goDebt(){
     if (!APP.state.profile) return;
@@ -117,6 +124,7 @@
   $('debtPdf').addEventListener('click',exportPdf);
   $('debtFile').addEventListener('change',readImportFile);
   $('debtImportBtn').addEventListener('click',importSnapshot);
+  $('debtMapping').addEventListener('change',e=>{if(e.target.matches('[data-map="rep"]'))renderRepMapping();});
 
   async function loadAll(){
     if(!APP.state.profile)return;
@@ -135,9 +143,8 @@
   function currentRows(){
     const search=$('debtSearch').value.trim().toLowerCase(),rep=$('debtRepFilter').value,filter=$('debtAgingFilter').value;
     return rows.filter(r=>{
-      const name=`${r.customer_name||''} ${r.area||''} ${r.phone||''}`.toLowerCase();
-      const age=r.oldest_due_date?Math.floor((Date.now()-new Date(`${r.oldest_due_date}T00:00:00Z`))/86400000):0;
-      return (!search||name.includes(search))&&(!rep||r.assigned_rep===rep)&&(filter==='all'||(filter==='overdue'&&Number(r.current_overdue)>0)||(filter==='over60'&&age>60));
+      const name=`${r.customer_name||''} ${r.source_key||''} ${r.area||''} ${r.phone||''}`.toLowerCase();
+      return (!search||name.includes(search))&&(!rep||r.assigned_rep===rep)&&(filter==='all'||(filter==='overdue'&&Number(r.current_overdue)>0)||(filter==='over60'&&Number(r.current_over_60)>0));
     });
   }
   function renderRows(){
@@ -146,12 +153,12 @@
     $('debtTotal').textContent=money(sums.total);$('debtOverdue').textContent=money(sums.overdue);$('debtRequired').textContent=money(sums.required);$('debtRecovered').textContent=money(sums.recovered);
     $('debtRows').innerHTML=view.length?view.map(r=>{
       const rep=reps.find(p=>p.id===r.assigned_rep)?.full_name||r.assigned_rep_name||'—';
-      const age=r.oldest_due_date?Math.max(0,Math.floor((Date.now()-new Date(`${r.oldest_due_date}T00:00:00Z`))/86400000)):null;
       const action=isFull()?`<button class="btn secondary mini" data-debt-action="edit" data-id="${r.id}">تعديل</button><button class="btn bad mini" data-debt-action="delete" data-id="${r.id}">حذف</button>`:'';
       const collect=APP.state.profile?.role==='rep'?`<button class="btn mini" data-debt-action="entry" data-id="${r.id}">تسجيل دفعة / طلبية كاش</button>`:'';
       const history=`<button class="btn secondary mini" data-debt-action="history" data-id="${r.id}">الحركات</button>`;
-      return `<tr><td>${escText(r.customer_name)}</td><td>${escText(r.area||'—')}</td><td>${escText(rep)}</td><td>${money(r.current_total)}</td><td><b>${money(r.current_overdue)}</b></td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td><td>${age===null?'—':`${age} يوم`}</td><td><div class="debt-actions">${collect}${history}${action}</div></td></tr>`;
-    }).join(''):'<tr><td colspan="10" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
+      const buckets=AGE_BUCKETS.map(b=>`<td>${money(r[b.current])}</td>`).join('');
+      return `<tr><td>${escText(r.customer_name)}</td><td>${escText(r.source_key||'—')}</td><td>${escText(rep)}</td><td>${money(r.current_total)}</td>${buckets}<td><b>${money(r.current_overdue)}</b></td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td><td><div class="debt-actions">${collect}${history}${action}</div></td></tr>`;
+    }).join(''):'<tr><td colspan="14" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
   }
 
   function renderRequests(){
@@ -180,9 +187,10 @@
   }
   function editCustomer(row){
     const options=reps.map(r=>`<option value="${r.id}" ${r.id===row.assigned_rep?'selected':''}>${escText(r.full_name)}</option>`).join('');
-    const form=`<div class="form-grid"><div><label>اسم العميل</label><input id="debtEditName" maxlength="180" value="${escText(row.customer_name)}"></div><div><label>الحي</label><input id="debtEditArea" maxlength="120" value="${escText(row.area||'')}"></div><div><label>الجوال</label><input id="debtEditPhone" maxlength="40" value="${escText(row.phone||'')}"></div><div><label>المندوب المسؤول</label><select id="debtEditRep"><option value="">بدون تعيين</option>${options}</select></div><div><label>إجمالي الدين عند الاستيراد</label><input id="debtEditTotal" type="number" min="0" step="0.01" value="${Number(row.opening_total||0)}"></div><div><label>المتأخرات عند الاستيراد</label><input id="debtEditOverdue" type="number" min="0" step="0.01" value="${Number(row.opening_overdue||0)}"></div><div><label>المطلوب أسبوعياً</label><input id="debtEditWeekly" type="number" min="0" step="0.01" value="${Number(row.weekly_required||0)}"></div><div><label>أقدم تاريخ استحقاق</label><input id="debtEditDue" type="date" value="${row.oldest_due_date||''}"></div><div class="full"><button class="btn" id="debtEditSave">حفظ التعديل</button><span id="debtEditMsg" class="small"></span></div></div>`;
+    const bucketFields=AGE_BUCKETS.map(b=>`<div><label>${b.label} يوم عند الاستيراد</label><input id="${b.key}" data-debt-bucket="${b.key}" type="number" min="0" step="0.0001" value="${Number(row[b.key]||0)}"></div>`).join('');
+    const form=`<div class="form-grid"><div><label>اسم العميل</label><input id="debtEditName" maxlength="180" value="${escText(row.customer_name)}"></div><div><label>رقم العميل</label><input id="debtEditSource" maxlength="120" value="${escText(row.source_key||'')}"></div><div><label>المندوب المسؤول</label><select id="debtEditRep"><option value="">بدون تعيين</option>${options}</select></div><div><label>إجمالي الدين عند الاستيراد</label><input id="debtEditTotal" type="number" min="0" step="0.0001" value="${Number(row.opening_total||0)}"></div>${bucketFields}<div><label>المطلوب أسبوعياً</label><input id="debtEditWeekly" type="number" min="0" step="0.01" value="${Number(row.weekly_required||0)}"></div><div class="full"><button class="btn" id="debtEditSave">حفظ التعديل</button><span id="debtEditMsg" class="small"></span></div></div>`;
     APP.openModal?.('تعديل بيانات أعمار الديون',form);
-    setTimeout(()=>{const b=document.getElementById('debtEditSave');if(b)b.onclick=async()=>{const total=Number(document.getElementById('debtEditTotal').value||0),overdue=Number(document.getElementById('debtEditOverdue').value||0);if(!document.getElementById('debtEditName').value.trim()||total<0||overdue<0||overdue>total){document.getElementById('debtEditMsg').textContent='تحقق من الاسم والمبالغ؛ المتأخرات لا تتجاوز إجمالي الدين.';return;}const {error}=await APP.sb.from('debt_aging_customers').update({customer_name:document.getElementById('debtEditName').value.trim(),area:document.getElementById('debtEditArea').value.trim()||null,phone:document.getElementById('debtEditPhone').value.trim()||null,opening_total:total,opening_overdue:overdue,weekly_required:Number(document.getElementById('debtEditWeekly').value||0),assigned_rep:document.getElementById('debtEditRep').value||null,oldest_due_date:document.getElementById('debtEditDue').value||null,updated_at:new Date().toISOString()}).eq('id',row.id);document.getElementById('debtEditMsg').textContent=error?'تعذر الحفظ':'تم الحفظ';if(!error){document.getElementById('modal')?.classList.remove('open');await loadAll();}};},0);
+    setTimeout(()=>{const b=document.getElementById('debtEditSave');if(b)b.onclick=async()=>{const total=Number(document.getElementById('debtEditTotal').value||0),bucketValues=Object.fromEntries(AGE_BUCKETS.map(x=>[x.key,Number(document.getElementById(x.key).value||0)])),overdue=Object.values(bucketValues).reduce((a,n)=>a+n,0);if(!document.getElementById('debtEditName').value.trim()||total<0||Object.values(bucketValues).some(n=>n<0)||overdue>total+0.02){document.getElementById('debtEditMsg').textContent='تحقق من المبالغ؛ مجموع شرائح الأعمار لا يتجاوز إجمالي الدين.';return;}const {error}=await APP.sb.from('debt_aging_customers').update({customer_name:document.getElementById('debtEditName').value.trim(),source_key:document.getElementById('debtEditSource').value.trim()||null,opening_total:total,opening_overdue:overdue,...bucketValues,weekly_required:Number(document.getElementById('debtEditWeekly').value||0),assigned_rep:document.getElementById('debtEditRep').value||null,updated_at:new Date().toISOString()}).eq('id',row.id);document.getElementById('debtEditMsg').textContent=error?'تعذر الحفظ':'تم الحفظ';if(!error){document.getElementById('modal')?.classList.remove('open');await loadAll();}};},0);
   }
   function showHistory(row){
     const history=entries.filter(x=>x.customer_id===row.id);
@@ -213,14 +221,15 @@
     try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});recordedBlob=null;recorder=new MediaRecorder(stream);const chunks=[];recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onstop=()=>{recordedBlob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});stream.getTracks().forEach(t=>t.stop());document.getElementById('debtRecordStatus').textContent='تم تجهيز التسجيل الصوتي.';};recorder.start();document.getElementById('debtRecordStart').disabled=true;document.getElementById('debtRecordStop').disabled=false;document.getElementById('debtRecordStatus').textContent='جاري التسجيل…';setTimeout(()=>{if(recorder?.state==='recording')stopRecording();},120000);}catch(e){document.getElementById('debtRecordStatus').textContent='تعذر تشغيل الميكروفون؛ اكتب السبب في التفاصيل الإضافية.';}
   }
   function stopRecording(){if(recorder?.state==='recording'){recorder.stop();document.getElementById('debtRecordStart').disabled=false;document.getElementById('debtRecordStop').disabled=true;}}
+  function blobToBase64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');reader.onerror=()=>reject(reader.error||new Error('تعذر قراءة التسجيل'));reader.readAsDataURL(blob);});}
   async function submitRequest(){
     const type=document.getElementById('debtRequestType').value,customer=document.getElementById('debtRequestCustomer').value||null,reason=document.getElementById('debtRequestReason').value.trim(),msg=document.getElementById('debtRequestError');
     if(recorder?.state==='recording')stopRecording();await new Promise(r=>setTimeout(r,100));
     if(!reason&&!recordedBlob){msg.textContent='سجل السبب صوتياً أو اكتب تفاصيله.';return;}
-    const id=crypto.randomUUID(),path=recordedBlob?`${APP.state.profile.id}/${id}.${recordedBlob.type.includes('ogg')?'ogg':recordedBlob.type.includes('mp4')?'mp4':'webm'}`:null;
+    const id=crypto.randomUUID(),path=recordedBlob?`db:${id}`:null;
     const {error:insertError}=await APP.sb.from('debt_aging_requests').insert({id,rep_id:APP.state.profile.id,customer_id:customer,request_type:type,reason:reason||null,audio_path:path});
     if(insertError){msg.textContent='تعذر تسجيل الطلب.';return;}
-    if(recordedBlob){const {error:uploadError}=await APP.sb.storage.from('debt-aging-requests').upload(path,recordedBlob,{contentType:(recordedBlob.type||'audio/webm').split(';')[0],upsert:false});if(uploadError){await APP.sb.from('debt_aging_requests').update({audio_path:null,reason:reason||'تعذر رفع التسجيل الصوتي عند الإرسال.'}).eq('id',id);msg.textContent='لم يرفع الصوت، لكن أُرسل الطلب مع التفاصيل المكتوبة.';}}
+    if(recordedBlob){try{const contentType=(recordedBlob.type||'audio/webm').split(';')[0],audio_base64=await blobToBase64(recordedBlob);const {error:uploadError}=await APP.sb.rpc('debt_aging_save_request_audio',{p_request_id:id,p_content_type:contentType,p_audio_base64:audio_base64});if(uploadError)throw uploadError;}catch(e){await APP.sb.from('debt_aging_requests').update({audio_path:null,reason:reason||'تعذر حفظ التسجيل الصوتي.'}).eq('id',id);msg.textContent='تعذر حفظ الصوت، لكن أُرسل الطلب بالتفاصيل المكتوبة.';}}
     document.getElementById('modal')?.classList.remove('open');await loadAll();APP.flash?.('وصل طلبك للإدارة');
   }
   async function resolveRequest(req){
@@ -231,34 +240,44 @@
   async function playRequestAudio(req){
     if(!req.audio_path)return;
     let url=audioCache.get(req.audio_path);
-    if(!url){const {data,error}=await APP.sb.storage.from('debt-aging-requests').createSignedUrl(req.audio_path,300);if(error){APP.flash?.('تعذر تشغيل الصوت',true);return;}url=data.signedUrl;audioCache.set(req.audio_path,url);}
+    if(!url){if(req.audio_path.startsWith('db:')){const {data,error}=await APP.sb.rpc('debt_aging_get_request_audio',{p_request_id:req.id});const item=Array.isArray(data)?data[0]:null;if(error||!item?.audio_base64){APP.flash?.('تعذر تشغيل الصوت',true);return;}const raw=atob(item.audio_base64.replace(/\s/g,'')),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);url=URL.createObjectURL(new Blob([bytes],{type:item.content_type}));}else{const {data,error}=await APP.sb.storage.from('debt-aging-requests').createSignedUrl(req.audio_path,300);if(error){APP.flash?.('تعذر تشغيل الصوت',true);return;}url=data.signedUrl;}audioCache.set(req.audio_path,url);}
     const audio=document.createElement('audio');audio.controls=true;audio.src=url;audio.className='debt-audio';const card=document.querySelector(`[data-id="${req.id}"]`)?.closest('.debt-request-card');(card||$('debtRequests')).appendChild(audio);audio.play().catch(()=>{});
   }
 
   async function readImportFile(){
     const file=$('debtFile').files?.[0];if(!file)return;
     if(!window.XLSX){$('debtImportMsg').textContent='تعذر تحميل قارئ ملفات Excel.';return;}
-    try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});const sheet=wb.Sheets[wb.SheetNames[0]];currentFileRows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});if(!currentFileRows.length)throw new Error('الملف لا يحتوي صفوفاً.');buildMapping(Object.keys(currentFileRows[0]));$('debtImportMsg').textContent=`تم قراءة ${currentFileRows.length} صف. راجع مطابقة الأعمدة قبل الاستيراد.`;}catch(e){$('debtImportMsg').textContent=e.message||'تعذر قراءة الملف.';}
+    try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});const sheet=wb.Sheets[wb.SheetNames[0]];currentFileRows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});if(!currentFileRows.length)throw new Error('الملف لا يحتوي صفوفاً.');buildMapping(Object.keys(currentFileRows[0]));renderRepMapping();$('debtImportMsg').textContent=`تم قراءة ${currentFileRows.length} صف. راجع مطابقة الأعمدة والمندوبين قبل الاستيراد.`;}catch(e){$('debtImportMsg').textContent=e.message||'تعذر قراءة الملف.';}
   }
   function buildMapping(headers){
-    const fields=[['customer_name','اسم العميل',true,['اسم العميل','العميل','customer','customer name','name']],['opening_total','إجمالي الدين',true,['إجمالي الدين','الرصيد','المبلغ المستحق','total debt','balance']],['opening_overdue','المتأخرات',true,['المتأخرات','المتأخر','overdue','past due']],['weekly_required','المطلوب أسبوعياً',false,['المطلوب أسبوعياً','الدفعة الأسبوعية','weekly required','weekly payment']],['area','الحي',false,['الحي','المنطقة','area','district']],['phone','الجوال',false,['الجوال','الهاتف','phone','mobile']],['rep','المندوب',false,['المندوب','المسؤول','rep','sales rep']],['oldest_due_date','تاريخ أقدم استحقاق',false,['تاريخ أقدم استحقاق','تاريخ الاستحقاق','due date','oldest due date']],['days_overdue','أيام التأخر',false,['أيام التأخر','عمر الدين بالأيام','days overdue','age days']],['source_key','رقم العميل',false,['رقم العميل','كود العميل','customer id','code']]];
+    const fields=[['customer_name','اسم العميل',true,['اسم العميل','العميل','customer','customer name','name']],['source_key','رقم العميل',true,['رقم العميل','كود العميل','customer id','code']],['opening_total','المبلغ / إجمالي الدين',true,['المبلغ','إجمالي الدين','الرصيد','المبلغ المستحق','amount','total debt','balance']],...AGE_BUCKETS.map(b=>[b.key,`شريحة ${b.label} يوم`,true,b.aliases]),['rep','اسم المندوب',true,['اسم المندوب','المندوب','المسؤول','rep','sales rep']],['weekly_required','المطلوب أسبوعياً',false,['المطلوب أسبوعياً','الدفعة الأسبوعية','weekly required','weekly payment']]];
     $('debtMapping').innerHTML=fields.map(([key,label,required,aliases])=>{const guess=headers.find(h=>aliases.some(a=>h.toLowerCase().includes(a.toLowerCase())));return `<div><label>${label}${required?' *':''}</label><select data-map="${key}"><option value="">— لا يوجد —</option>${headers.map(h=>`<option value="${escText(h)}" ${h===guess?'selected':''}>${escText(h)}</option>`).join('')}</select></div>`;}).join('');
+  }
+  function renderRepMapping(){
+    const repColumn=document.querySelector('#debtMapping [data-map="rep"]')?.value;
+    if(!repColumn){$('debtRepMapping').innerHTML='';return;}
+    const names=[...new Set(currentFileRows.map(r=>String(r[repColumn]??'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+    const repMap=new Map(reps.flatMap(r=>[[r.full_name.toLowerCase(),r.id],[r.username.toLowerCase(),r.id]]));
+    $('debtRepMapping').innerHTML=names.map(name=>{
+      const exact=repMap.get(name.toLowerCase());const adminLabel=/admin|الادمن|الإدارة/i.test(name);const first=exact|| (adminLabel?'__none__':'__choose__');
+      return `<div><label>مندوب الملف: ${escText(name)}</label><select data-rep-source="${escText(name)}"><option value="__choose__" ${first==='__choose__'?'selected':''}>— اختر المندوب —</option><option value="__none__" ${first==='__none__'?'selected':''}>بدون تعيين</option>${reps.map(r=>`<option value="${r.id}" ${r.id===first?'selected':''}>${escText(r.full_name)}</option>`).join('')}</select></div>`;
+    }).join('');
   }
   function dateForDb(value){if(!value)return null;const d=new Date(value);return Number.isNaN(d.valueOf())?null:d.toISOString().slice(0,10);}
   function importValues(){
     const map={};document.querySelectorAll('#debtMapping [data-map]').forEach(el=>map[el.dataset.map]=el.value);
-    for(const f of ['customer_name','opening_total','opening_overdue'])if(!map[f])throw new Error('اختر عمود '+f+' المطلوب.');
-    const repMap=new Map(reps.flatMap(r=>[[r.full_name.toLowerCase(),r.id],[r.username.toLowerCase(),r.id]]));
+    for(const f of ['customer_name','source_key','opening_total','rep',...AGE_BUCKETS.map(b=>b.key)])if(!map[f])throw new Error('اختر عمود '+f+' المطلوب.');
+    const repAssignments=new Map([...document.querySelectorAll('#debtRepMapping [data-rep-source]')].map(el=>[el.dataset.repSource,el.value]));
     const parsed=currentFileRows.map((r,i)=>{
       const val=k=>map[k]?String(r[map[k]]??'').trim():'';
       const num=k=>Number(val(k).replace(/[٠-٩]/g,ch=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(ch))).replace(/[۰-۹]/g,ch=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch))).replace(/[,،\sر.سSAR]/gi,''));
-      const total=num('opening_total'),overdue=num('opening_overdue');
-      if(!val('customer_name')||!Number.isFinite(total)||!Number.isFinite(overdue)||total<0||overdue<0||overdue>total)throw new Error(`راجع اسم العميل وأرقام الدين والمتأخرات في الصف ${i+2}.`);
-      const repName=val('rep');const assigned=repMap.get(repName.toLowerCase())||null;
-      if(repName&&!assigned)throw new Error(`المندوب في الصف ${i+2} غير مطابق لحساب موجود: ${repName}`);
-      let due=dateForDb(val('oldest_due_date'));
-      if(!due&&map.days_overdue&&val('days_overdue')){const days=num('days_overdue');if(Number.isFinite(days)&&days>=0){const d=new Date(`${APP.todayRiyadh()}T00:00:00Z`);d.setUTCDate(d.getUTCDate()-Math.floor(days));due=d.toISOString().slice(0,10);}}
-      return {source_key:val('source_key')||null,customer_name:val('customer_name'),area:val('area')||null,phone:val('phone')||null,assigned_rep:assigned,opening_total:total,opening_overdue:overdue,weekly_required:map.weekly_required&&val('weekly_required')?num('weekly_required'):0,oldest_due_date:due};
+      const total=num('opening_total'),bucketValues=Object.fromEntries(AGE_BUCKETS.map(b=>[b.key,val(b.key)?num(b.key):0])),overdue=Object.values(bucketValues).reduce((a,n)=>a+n,0);
+      if(!val('customer_name')||!val('source_key')||!Number.isFinite(total)||total<0||Object.values(bucketValues).some(n=>!Number.isFinite(n)||n<0)||overdue>total+0.02)throw new Error(`راجع الاسم ورقم العميل والمبالغ في الصف ${i+2}. مجموع شرائح الأعمار يجب ألا يتجاوز المبلغ.`);
+      const repName=val('rep'),assignedValue=repAssignments.get(repName);
+      if(!repName)throw new Error(`اسم المندوب مفقود في الصف ${i+2}.`);
+      if(repName&&(!assignedValue||assignedValue==='__choose__'))throw new Error(`حدد حساب المندوب المطابق للاسم في الملف: ${repName}`);
+      const assigned=assignedValue&&assignedValue!=='__none__'?assignedValue:null;
+      return {source_key:val('source_key'),customer_name:val('customer_name'),area:null,phone:null,assigned_rep:assigned,opening_total:total,opening_overdue:overdue,...bucketValues,weekly_required:map.weekly_required&&val('weekly_required')?num('weekly_required'):0,oldest_due_date:null};
     });
     const keys=parsed.filter(r=>r.source_key).map(r=>r.source_key);if(new Set(keys).size!==keys.length)throw new Error('يوجد رقم عميل مكرر في الملف.');
     const pairs=parsed.filter(r=>r.phone).map(r=>`${r.customer_name.trim().toLowerCase()}|${r.phone.replace(/\D/g,'')}`);if(new Set(pairs).size!==pairs.length)throw new Error('يوجد عميل مكرر بالاسم ورقم الجوال في الملف.');
@@ -269,8 +288,11 @@
     try{const parsed=importValues();if(!confirm(`سيتم استبدال بيانات أعمار الديون فقط بـ ${parsed.length} عميل. لن تتأثر بيانات المبيعات أو المتابعات. تتابع؟`))return;$('debtImportBtn').disabled=true;$('debtImportMsg').textContent='جاري الاستيراد…';const {data,error}=await APP.sb.rpc('debt_aging_replace_snapshot',{p_rows:parsed});if(error)throw error;$('debtImportMsg').textContent=`تم استيراد ${parsed.length} عميل.`;await loadAll();}catch(e){$('debtImportMsg').textContent=e.message||'فشل الاستيراد.';}finally{$('debtImportBtn').disabled=false;}
   }
   function exportPdf(){
-    const data=currentRows(),totals=data.reduce((a,r)=>{a.total+=Number(r.current_total||0);a.overdue+=Number(r.current_overdue||0);return a;},{total:0,overdue:0});
-    const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير أعمار الديون</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Tahoma,Arial,sans-serif;color:#111;margin:0}h1{font-size:18pt;margin:0 0 4mm}p{font-size:9pt;color:#444;margin:0 0 4mm}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}th,td{border:1px solid #888;padding:4px 5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}th{background:#e8edf3}tr{break-inside:avoid;page-break-inside:avoid}.total{font-weight:bold;margin-top:4mm;font-size:10pt}</style></head><body><h1>تقرير أعمار الديون</h1><p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA',{timeZone:'Asia/Riyadh'})} · عدد العملاء: ${data.length}</p><table><thead><tr><th>العميل</th><th>الحي</th><th>المندوب</th><th>إجمالي الدين</th><th>المتأخرات</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>أقدم استحقاق</th></tr></thead><tbody>${data.map(r=>`<tr><td>${escText(r.customer_name)}</td><td>${escText(r.area||'—')}</td><td>${escText(reps.find(x=>x.id===r.assigned_rep)?.full_name||'—')}</td><td>${money(r.current_total)}</td><td>${money(r.current_overdue)}</td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td><td>${escText(r.oldest_due_date||'—')}</td></tr>`).join('')}</tbody></table><div class="total">إجمالي الدين: ${money(totals.total)} · إجمالي المتأخرات: ${money(totals.overdue)}</div><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`;
+    const data=currentRows(),totals=data.reduce((a,r)=>{a.total+=Number(r.current_total||0);a.overdue+=Number(r.current_overdue||0);a.required+=Number(r.weekly_required||0);a.recovered+=Number(r.recovered_this_week||0);for(const b of AGE_BUCKETS)a[b.key]+=Number(r[b.current]||0);return a;},{total:0,overdue:0,required:0,recovered:0,...Object.fromEntries(AGE_BUCKETS.map(b=>[b.key,0]))});
+    const bucketHeaders=AGE_BUCKETS.map(b=>`<th>${b.label}</th>`).join('');
+    const bucketCells=r=>AGE_BUCKETS.map(b=>`<td>${money(r[b.current])}</td>`).join('');
+    const bucketTotals=AGE_BUCKETS.map(b=>`<td><b>${money(totals[b.key])}</b></td>`).join('');
+    const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير أعمار الديون</title><style>@page{size:A3 landscape;margin:12mm}body{font-family:Tahoma,Arial,sans-serif;color:#111;margin:0}h1{font-size:18pt;margin:0 0 4mm}p{font-size:9pt;color:#444;margin:0 0 4mm}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}th,td{border:1px solid #888;padding:4px 5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}th{background:#e8edf3}tr{break-inside:avoid;page-break-inside:avoid}.total{font-weight:bold;margin-top:4mm;font-size:10pt}col.customer{width:13%}col.key{width:5%}col.rep{width:8%}col.total{width:8%}col.bucket{width:6%}col.sum{width:8%}col.week{width:7%}col.recovered{width:7%}col.remaining{width:14%}</style></head><body><h1>تقرير أعمار الديون</h1><p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA',{timeZone:'Asia/Riyadh'})} · عدد العملاء: ${data.length}</p><table><colgroup><col class="customer"><col class="key"><col class="rep"><col class="total">${AGE_BUCKETS.map(()=>'<col class="bucket">').join('')}<col class="sum"><col class="week"><col class="recovered"><col class="remaining"></colgroup><thead><tr><th>اسم العميل</th><th>رقم العميل</th><th>المندوب</th><th>المبلغ الحالي</th>${bucketHeaders}<th>مجموع الشرائح</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th></tr></thead><tbody>${data.map(r=>`<tr><td>${escText(r.customer_name)}</td><td>${escText(r.source_key||'—')}</td><td>${escText(reps.find(x=>x.id===r.assigned_rep)?.full_name||'بدون تعيين')}</td><td>${money(r.current_total)}</td>${bucketCells(r)}<td>${money(r.current_overdue)}</td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td></tr>`).join('')}<tr><th colspan="3">الإجمالي</th><th>${money(totals.total)}</th>${bucketTotals}<th>${money(totals.overdue)}</th><th>${money(totals.required)}</th><th>${money(totals.recovered)}</th><th>—</th></tr></tbody></table><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`;
     const w=window.open('','_blank');if(!w){APP.flash?.('اسمح بفتح نافذة التقرير أولاً',true);return;}w.document.open();w.document.write(html);w.document.close();
   }
 

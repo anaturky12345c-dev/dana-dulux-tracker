@@ -58,6 +58,7 @@
     #debtAging .debt-table.debt-rep-table tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
     #debtAging .debt-table.debt-rep-table .debt-rep-row{display:block;min-width:0}
     #debtAging .debt-table.debt-rep-table .debt-rep-row>td{display:block;padding:0;border:0}
+    #debtAging .debt-rep-card-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;min-width:0}
     #debtAging .debt-rep-card{min-width:0;height:100%;padding:15px;border:1px solid var(--debt-line);border-radius:15px;background:#fff;box-shadow:0 2px 9px rgba(15,23,42,.05)}
     #debtAging .debt-rep-card-head{font-size:15px;line-height:1.55;overflow-wrap:anywhere}
     #debtAging .debt-rep-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:11px 0}
@@ -118,7 +119,8 @@
       #debtAging .debt-requests-shell{padding:12px}\n      #debtRequestsWrap{padding:12px}
       #debtAging .debt-request-card{padding:13px}
       #debtAging .debt-table{min-width:980px}
-      #debtAging .debt-metric-number{font-size:15px}\n      #debtAging .debt-table.debt-rep-table tbody{grid-template-columns:minmax(0,1fr);gap:9px}\n      #debtAging .debt-rep-card{padding:13px}\n      #debtAging .debt-rep-metric{padding:9px 6px}\n      #debtAging .debt-rep-metric span{font-size:11px;min-height:32px}\n      #debtAging .debt-rep-metric b{font-size:15px}\n      #debtAging .debt-table.debt-rep-table{min-width:0}
+      #debtAging .debt-metric-number{font-size:15px}\n      #debtAging .debt-table.debt-rep-table tbody{grid-template-columns:minmax(0,1fr);gap:9px}\n      #debtAging .debt-rep-card-list{grid-template-columns:minmax(0,1fr);gap:10px}
+      #debtAging .debt-rep-card{padding:13px}\n      #debtAging .debt-rep-metric{padding:9px 6px}\n      #debtAging .debt-rep-metric span{font-size:11px;min-height:32px}\n      #debtAging .debt-rep-metric b{font-size:15px}\n      #debtAging .debt-table.debt-rep-table{min-width:0}
       #debtAging .debt-table.debt-rep-table th,#debtAging .debt-table.debt-rep-table td{font-size:13px;padding:10px 6px}
       #debtAging .debt-table.debt-rep-table th{font-size:12px}
       #debtAging .debt-table.debt-rep-table th:nth-child(1),#debtAging .debt-table.debt-rep-table td:nth-child(1){width:42%}
@@ -149,6 +151,7 @@
     <div class="debt-metrics"><div class="debt-metric"><span>إجمالي الدين</span><b id="debtTotal">0</b></div><div class="debt-metric"><span>إجمالي المتأخرات</span><b id="debtOverdue">0</b></div><div class="debt-metric"><span>المطلوب الأسبوعي</span><b id="debtRequired">0</b></div><div class="debt-metric"><span>المحصّل/المخفّض هذا الأسبوع</span><b id="debtRecovered">0</b></div></div>
     <div class="debt-toolbar"><input id="debtSearch" placeholder="ابحث باسم العميل أو رقم العميل"/><select id="debtRepFilter"><option value="">كل المندوبين</option></select><select id="debtAgingFilter"><option value="all">كل العملاء</option><option value="overdue">لديهم رصيد في شرائح الأعمار</option><option value="over60">أكثر من 60 يوم</option></select><button class="btn secondary" id="debtPdf" type="button">تقارير أعمار الديون · PDF</button></div>
     <div id="debtRequestsWrap" class="card" style="margin-top:14px"><div class="debt-head"><div><h3 style="margin:0">طلبات زيارة الإدارة ومشاكل المندوبين</h3><div class="small">تظهر للإدارة لمتابعتها والرد عليها.</div></div><button id="debtNewRequest" class="btn" type="button">طلب زيارة / متابعة مشكلة</button></div><div id="debtRequests"></div></div>
+    <div id="debtRepCards" class="debt-rep-card-list hidden"></div>
     <div class="table-wrap"><table class="debt-table"><thead><tr><th>العميل</th><th>رقم العميل</th><th>المندوب</th><th>إجمالي الدين</th><th>0–15</th><th>16–30</th><th>31–45</th><th>46–60</th><th>أكثر من 60</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>موعد الدفعة</th><th>الإجراء</th></tr></thead><tbody id="debtRows"></tbody></table></div>
     <div id="debtPrintRoot" hidden></div>`;
   main.appendChild(page);
@@ -195,7 +198,7 @@
   },true);
   const gateObserver = new MutationObserver(restrictAccounts);
   gateObserver.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
-  window.setInterval(restrictAccounts,1200);
+
 
   function renderRoleUI(){
     const role=APP.state.profile?.role||null;
@@ -284,11 +287,20 @@
     const view=currentRows();
     const simpleRep=APP.state.profile?.role==='rep';
     const table=document.querySelector('#debtAging .debt-table');
+    const tableWrap=table?.closest('.table-wrap');
+    const repCards=$('debtRepCards');
     const head=table?.querySelector('thead tr');
     if(head)head.innerHTML=simpleRep?'<th>اسم العميل</th><th>المتأخرات</th><th>الدفعة المطلوبة</th><th>المتبقي</th>':'<th>العميل</th><th>رقم العميل</th><th>المندوب</th><th>إجمالي الدين</th><th>0–15</th><th>16–30</th><th>31–45</th><th>46–60</th><th>أكثر من 60</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>موعد الدفعة</th><th>الإجراء</th>';
     table?.classList.toggle('debt-rep-table',simpleRep);
     const sums=view.reduce((a,r)=>{a.total+=Number(r.current_total||0);a.overdue+=Number(r.current_overdue||0);a.required+=Number(r.weekly_required||0);a.recovered+=Number(r.recovered_this_week||0);return a;},{total:0,overdue:0,required:0,recovered:0});
     const setDebtMetric=(id,value)=>{$(id).innerHTML='<span class="debt-metric-number">'+escText(fmt(value))+'</span><small>ر.س</small>';};setDebtMetric('debtTotal',sums.total);setDebtMetric('debtOverdue',sums.overdue);setDebtMetric('debtRequired',sums.required);setDebtMetric('debtRecovered',sums.recovered);
+    if(simpleRep){
+      tableWrap?.classList.add('hidden');repCards?.classList.remove('hidden');
+      const repMetric=(label,value)=>'<div class="debt-rep-metric"><span>'+label+'</span><b dir="ltr">'+escText(fmt(value))+'</b><small>ر.س</small></div>';
+      repCards.innerHTML=view.length?view.map(r=>{const promise=r.payment_promise;const promiseAction=promise?'<span class="debt-rep-promise">موعد الدفعة <b>'+escText(promise.promise_date)+'</b></span>':'<button class="btn secondary" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد دفعة</button>';return '<article class="debt-rep-card"><div class="debt-rep-card-head"><b>'+escText(r.customer_name)+'</b></div><div class="debt-rep-actions"><button class="btn" data-debt-action="entry" data-id="'+r.id+'">تسجيل دفعة / كاش</button>'+promiseAction+'</div><div class="debt-rep-metrics">'+repMetric('المتأخرات فوق 60 يوم',r.current_overdue)+repMetric('الدفعة المطلوبة',r.weekly_required)+repMetric('المتبقي للأسبوع',r.weekly_remaining)+'</div></article>';}).join(''):'<div class="empty">لا توجد بيانات أعمار ديون حالياً.</div>';
+      return;
+    }
+    tableWrap?.classList.remove('hidden');repCards?.classList.add('hidden');table?.classList.remove('debt-rep-table');
     $('debtRows').innerHTML=view.length?view.map(r=>{
       const rep=reps.find(p=>p.id===r.assigned_rep)?.full_name||(r.assigned_rep===PRIMARY_ADMIN_ID?'تركي توفيق':r.assigned_rep_name)||'—';
       const action=isFull()?'<button class="btn secondary mini" data-debt-action="edit" data-id="'+r.id+'">تعديل</button><button class="btn bad mini" data-debt-action="delete" data-id="'+r.id+'">حذف</button>':'';

@@ -84,7 +84,7 @@
   const bottom = document.createElement('nav');
   bottom.id = 'repQuickBottomNav';
   bottom.setAttribute('aria-label','التنقل السريع');
-  bottom.innerHTML = '<button type="button" data-quick-page="customers"><span>👤</span><span>العملاء</span></button><button class="rep-quick-main" type="button" data-quick-page="dashboard"><span>⌂</span><span>الرئيسية</span></button><button type="button" data-quick-page="account"><span>⚙</span><span>حسابي</span></button>';
+  bottom.innerHTML = '<button type="button" data-quick-page="customers"><span>👤</span><span>العملاء</span></button><button class="rep-quick-main" type="button" data-quick-page="dashboard"><span>⌂</span><span>الرئيسية</span></button><button type="button" data-quick-page="debtAging"><span>📊</span><span>أعمار الديون</span></button>';
   document.body.appendChild(bottom);
 
   quickActions.addEventListener('click', function(e){

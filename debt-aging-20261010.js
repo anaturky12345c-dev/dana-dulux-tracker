@@ -222,7 +222,7 @@
   $('debtSearch').addEventListener('input',renderRows);
   $('debtRepFilter').addEventListener('change',renderRows);
   $('debtAgingFilter').addEventListener('change',renderRows);
-  $('debtRows').addEventListener('click',async e=>{
+  $('debtAging').addEventListener('click',async e=>{
     const b=e.target.closest('[data-debt-action]'); if(!b)return;
     const row=rows.find(x=>x.id===b.dataset.id); if(!row)return;
     if(b.dataset.debtAction==='entry')openEntryForm(row);

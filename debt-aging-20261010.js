@@ -140,9 +140,12 @@
   const main = document.querySelector('.app main');
   const nav = document.querySelector('.nav-grid');
   if (!main || !nav) return;
-  const navBtn = document.createElement('button');
-  navBtn.type = 'button'; navBtn.dataset.page = 'debtAging'; navBtn.textContent = 'أعمار الديون';
-  nav.appendChild(navBtn);
+  let navBtn = nav.querySelector('button[data-page="debtAging"]');
+  if (!navBtn) {
+    navBtn = document.createElement('button');
+    navBtn.type = 'button'; navBtn.dataset.page = 'debtAging'; navBtn.textContent = 'أعمار الديون';
+    nav.appendChild(navBtn);
+  }
   const page = document.createElement('section');
   page.id = 'debtAging'; page.className = 'section'; page.dir = 'rtl';
   page.innerHTML = `

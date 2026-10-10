@@ -198,7 +198,7 @@
       const editRow=editingCustomerId===r.id?inlineEditHtml(r):'';
       if(simpleRep){const promiseAction=promise?'<small>موعد الدفعة: '+escText(promise.promise_date)+'</small>':'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد دفعة</button>';return '<tr><td><b>'+escText(r.customer_name)+'</b><div class="debt-rep-actions"><button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل تحصيل</button>'+promiseAction+'</div></td><td>'+money(r.current_overdue)+'</td><td>'+money(r.weekly_required)+'</td><td>'+money(r.weekly_remaining)+'</td></tr>';}
       return '<tr><td>'+escText(r.customer_name)+'</td><td>'+escText(r.source_key||'—')+'</td><td>'+escText(rep)+'</td>'+buckets+'<td><b>'+money(r.current_total)+'</b></td><td>'+money(r.weekly_required)+'</td><td>'+money(r.recovered_this_week)+'</td><td>'+money(r.weekly_remaining)+'</td><td>'+promiseCell+'</td><td><div class="debt-actions">'+collect+history+action+'</div></td></tr>'+editRow;
-    }).join(''):'<tr><td colspan="14" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
+    }).join(''):'<tr><td colspan="'+(simpleRep?4:14)+'" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
   }
   function editCustomer(row){editingCustomerId=editingCustomerId===row.id?null:row.id;renderRows();}
   async function openPaymentPromise(row,editing=false){

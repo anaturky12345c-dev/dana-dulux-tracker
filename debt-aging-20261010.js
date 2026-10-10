@@ -94,7 +94,7 @@
       #debtAging .debt-toolbar{padding:10px;gap:8px}
       #debtAging .debt-toolbar input,#debtAging .debt-toolbar select{min-width:100%;height:44px;font-size:14px}
       #debtAging .debt-toolbar .btn{width:100%}
-      #debtAging .debt-requests-shell{padding:12px}
+      #debtAging .debt-requests-shell{padding:12px}\n      #debtRequestsWrap{padding:12px}
       #debtAging .debt-request-card{padding:13px}
       #debtAging .debt-table{min-width:980px}
       #debtAging .debt-table.debt-rep-table{min-width:0}

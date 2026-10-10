@@ -4,7 +4,7 @@
 const cfg = window.DANA_CONFIG || {};
 const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_URL.includes('PASTE_') && !cfg.SUPABASE_ANON_KEY.includes('PASTE_');
 const sb = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}) : null;
-const USERS = {admin:'admin@dana.local',management:'management@dana.local',mohsen:'mohsen@dana.local',majdi:'majdi@dana.local',saeed:'saeed@dana.local',yaqoub:'yaqoub@dana.local',omar:'omar@dana.local',mowazaa:'mowazaa@dana.local','موزع':'mowazaa@dana.local',mutasim:'mutasim@dana.local','معتصم':'mutasim@dana.local'};
+const USERS = {accounts_ali:'accounts-ali@dana.local',accounts_ahmed:'accounts-ahmed@dana.local',admin:'admin@dana.local',management:'management@dana.local',mohsen:'mohsen@dana.local',majdi:'majdi@dana.local',saeed:'saeed@dana.local',yaqoub:'yaqoub@dana.local',omar:'omar@dana.local',mowazaa:'mowazaa@dana.local','موزع':'mowazaa@dana.local',mutasim:'mutasim@dana.local','معتصم':'mutasim@dana.local'};
 
 let lang=localStorage.getItem('dana_lang')||'ar';
 const I18N={

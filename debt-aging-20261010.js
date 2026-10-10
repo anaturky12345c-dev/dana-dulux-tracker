@@ -36,7 +36,6 @@
     <div class="debt-head"><div><h2 style="margin:0 0 4px">أعمار الديون</h2><div class="small">بيانات مستقلة عن المبيعات والمتابعات. تُمسح بيانات الصفحة وطلبات الإدارة بالكامل كل جمعة.</div></div><div id="debtAdminActions" class="debt-actions"></div></div>
     <div id="debtResetNote" class="notice hidden"></div>
     <div class="debt-metrics"><div class="debt-metric"><span>إجمالي الدين</span><b id="debtTotal">0</b></div><div class="debt-metric"><span>إجمالي شرائح الأعمار</span><b id="debtOverdue">0</b></div><div class="debt-metric"><span>المطلوب الأسبوعي</span><b id="debtRequired">0</b></div><div class="debt-metric"><span>المحصّل/المخفّض هذا الأسبوع</span><b id="debtRecovered">0</b></div></div>
-    <div id="debtImportBox" class="card hidden" style="margin-bottom:12px"><h3>رفع ملف أعمار الديون</h3><p class="small">الملف المتوقع: رقم العميل، اسم العميل، اسم المندوب، المبلغ، وشرائح 0–15 و16–30 و31–45 و46–60 وأكثر من 60. الهدف الأسبوعي غير موجود في الملف ويُضبط يدوياً عند الحاجة. يستبدل الاستيراد بيانات أعمار الديون فقط.</p><input id="debtFile" type="file" accept=".xlsx,.xls,.csv"/><div id="debtMapping" class="form-grid" style="margin-top:10px"></div><div id="debtRepMapping" class="form-grid" style="margin-top:10px"></div><div class="debt-actions" style="margin-top:10px"><button class="btn" id="debtImportBtn" type="button">استيراد البيانات</button></div><div id="debtImportMsg" class="small" style="margin-top:8px"></div></div>
     <div class="debt-toolbar"><input id="debtSearch" placeholder="ابحث باسم العميل أو رقم العميل"/><select id="debtRepFilter"><option value="">كل المندوبين</option></select><select id="debtAgingFilter"><option value="all">كل العملاء</option><option value="overdue">لديهم رصيد في شرائح الأعمار</option><option value="over60">أكثر من 60 يوم</option></select><button class="btn secondary" id="debtPdf" type="button">تقرير PDF</button></div>
     <div class="table-wrap"><table class="debt-table"><thead><tr><th>العميل</th><th>رقم العميل</th><th>المندوب</th><th>المبلغ الحالي</th><th>0–15</th><th>16–30</th><th>31–45</th><th>46–60</th><th>أكثر من 60</th><th>مجموع الشرائح</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>الإجراء</th></tr></thead><tbody id="debtRows"></tbody></table></div>
     <div id="debtRequestsWrap" class="card" style="margin-top:14px"><div class="debt-head"><div><h3 style="margin:0">طلبات زيارة الإدارة ومشاكل المندوبين</h3><div class="small">تظهر للإدارة لمتابعتها والرد عليها.</div></div><button id="debtNewRequest" class="btn" type="button">طلب زيارة / متابعة مشكلة</button></div><div id="debtRequests"></div></div>
@@ -50,7 +49,7 @@
   const isFull = () => ['admin','accounts'].includes(APP.state.profile?.role);
   const isManagement = () => ['admin','manager','accounts'].includes(APP.state.profile?.role);
   const isAccounts = () => APP.state.profile?.role === 'accounts';
-  let rows = [], reps = [], requests = [], entries = [], currentFileRows = [], recorder = null, recordedBlob = null;
+  let rows = [], reps = [], requests = [], entries = [], recorder = null, recordedBlob = null;
   let lastRole = null;
   const audioCache = new Map();
   const AGE_BUCKETS = [
@@ -88,12 +87,10 @@
     const role=APP.state.profile?.role||null;
     if(role===lastRole)return;
     lastRole=role;
-    $('debtAdminActions').innerHTML=isFull()?`<button class="btn" id="debtShowImport" type="button">رفع ملف السبت</button>${role==='admin'?'<button class="btn secondary" id="debtCreateAccountUsers" type="button">تهيئة حسابات علي وأحمد</button>':''}`:'';
-    $('debtImportBox').classList.toggle('hidden',!isFull());
+    $('debtAdminActions').innerHTML=isFull()?`${role==='admin'?'<button class="btn secondary" id="debtCreateAccountUsers" type="button">تهيئة حسابات علي وأحمد</button>':''}`:'';
     $('debtRepFilter').classList.toggle('hidden',!isManagement());
   }
   $('debtAdminActions').addEventListener('click',async e=>{
-    if(e.target.closest('#debtShowImport')){$('debtImportBox').classList.toggle('hidden');return;}
     if(!e.target.closest('#debtCreateAccountUsers'))return;
     if(!confirm('إنشاء حسابي أعمار الديون باسم حسابات علي وحسابات أحمد وإظهار كلمة مرور مؤقتة لكل حساب؟'))return;
     const b=$('debtCreateAccountUsers');b.disabled=true;b.textContent='جاري الإنشاء…';
@@ -122,9 +119,6 @@
     if(b.dataset.requestAction==='audio')playRequestAudio(req);
   });
   $('debtPdf').addEventListener('click',exportPdf);
-  $('debtFile').addEventListener('change',readImportFile);
-  $('debtImportBtn').addEventListener('click',importSnapshot);
-  $('debtMapping').addEventListener('change',e=>{if(e.target.matches('[data-map="rep"]'))renderRepMapping();});
 
   async function loadAll(){
     if(!APP.state.profile)return;
@@ -244,49 +238,6 @@
     const audio=document.createElement('audio');audio.controls=true;audio.src=url;audio.className='debt-audio';const card=document.querySelector(`[data-id="${req.id}"]`)?.closest('.debt-request-card');(card||$('debtRequests')).appendChild(audio);audio.play().catch(()=>{});
   }
 
-  async function readImportFile(){
-    const file=$('debtFile').files?.[0];if(!file)return;
-    if(!window.XLSX){$('debtImportMsg').textContent='تعذر تحميل قارئ ملفات Excel.';return;}
-    try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});const sheet=wb.Sheets[wb.SheetNames[0]];currentFileRows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});if(!currentFileRows.length)throw new Error('الملف لا يحتوي صفوفاً.');buildMapping(Object.keys(currentFileRows[0]));renderRepMapping();$('debtImportMsg').textContent=`تم قراءة ${currentFileRows.length} صف. راجع مطابقة الأعمدة والمندوبين قبل الاستيراد.`;}catch(e){$('debtImportMsg').textContent=e.message||'تعذر قراءة الملف.';}
-  }
-  function buildMapping(headers){
-    const fields=[['customer_name','اسم العميل',true,['اسم العميل','العميل','customer','customer name','name']],['source_key','رقم العميل',true,['رقم العميل','كود العميل','customer id','code']],['opening_total','المبلغ / إجمالي الدين',true,['المبلغ','إجمالي الدين','الرصيد','المبلغ المستحق','amount','total debt','balance']],...AGE_BUCKETS.map(b=>[b.key,`شريحة ${b.label} يوم`,true,b.aliases]),['rep','اسم المندوب',true,['اسم المندوب','المندوب','المسؤول','rep','sales rep']],['weekly_required','المطلوب أسبوعياً',false,['المطلوب أسبوعياً','الدفعة الأسبوعية','weekly required','weekly payment']]];
-    $('debtMapping').innerHTML=fields.map(([key,label,required,aliases])=>{const guess=headers.find(h=>aliases.some(a=>h.toLowerCase().includes(a.toLowerCase())));return `<div><label>${label}${required?' *':''}</label><select data-map="${key}"><option value="">— لا يوجد —</option>${headers.map(h=>`<option value="${escText(h)}" ${h===guess?'selected':''}>${escText(h)}</option>`).join('')}</select></div>`;}).join('');
-  }
-  function renderRepMapping(){
-    const repColumn=document.querySelector('#debtMapping [data-map="rep"]')?.value;
-    if(!repColumn){$('debtRepMapping').innerHTML='';return;}
-    const names=[...new Set(currentFileRows.map(r=>String(r[repColumn]??'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
-    const repMap=new Map(reps.flatMap(r=>[[r.full_name.toLowerCase(),r.id],[r.username.toLowerCase(),r.id]]));
-    $('debtRepMapping').innerHTML=names.map(name=>{
-      const exact=repMap.get(name.toLowerCase());const adminLabel=/admin|الادمن|الإدارة/i.test(name);const first=exact|| (adminLabel?'__none__':'__choose__');
-      return `<div><label>مندوب الملف: ${escText(name)}</label><select data-rep-source="${escText(name)}"><option value="__choose__" ${first==='__choose__'?'selected':''}>— اختر المندوب —</option><option value="__none__" ${first==='__none__'?'selected':''}>بدون تعيين</option>${reps.map(r=>`<option value="${r.id}" ${r.id===first?'selected':''}>${escText(r.full_name)}</option>`).join('')}</select></div>`;
-    }).join('');
-  }
-  function dateForDb(value){if(!value)return null;const d=new Date(value);return Number.isNaN(d.valueOf())?null:d.toISOString().slice(0,10);}
-  function importValues(){
-    const map={};document.querySelectorAll('#debtMapping [data-map]').forEach(el=>map[el.dataset.map]=el.value);
-    for(const f of ['customer_name','source_key','opening_total','rep',...AGE_BUCKETS.map(b=>b.key)])if(!map[f])throw new Error('اختر عمود '+f+' المطلوب.');
-    const repAssignments=new Map([...document.querySelectorAll('#debtRepMapping [data-rep-source]')].map(el=>[el.dataset.repSource,el.value]));
-    const parsed=currentFileRows.map((r,i)=>{
-      const val=k=>map[k]?String(r[map[k]]??'').trim():'';
-      const num=k=>Number(val(k).replace(/[٠-٩]/g,ch=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(ch))).replace(/[۰-۹]/g,ch=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch))).replace(/[,،\sر.سSAR]/gi,''));
-      const total=num('opening_total'),bucketValues=Object.fromEntries(AGE_BUCKETS.map(b=>[b.key,val(b.key)?num(b.key):0])),overdue=Object.values(bucketValues).reduce((a,n)=>a+n,0);
-      if(!val('customer_name')||!val('source_key')||!Number.isFinite(total)||total<0||Object.values(bucketValues).some(n=>!Number.isFinite(n)||n<0)||overdue>total+0.00005)throw new Error(`راجع الاسم ورقم العميل والمبالغ في الصف ${i+2}. مجموع شرائح الأعمار يجب ألا يتجاوز المبلغ.`);
-      const repName=val('rep'),assignedValue=repAssignments.get(repName);
-      if(!repName)throw new Error(`اسم المندوب مفقود في الصف ${i+2}.`);
-      if(repName&&(!assignedValue||assignedValue==='__choose__'))throw new Error(`حدد حساب المندوب المطابق للاسم في الملف: ${repName}`);
-      const assigned=assignedValue&&assignedValue!=='__none__'?assignedValue:null;
-      return {source_key:val('source_key'),customer_name:val('customer_name'),area:null,phone:null,assigned_rep:assigned,opening_total:total,opening_overdue:overdue,...bucketValues,weekly_required:map.weekly_required&&val('weekly_required')?num('weekly_required'):0,oldest_due_date:null};
-    });
-    const keys=parsed.filter(r=>r.source_key).map(r=>r.source_key);if(new Set(keys).size!==keys.length)throw new Error('يوجد رقم عميل مكرر في الملف.');
-    const pairs=parsed.filter(r=>r.phone).map(r=>`${r.customer_name.trim().toLowerCase()}|${r.phone.replace(/\D/g,'')}`);if(new Set(pairs).size!==pairs.length)throw new Error('يوجد عميل مكرر بالاسم ورقم الجوال في الملف.');
-    return parsed;
-  }
-  async function importSnapshot(){
-    if(!isFull())return;
-    try{const parsed=importValues();if(!confirm(`سيتم استبدال بيانات أعمار الديون فقط بـ ${parsed.length} عميل. لن تتأثر بيانات المبيعات أو المتابعات. تتابع؟`))return;$('debtImportBtn').disabled=true;$('debtImportMsg').textContent='جاري الاستيراد…';const {data,error}=await APP.sb.rpc('debt_aging_replace_snapshot',{p_rows:parsed});if(error)throw error;$('debtImportMsg').textContent=`تم استيراد ${parsed.length} عميل.`;await loadAll();}catch(e){$('debtImportMsg').textContent=e.message||'فشل الاستيراد.';}finally{$('debtImportBtn').disabled=false;}
-  }
   function exportPdf(){
     const data=currentRows(),totals=data.reduce((a,r)=>{a.total+=Number(r.current_total||0);a.overdue+=Number(r.current_overdue||0);a.required+=Number(r.weekly_required||0);a.recovered+=Number(r.recovered_this_week||0);for(const b of AGE_BUCKETS)a[b.key]+=Number(r[b.current]||0);return a;},{total:0,overdue:0,required:0,recovered:0,...Object.fromEntries(AGE_BUCKETS.map(b=>[b.key,0]))});
     const bucketHeaders=AGE_BUCKETS.map(b=>`<th>${b.label}</th>`).join('');

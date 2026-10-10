@@ -342,7 +342,8 @@
     if(payment<0||cash<0||(!payment&&!cash)){errorBox.textContent='أدخل مبلغاً للدفعة أو الطلبية الكاش.';return;}
     if(payment>0&&!paymentReceipt){errorBox.textContent='أدخل رقم سند دفعة التحصيل.';return;}
     if(cash>0&&!cashReceipt){errorBox.textContent='أدخل رقم سند طلبية الكاش.';return;}
-    const totalAging=AGE_BUCKETS.reduce((sum,b)=>sum+Number(row[b.current]||0),0);\n    if(payment>Number(row.current_total)||cash>totalAging){errorBox.textContent='المبلغ أكبر من الرصيد المتاح.';return;}
+    const totalAging=AGE_BUCKETS.reduce((sum,b)=>sum+Number(row[b.current]||0),0);
+    if(payment>Number(row.current_total)||cash>totalAging){errorBox.textContent='المبلغ أكبر من الرصيد المتاح.';return;}
     const items=[];if(payment>0)items.push({customer_id:row.id,entry_type:'payment',amount:payment,business_date:date,receipt_number:paymentReceipt,rep_id:APP.state.profile.id,created_by:APP.state.profile.id,note});if(cash>0)items.push({customer_id:row.id,entry_type:'cash_order',amount:cash,business_date:date,receipt_number:cashReceipt,rep_id:APP.state.profile.id,created_by:APP.state.profile.id,note});
     const {error}=await APP.sb.from('debt_aging_entries').insert(items);
     if(error){errorBox.textContent='تعذر الحفظ. '+(error.message||'');return;}

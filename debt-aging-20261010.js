@@ -170,6 +170,7 @@
   const isPrimaryAdmin = () => APP.state.profile?.role === 'admin' && APP.state.profile?.username === 'admin';
   const canCreatePaymentPromise = () => ['rep','accounts','admin'].includes(APP.state.profile?.role);
   let rows = [], reps = [], requests = [], entries = [], paymentPromises = [], editingCustomerId = null, recorder = null, recordedBlob = null;
+  const expandedDetails = new Set();
   let lastRole = null;
   const audioCache = new Map();
   const AGE_BUCKETS = [
@@ -228,6 +229,7 @@
   $('debtAging').addEventListener('click',async e=>{
     const b=e.target.closest('[data-debt-action]'); if(!b)return;
     const row=rows.find(x=>x.id===b.dataset.id); if(!row)return;
+    if(b.dataset.debtAction==='detailsToggle'){if(expandedDetails.has(row.id))expandedDetails.delete(row.id);else expandedDetails.add(row.id);renderRows();return;}
     if(b.dataset.debtAction==='entry')openEntryForm(row);
     if(b.dataset.debtAction==='edit')editCustomer(row);
     if(b.dataset.debtAction==='saveEdit')await saveCustomerInline(row);
@@ -273,7 +275,7 @@
     const repOptions=reps.map(rep=>'<option value="'+rep.id+'" '+(rep.id===row.assigned_rep?'selected':'')+'>'+escText(rep.full_name)+'</option>').join('');
     const adminOption=row.assigned_rep===PRIMARY_ADMIN_ID?'<option value="'+PRIMARY_ADMIN_ID+'" selected>تركي توفيق (الإدارة)</option>':'';
     const buckets=AGE_BUCKETS.map(b=>'<div><label>'+b.label+' يوم</label><input data-edit-bucket="'+b.key+'" type="number" min="0" step="0.0001" inputmode="decimal" value="'+Number(row[b.key]||0)+'"></div>').join('');
-    return '<tr class="debt-inline-edit" data-edit-customer="'+row.id+'"><td colspan="14"><div class="form-grid debt-inline-form"><div><label>اسم العميل</label><input data-edit-field="customer_name" maxlength="180" value="'+escText(row.customer_name)+'"></div><div><label>رقم العميل</label><input data-edit-field="source_key" maxlength="120" value="'+escText(row.source_key||'')+'"></div><div><label>المندوب المسؤول</label><select data-edit-field="assigned_rep"><option value="">بدون تعيين</option>'+repOptions+adminOption+'</select></div><div><label>إجمالي الدين عند الاستيراد</label><input data-edit-field="opening_total" type="number" min="0" step="0.0001" inputmode="decimal" value="'+Number(row.opening_total||0)+'"></div>'+buckets+'<div><label>المطلوب أسبوعياً</label><input data-edit-field="weekly_required" type="number" min="0" step="0.01" inputmode="decimal" value="'+Number(row.weekly_required||0)+'"></div><div class="full debt-actions"><button class="btn" type="button" data-debt-action="saveEdit" data-id="'+row.id+'">حفظ التعديل</button><button class="btn secondary" type="button" data-debt-action="cancelEdit" data-id="'+row.id+'">إلغاء</button><span class="small" data-edit-message></span></div></div></td></tr>';
+    return '<tr class="debt-inline-edit" data-edit-customer="'+row.id+'"><td colspan="8"><div class="form-grid debt-inline-form"><div><label>اسم العميل</label><input data-edit-field="customer_name" maxlength="180" value="'+escText(row.customer_name)+'"></div><div><label>رقم العميل</label><input data-edit-field="source_key" maxlength="120" value="'+escText(row.source_key||'')+'"></div><div><label>المندوب المسؤول</label><select data-edit-field="assigned_rep"><option value="">بدون تعيين</option>'+repOptions+adminOption+'</select></div><div><label>إجمالي الدين عند الاستيراد</label><input data-edit-field="opening_total" type="number" min="0" step="0.0001" inputmode="decimal" value="'+Number(row.opening_total||0)+'"></div>'+buckets+'<div><label>المطلوب أسبوعياً</label><input data-edit-field="weekly_required" type="number" min="0" step="0.01" inputmode="decimal" value="'+Number(row.weekly_required||0)+'"></div><div class="full debt-actions"><button class="btn" type="button" data-debt-action="saveEdit" data-id="'+row.id+'">حفظ التعديل</button><button class="btn secondary" type="button" data-debt-action="cancelEdit" data-id="'+row.id+'">إلغاء</button><span class="small" data-edit-message></span></div></div></td></tr>';
   }
   async function saveCustomerInline(row){
     const editor=document.querySelector('[data-edit-customer="'+row.id+'"]');if(!editor)return;
@@ -293,10 +295,13 @@
     const tableWrap=table?.closest('.table-wrap');
     const repCards=$('debtRepCards');
     const head=table?.querySelector('thead tr');
-    if(head)head.innerHTML=simpleRep?'<th>اسم العميل</th><th>المتأخرات</th><th>الدفعة المطلوبة</th><th>المتبقي</th>':'<th>العميل</th><th>رقم العميل</th><th>المندوب</th><th>إجمالي الدين</th><th>0–15</th><th>16–30</th><th>31–45</th><th>46–60</th><th>أكثر من 60</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>موعد الدفعة</th><th>الإجراء</th>';
+    if(head)head.innerHTML=simpleRep
+      ?'<th>اسم العميل</th><th>المتأخرات</th><th>الدفعة المطلوبة</th><th>المتبقي</th>'
+      :'<th>العميل</th><th>المندوب</th><th>إجمالي الدين</th><th>المتأخرات فوق 60 يوم</th><th>الدفعة المطلوبة</th><th>المتبقي</th><th>موعد الدفعة</th><th>التفاصيل والإجراء</th>';
     table?.classList.toggle('debt-rep-table',simpleRep);
     const sums=view.reduce((a,r)=>{a.total+=Number(r.current_total||0);a.overdue+=Number(r.current_overdue||0);a.required+=Number(r.weekly_required||0);a.recovered+=Number(r.recovered_this_week||0);return a;},{total:0,overdue:0,required:0,recovered:0});
-    const setDebtMetric=(id,value)=>{$(id).innerHTML='<span class="debt-metric-number">'+escText(fmt(value))+'</span><small>ر.س</small>';};setDebtMetric('debtTotal',sums.total);setDebtMetric('debtOverdue',sums.overdue);setDebtMetric('debtRequired',sums.required);setDebtMetric('debtRecovered',sums.recovered);
+    const setDebtMetric=(id,value)=>{$(id).innerHTML='<span class="debt-metric-number">'+escText(fmt(value))+'</span><small>ر.س</small>';};
+    setDebtMetric('debtTotal',sums.total);setDebtMetric('debtOverdue',sums.overdue);setDebtMetric('debtRequired',sums.required);setDebtMetric('debtRecovered',sums.recovered);
     if(simpleRep){
       tableWrap?.classList.add('hidden');repCards?.classList.remove('hidden');
       const repMetric=(label,value)=>'<div class="debt-rep-metric"><span>'+label+'</span><b dir="ltr">'+escText(fmt(value))+'</b><small>ر.س</small></div>';
@@ -304,18 +309,20 @@
       return;
     }
     tableWrap?.classList.remove('hidden');repCards?.classList.add('hidden');table?.classList.remove('debt-rep-table');
+    const bucketDetails=row=>AGE_BUCKETS.map(b=>'<div class="debt-detail-item"><span>'+b.label+' يوم</span><b>'+money(row[b.current])+'</b></div>').join('');
     $('debtRows').innerHTML=view.length?view.map(r=>{
       const rep=reps.find(p=>p.id===r.assigned_rep)?.full_name||(r.assigned_rep===PRIMARY_ADMIN_ID?'تركي توفيق':r.assigned_rep_name)||'—';
       const action=isFull()?'<button class="btn secondary mini" data-debt-action="edit" data-id="'+r.id+'">تعديل</button><button class="btn bad mini" data-debt-action="delete" data-id="'+r.id+'">حذف</button>':'';
-      const collect=APP.state.profile?.role==='rep'?'<button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل دفعة / طلبية كاش</button>':'';
       const history='<button class="btn secondary mini" data-debt-action="history" data-id="'+r.id+'">الحركات</button>';
-      const buckets=AGE_BUCKETS.map(b=>'<td>'+money(r[b.current])+'</td>').join('');
+      const collect=APP.state.profile?.role==='rep'?'<button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل دفعة / طلبية كاش</button>':'';
       const promise=r.payment_promise;
-      const promiseCell=promise?'<div>'+escText(promise.promise_date)+(promise.promise_amount?'<div class="small">'+money(promise.promise_amount)+'</div>':'')+(isPrimaryAdmin()?'<button class="btn secondary mini" data-debt-action="promiseEdit" data-id="'+r.id+'">تعديل الموعد</button>':'')+'</div>':(canCreatePaymentPromise()?'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد</button>':'—');
+      const promiseCell=promise?'<div class="debt-promise-summary">'+escText(promise.promise_date)+(promise.promise_amount?'<small>'+money(promise.promise_amount)+'</small>':'')+(isPrimaryAdmin()?'<button class="btn secondary mini" data-debt-action="promiseEdit" data-id="'+r.id+'">تعديل الموعد</button>':'')+'</div>':(canCreatePaymentPromise()?'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد</button>':'—');
+      const detailOpen=expandedDetails.has(r.id);
+      const detailButton='<button class="btn secondary mini" data-debt-action="detailsToggle" data-id="'+r.id+'" aria-expanded="'+detailOpen+'">'+(detailOpen?'إخفاء التفاصيل':'تفاصيل أكثر')+'</button>';
+      const details=detailOpen?'<tr class="debt-detail-row"><td colspan="8"><div class="debt-detail-panel"><div class="debt-detail-grid"><div class="debt-detail-item"><span>رقم العميل</span><b>'+escText(r.source_key||'—')+'</b></div><div class="debt-detail-item"><span>المندوب المسؤول</span><b>'+escText(rep)+'</b></div><div class="debt-detail-item"><span>إجمالي ما تم تحصيله أو تخفيضه هذا الأسبوع</span><b>'+money(r.recovered_this_week)+'</b></div><div class="debt-detail-item"><span>موعد الدفعة</span><b>'+escText(promise?.promise_date||'—')+(promise?.promise_amount?'<small>المبلغ المتوقع: '+money(promise.promise_amount)+'</small>':'')+'</b></div></div><div class="debt-detail-buckets">'+bucketDetails(r)+'</div></div></td></tr>':'';
       const editRow=editingCustomerId===r.id?inlineEditHtml(r):'';
-      if(simpleRep){const promiseAction=promise?'<span class="debt-rep-promise">موعد الدفعة <b>'+escText(promise.promise_date)+'</b></span>':'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد دفعة</button>';const metric=(label,value)=>'<div class="debt-rep-metric"><span>'+label+'</span><b dir="ltr">'+escText(fmt(value))+'</b><small>ر.س</small></div>';return '<tr class="debt-rep-row"><td colspan="4"><article class="debt-rep-card"><div class="debt-rep-card-head"><b>'+escText(r.customer_name)+'</b></div><div class="debt-rep-actions"><button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل دفعة / كاش</button>'+promiseAction+'</div><div class="debt-rep-metrics">'+metric('المتأخرات',r.current_overdue)+metric('الدفعة المطلوبة',r.weekly_required)+metric('المتبقي للأسبوع',r.weekly_remaining)+'</div></article></td></tr>';}
-      return '<tr><td>'+escText(r.customer_name)+'</td><td>'+escText(r.source_key||'—')+'</td><td>'+escText(rep)+'</td><td><b>'+money(r.current_total)+'</b></td>'+buckets+'<td>'+money(r.weekly_required)+'</td><td>'+money(r.recovered_this_week)+'</td><td>'+money(r.weekly_remaining)+'</td><td>'+promiseCell+'</td><td><div class="debt-actions">'+collect+history+action+'</div></td></tr>'+editRow;
-    }).join(''):'<tr><td colspan="'+(simpleRep?4:14)+'" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
+      return '<tr><td><b>'+escText(r.customer_name)+'</b></td><td>'+escText(rep)+'</td><td><b>'+money(r.current_total)+'</b></td><td>'+money(r.current_overdue)+'</td><td>'+money(r.weekly_required)+'</td><td>'+money(r.weekly_remaining)+'</td><td>'+promiseCell+'</td><td><div class="debt-actions">'+detailButton+collect+history+action+'</div></td></tr>'+details+editRow;
+    }).join(''):'<tr><td colspan="8" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
   }
   function editCustomer(row){editingCustomerId=editingCustomerId===row.id?null:row.id;renderRows();}
   async function openPaymentPromise(row,editing=false){

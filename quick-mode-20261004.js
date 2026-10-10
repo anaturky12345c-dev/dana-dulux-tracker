@@ -10,6 +10,8 @@
   }
   function isRepresentative(){
     if(!isLoggedIn()) return false;
+    const role = window.DANA_APP?.state?.profile?.role;
+    if(role) return role === 'rep';
     const marker = document.querySelector('.management-only');
     return !!marker && marker.classList.contains('hidden');
   }

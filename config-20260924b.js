@@ -4,16 +4,9 @@ window.DANA_CONFIG = {
 };
 
 window.addEventListener('load', function(){
-  if(document.getElementById('danaEmulsionTrackingScript')) return;
+  if(document.getElementById('danaStatusProductSafeScript')) return;
   var s=document.createElement('script');
-  s.id='danaEmulsionTrackingScript';
-  s.src='./emulsion-tracking-20261010.js?v=20261010-2';
-  s.onload=function(){
-    if(document.getElementById('danaEmulsionTrackingFixScript')) return;
-    var f=document.createElement('script');
-    f.id='danaEmulsionTrackingFixScript';
-    f.src='./emulsion-tracking-fixes-20261010.js?v=20261010-2';
-    document.body.appendChild(f);
-  };
+  s.id='danaStatusProductSafeScript';
+  s.src='./status-product-safe-20261010.js?v=20261010-stable1';
   document.body.appendChild(s);
 });

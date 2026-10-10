@@ -312,7 +312,7 @@
     const dashboard=document.getElementById('dashboard');if(!dashboard)return null;
     const isRep=APP.state.profile?.role==='rep';let card=document.getElementById('debtTodayCollections');
     if(!isRep){card?.remove();return null;}
-    if(!card){card=document.createElement('div');card.id='debtTodayCollections';card.className='card';card.style.margin='12px 0';dashboard.insertBefore(card,dashboard.querySelector('.dashboard-cards')||null);}
+    if(!card){card=document.createElement('div');card.id='debtTodayCollections';card.className='card';card.style.margin='12px 0';dashboard.insertBefore(card,dashboard.querySelector('.dashboard-priority-grid')||dashboard.querySelector('.dashboard-cards')||null);}
     return card;
   }
   async function loadTodayCollections(force=false){

@@ -31,6 +31,85 @@
     #debtTodayCollections .debt-today-items{display:grid;gap:8px;margin-top:10px}
     #debtTodayCollections .debt-today-item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
     #debtTodayCollections .debt-today-item small{display:block;color:#64748b;margin-top:3px}
+    #debtAging{--debt-ink:#172033;--debt-muted:#64748b;--debt-line:#e2e8f0;--debt-surface:#fff;--debt-soft:#f7f9fc;color:var(--debt-ink);font-size:15px;line-height:1.6}
+    #debtAging h2{font-size:26px;line-height:1.3;font-weight:750;letter-spacing:-.02em}
+    #debtAging h3{font-size:18px;line-height:1.4;font-weight:700}
+    #debtAging .small{font-size:13px;line-height:1.55;color:var(--debt-muted)}
+    #debtAging .debt-head{align-items:center;margin-bottom:16px}
+    #debtAging .debt-head>div:first-child{min-width:220px}
+    #debtAging .debt-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    #debtAging .debt-metric{min-height:94px;padding:15px 16px;background:var(--debt-surface);border:1px solid var(--debt-line);border-radius:14px;box-shadow:0 2px 8px rgba(15,23,42,.035)}
+    #debtAging .debt-metric span{font-size:13px;line-height:1.45;color:var(--debt-muted)}
+    #debtAging .debt-metric b{font-size:21px;line-height:1.35;margin-top:8px;font-variant-numeric:tabular-nums}
+    #debtAging .debt-toolbar{align-items:center;padding:12px;background:var(--debt-surface);border:1px solid var(--debt-line);border-radius:14px}
+    #debtAging .debt-toolbar input,#debtAging .debt-toolbar select{height:44px;min-width:180px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-size:14px}
+    #debtAging .debt-toolbar .btn{min-height:44px;font-size:14px}
+    #debtAging .debt-request-card{padding:16px;margin:10px 0;border:1px solid var(--debt-line);border-radius:14px;background:var(--debt-surface);box-shadow:0 2px 8px rgba(15,23,42,.035);font-size:14px;line-height:1.65}
+    #debtAging .debt-request-top{align-items:center;margin-bottom:5px}
+    #debtAging .debt-request-top b{font-size:15px}
+    #debtAging .debt-requests-shell{margin-top:16px;padding:16px;border:1px solid var(--debt-line);border-radius:16px;background:var(--debt-soft)}
+    #debtAging .debt-table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;font-size:13px}
+    #debtAging .table-wrap{border:1px solid var(--debt-line);border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
+    #debtAging .debt-table th{position:sticky;top:0;z-index:1;background:#f1f5f9;color:#334155;font-size:12px;font-weight:700;line-height:1.45;white-space:normal}
+    #debtAging .debt-table th,#debtAging .debt-table td{padding:11px 9px;vertical-align:middle;border-bottom:1px solid #edf1f5}
+    #debtAging .debt-table td{font-size:13px;line-height:1.55}
+    #debtAging .debt-table tbody tr:last-child td{border-bottom:0}
+    #debtAging .debt-table tbody tr:hover td{background:#fafcff}
+    #debtAging .debt-table .btn{font-size:12px;min-height:34px;padding:6px 10px;line-height:1.35}
+    #debtAging .debt-table.debt-rep-table{min-width:0;table-layout:fixed}
+    #debtAging .debt-table.debt-rep-table th,#debtAging .debt-table.debt-rep-table td{font-size:14px;padding:12px 9px;line-height:1.5}
+    #debtAging .debt-table.debt-rep-table th{font-size:13px}
+    #debtAging .debt-table.debt-rep-table th:nth-child(1),#debtAging .debt-table.debt-rep-table td:nth-child(1){width:40%}
+    #debtAging .debt-table.debt-rep-table th:nth-child(n+2),#debtAging .debt-table.debt-rep-table td:nth-child(n+2){width:20%}
+    #debtAging .debt-table.debt-rep-table td:not(:first-child){font-weight:650;font-variant-numeric:tabular-nums}
+    #debtAging .debt-rep-actions{gap:6px;margin-top:8px}
+    #debtAging .debt-rep-actions .btn{font-size:12px;min-height:36px}
+    #debtAging .debt-inline-edit td{padding:16px;background:#f8fafc}
+    #debtAging input,#debtAging select,#debtAging textarea{font:inherit}
+    #debtAging .notice{font-size:14px;line-height:1.65;border-radius:12px}
+    #debtAging .badge{font-size:12px}
+    #debtAging .empty{padding:24px;font-size:14px;color:var(--debt-muted)}
+    #debtTodayCollections{border:1px solid var(--debt-line);border-radius:16px;box-shadow:0 3px 12px rgba(15,23,42,.05)}
+    #debtTodayCollections h3{font-size:18px}
+    #debtTodayCollections .debt-today-item{padding:13px;border-color:var(--debt-line);background:#fff}
+    #debtTodayCollections .debt-today-item b{font-size:15px}
+    #debtTodayCollections .debt-today-item small{font-size:13px}
+    #debtAging .form-grid{gap:14px}
+    #debtAging label{display:block;margin-bottom:5px;font-size:13px;font-weight:650;color:#334155}
+    #debtAging input,#debtAging select,#debtAging textarea{min-height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:9px 11px;font-size:14px}
+    #debtAging .btn{min-height:40px;border-radius:10px;font-size:14px;font-weight:650}
+    #debtAging .btn.mini{min-height:34px;font-size:12px}
+    #debtAging :focus-visible{outline:3px solid rgba(37,99,235,.3);outline-offset:2px}
+    @media(max-width:720px){
+      #debtAging{font-size:14px}
+      #debtAging h2{font-size:22px}
+      #debtAging h3{font-size:17px}
+      #debtAging .debt-head{align-items:stretch;gap:10px}
+      #debtAging .debt-head>div:first-child{min-width:0}
+      #debtAging .debt-head .btn{width:100%;min-height:44px}
+      #debtAging .debt-metrics{gap:9px}
+      #debtAging .debt-metric{min-height:84px;padding:12px}
+      #debtAging .debt-metric span{font-size:12px}
+      #debtAging .debt-metric b{font-size:18px}
+      #debtAging .debt-toolbar{padding:10px;gap:8px}
+      #debtAging .debt-toolbar input,#debtAging .debt-toolbar select{min-width:100%;height:44px;font-size:14px}
+      #debtAging .debt-toolbar .btn{width:100%}
+      #debtAging .debt-requests-shell{padding:12px}
+      #debtAging .debt-request-card{padding:13px}
+      #debtAging .debt-table{min-width:980px}
+      #debtAging .debt-table.debt-rep-table{min-width:0}
+      #debtAging .debt-table.debt-rep-table th,#debtAging .debt-table.debt-rep-table td{font-size:13px;padding:10px 6px}
+      #debtAging .debt-table.debt-rep-table th{font-size:12px}
+      #debtAging .debt-table.debt-rep-table th:nth-child(1),#debtAging .debt-table.debt-rep-table td:nth-child(1){width:42%}
+      #debtAging .debt-table.debt-rep-table th:nth-child(n+2),#debtAging .debt-table.debt-rep-table td:nth-child(n+2){width:19.33%}
+      #debtAging .debt-table.debt-rep-table .btn{padding:6px 8px;font-size:11px}
+      #debtAging .debt-rep-actions{gap:5px}
+      #debtAging .debt-rep-actions .btn{min-height:36px}
+      #debtAging .debt-audio{width:100%}
+      #debtAging .debt-inline-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+      #debtAging .debt-inline-form .full{grid-column:1/-1}
+      #debtTodayCollections .debt-today-item{gap:8px;padding:11px}
+    }
     @media print{@page{size:A3 landscape;margin:12mm}body.debt-printing>*{display:none!important}body.debt-printing #debtPrintRoot{display:block!important;position:static!important;width:100%;direction:rtl;font-family:Tahoma,Arial,sans-serif;color:#111}#debtPrintRoot h1{font-size:18pt;margin:0 0 4mm}#debtPrintRoot p{font-size:9pt;margin:0 0 4mm;color:#444}#debtPrintRoot table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}#debtPrintRoot th,#debtPrintRoot td{border:1px solid #888;padding:4px 5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}#debtPrintRoot th{background:#e8edf3!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}#debtPrintRoot tr{break-inside:avoid;page-break-inside:avoid}#debtPrintRoot .debt-print-total{font-weight:bold;margin-top:4mm;font-size:10pt}}
   `;
   document.head.appendChild(style);

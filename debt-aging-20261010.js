@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   if (!window.DANA_CONFIG || !window.supabase) return;
+  const APP = window.DANA_APP;
+  if (!APP) return;
   const style = document.createElement('style');
   style.textContent = `
     #debtAging .debt-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
@@ -48,7 +50,7 @@
   const isFull = () => ['admin','accounts'].includes(APP.state.profile?.role);
   const isManagement = () => ['admin','manager','accounts'].includes(APP.state.profile?.role);
   const isAccounts = () => APP.state.profile?.role === 'accounts';
-  let rows = [], reps = [], requests = [], currentFileRows = [], recorder = null, recordedBlob = null, currentRequestFilter = '';
+  let rows = [], reps = [], requests = [], entries = [], currentFileRows = [], recorder = null, recordedBlob = null;
   const audioCache = new Map();
 
   function goDebt(){
@@ -75,7 +77,7 @@
 
   $('debtAdminActions').innerHTML = isFull()?'<button class="btn" id="debtShowImport" type="button">رفع ملف السبت</button>':'';
   $('debtImportBox').classList.toggle('hidden',!isFull());
-  $('debtRepFilter').classList.toggle('hidden',!isFull());
+  $('debtRepFilter').classList.toggle('hidden',!isManagement());
   $('debtShowImport')?.addEventListener('click',()=>{$('debtImportBox').classList.toggle('hidden');});
   $('debtNewRequest').addEventListener('click',openRequestForm);
   $('debtSearch').addEventListener('input',renderRows);
@@ -86,6 +88,7 @@
     const row=rows.find(x=>x.id===b.dataset.id); if(!row)return;
     if(b.dataset.debtAction==='entry')openEntryForm(row);
     if(b.dataset.debtAction==='edit')editCustomer(row);
+      if(b.dataset.debtAction==='history')showHistory(row);
   });
   $('debtRequests').addEventListener('click',e=>{
     const b=e.target.closest('[data-request-action]'); if(!b)return;
@@ -99,13 +102,14 @@
 
   async function loadAll(){
     if(!APP.state.profile)return;
-    if(!isFull()) $('debtRepFilter').classList.add('hidden');
+    if(!isManagement()) $('debtRepFilter').classList.add('hidden');
     const [balanceRes,repRes,requestRes] = await Promise.all([
       APP.sb.from('debt_aging_balances').select('*').order('customer_name'),
-      isFull()?APP.sb.from('profiles').select('id,full_name,username').eq('role','rep').eq('active',true).order('full_name'):Promise.resolve({data:[],error:null}),
+      isManagement()?APP.sb.from('profiles').select('id,full_name,username').eq('role','rep').eq('active',true).order('full_name'):Promise.resolve({data:[],error:null}),
       APP.sb.from('debt_aging_requests').select('id,rep_id,customer_id,request_type,reason,audio_path,status,management_response,created_at,resolved_at,rep:profiles!debt_aging_requests_rep_id_fkey(full_name),customer:debt_aging_customers(customer_name)').order('created_at',{ascending:false}).limit(150)
     ]);
-    rows=balanceRes.error?[]:(balanceRes.data||[]); reps=repRes.data||[]; requests=requestRes.error?[]:(requestRes.data||[]);
+    const entryRes=await APP.sb.from('debt_aging_entries').select('id,customer_id,entry_type,amount,business_date,note,rep_id,created_at').order('business_date',{ascending:false}).limit(2500);
+    rows=balanceRes.error?[]:(balanceRes.data||[]); reps=repRes.data||[]; requests=requestRes.error?[]:(requestRes.data||[]); entries=entryRes.error?[]:(entryRes.data||[]);
     if(balanceRes.error) console.error('debt aging load',balanceRes.error);
     $('debtRepFilter').innerHTML='<option value="">كل المندوبين</option>'+reps.map(r=>`<option value="${r.id}">${escText(r.full_name)}</option>`).join('');
     renderRows(); renderRequests();
@@ -127,7 +131,8 @@
       const age=r.oldest_due_date?Math.max(0,Math.floor((Date.now()-new Date(`${r.oldest_due_date}T00:00:00Z`))/86400000)):null;
       const action=isFull()?`<button class="btn secondary mini" data-debt-action="edit" data-id="${r.id}">تعديل</button>`:'';
       const collect=APP.state.profile?.role==='rep'?`<button class="btn mini" data-debt-action="entry" data-id="${r.id}">تسجيل دفعة / طلبية كاش</button>`:'';
-      return `<tr><td>${escText(r.customer_name)}</td><td>${escText(r.area||'—')}</td><td>${escText(rep)}</td><td>${money(r.current_total)}</td><td><b>${money(r.current_overdue)}</b></td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td><td>${age===null?'—':`${age} يوم`}</td><td><div class="debt-actions">${collect}${action}</div></td></tr>`;
+      const history=`<button class="btn secondary mini" data-debt-action="history" data-id="${r.id}">الحركات</button>`;
+      return `<tr><td>${escText(r.customer_name)}</td><td>${escText(r.area||'—')}</td><td>${escText(rep)}</td><td>${money(r.current_total)}</td><td><b>${money(r.current_overdue)}</b></td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td><td>${age===null?'—':`${age} يوم`}</td><td><div class="debt-actions">${collect}${history}${action}</div></td></tr>`;
     }).join(''):'<tr><td colspan="10" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
   }
 
@@ -161,6 +166,11 @@
     APP.openModal?.('تعديل بيانات أعمار الديون',form);
     setTimeout(()=>{const b=document.getElementById('debtEditSave');if(b)b.onclick=async()=>{const {error}=await APP.sb.from('debt_aging_customers').update({weekly_required:Number(document.getElementById('debtEditWeekly').value||0),assigned_rep:document.getElementById('debtEditRep').value||null,oldest_due_date:document.getElementById('debtEditDue').value||null,updated_at:new Date().toISOString()}).eq('id',row.id);document.getElementById('debtEditMsg').textContent=error?'تعذر الحفظ':'تم الحفظ';if(!error){document.getElementById('modal')?.classList.remove('open');await loadAll();}};},0);
   }
+  function showHistory(row){
+    const history=entries.filter(x=>x.customer_id===row.id);
+    const html=`<div class="notice">الحركات هنا خاصة بأعمار الديون. لا تُسجل كفواتير أو مبيعات.</div><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحركة</th><th>المبلغ</th><th>ملاحظة</th></tr></thead><tbody>${history.length?history.map(x=>`<tr><td>${escText(x.business_date)}</td><td>${x.entry_type==='payment'?'دفعة تحصيل':'طلبية كاش مدفوعة'}</td><td>${money(x.amount)}</td><td>${escText(x.note||'—')}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">لا توجد حركات لهذا العميل.</td></tr>'}</tbody></table></div>`;
+    APP.openModal?.(`حركات ${escText(row.customer_name)}`,html);
+  }
 
   function openRequestForm(){
     if(APP.state.profile?.role!=='rep')return;
@@ -184,7 +194,7 @@
     const id=crypto.randomUUID(),path=recordedBlob?`${APP.state.profile.id}/${id}.${recordedBlob.type.includes('ogg')?'ogg':recordedBlob.type.includes('mp4')?'mp4':'webm'}`:null;
     const {error:insertError}=await APP.sb.from('debt_aging_requests').insert({id,rep_id:APP.state.profile.id,customer_id:customer,request_type:type,reason:reason||null,audio_path:path});
     if(insertError){msg.textContent='تعذر تسجيل الطلب.';return;}
-    if(recordedBlob){const {error:uploadError}=await APP.sb.storage.from('debt-aging-requests').upload(path,recordedBlob,{contentType:recordedBlob.type,upsert:false});if(uploadError){await APP.sb.from('debt_aging_requests').update({audio_path:null,reason:reason||'تعذر رفع التسجيل الصوتي عند الإرسال.'}).eq('id',id);msg.textContent='لم يرفع الصوت، لكن أُرسل الطلب مع التفاصيل المكتوبة.';}}
+    if(recordedBlob){const {error:uploadError}=await APP.sb.storage.from('debt-aging-requests').upload(path,recordedBlob,{contentType:(recordedBlob.type||'audio/webm').split(';')[0],upsert:false});if(uploadError){await APP.sb.from('debt_aging_requests').update({audio_path:null,reason:reason||'تعذر رفع التسجيل الصوتي عند الإرسال.'}).eq('id',id);msg.textContent='لم يرفع الصوت، لكن أُرسل الطلب مع التفاصيل المكتوبة.';}}
     document.getElementById('modal')?.classList.remove('open');await loadAll();APP.flash?.('وصل طلبك للإدارة');
   }
   async function resolveRequest(req){
@@ -205,7 +215,7 @@
     try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});const sheet=wb.Sheets[wb.SheetNames[0]];currentFileRows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});if(!currentFileRows.length)throw new Error('الملف لا يحتوي صفوفاً.');buildMapping(Object.keys(currentFileRows[0]));$('debtImportMsg').textContent=`تم قراءة ${currentFileRows.length} صف. راجع مطابقة الأعمدة قبل الاستيراد.`;}catch(e){$('debtImportMsg').textContent=e.message||'تعذر قراءة الملف.';}
   }
   function buildMapping(headers){
-    const fields=[['customer_name','اسم العميل',true,['اسم العميل','العميل','customer','customer name','name']],['opening_total','إجمالي الدين',true,['إجمالي الدين','الرصيد','المبلغ المستحق','total debt','balance']],['opening_overdue','المتأخرات',true,['المتأخرات','المتأخر','overdue','past due']],['weekly_required','المطلوب أسبوعياً',false,['المطلوب أسبوعياً','الدفعة الأسبوعية','weekly required','weekly payment']],['area','الحي',false,['الحي','المنطقة','area','district']],['phone','الجوال',false,['الجوال','الهاتف','phone','mobile']],['rep','المندوب',false,['المندوب','المسؤول','rep','sales rep']],['oldest_due_date','تاريخ أقدم استحقاق',false,['تاريخ أقدم استحقاق','تاريخ الاستحقاق','due date','oldest due date']],['source_key','رقم العميل',false,['رقم العميل','كود العميل','customer id','code']]];
+    const fields=[['customer_name','اسم العميل',true,['اسم العميل','العميل','customer','customer name','name']],['opening_total','إجمالي الدين',true,['إجمالي الدين','الرصيد','المبلغ المستحق','total debt','balance']],['opening_overdue','المتأخرات',true,['المتأخرات','المتأخر','overdue','past due']],['weekly_required','المطلوب أسبوعياً',false,['المطلوب أسبوعياً','الدفعة الأسبوعية','weekly required','weekly payment']],['area','الحي',false,['الحي','المنطقة','area','district']],['phone','الجوال',false,['الجوال','الهاتف','phone','mobile']],['rep','المندوب',false,['المندوب','المسؤول','rep','sales rep']],['oldest_due_date','تاريخ أقدم استحقاق',false,['تاريخ أقدم استحقاق','تاريخ الاستحقاق','due date','oldest due date']],['days_overdue','أيام التأخر',false,['أيام التأخر','عمر الدين بالأيام','days overdue','age days']],['source_key','رقم العميل',false,['رقم العميل','كود العميل','customer id','code']]];
     $('debtMapping').innerHTML=fields.map(([key,label,required,aliases])=>{const guess=headers.find(h=>aliases.some(a=>h.toLowerCase().includes(a.toLowerCase())));return `<div><label>${label}${required?' *':''}</label><select data-map="${key}"><option value="">— لا يوجد —</option>${headers.map(h=>`<option value="${escText(h)}" ${h===guess?'selected':''}>${escText(h)}</option>`).join('')}</select></div>`;}).join('');
   }
   function dateForDb(value){if(!value)return null;const d=new Date(value);return Number.isNaN(d.valueOf())?null:d.toISOString().slice(0,10);}
@@ -220,14 +230,16 @@
       if(!val('customer_name')||!Number.isFinite(total)||!Number.isFinite(overdue)||total<0||overdue<0||overdue>total)throw new Error(`راجع اسم العميل وأرقام الدين والمتأخرات في الصف ${i+2}.`);
       const repName=val('rep');const assigned=repMap.get(repName.toLowerCase())||null;
       if(repName&&!assigned)throw new Error(`المندوب في الصف ${i+2} غير مطابق لحساب موجود: ${repName}`);
-      return {source_key:val('source_key')||null,customer_name:val('customer_name'),area:val('area')||null,phone:val('phone')||null,assigned_rep:assigned,opening_total:total,opening_overdue:overdue,weekly_required:map.weekly_required&&val('weekly_required')?num('weekly_required'):0,oldest_due_date:dateForDb(val('oldest_due_date'))};
+      let due=dateForDb(val('oldest_due_date'));
+      if(!due&&map.days_overdue&&val('days_overdue')){const days=num('days_overdue');if(Number.isFinite(days)&&days>=0){const d=new Date(`${APP.todayRiyadh()}T00:00:00Z`);d.setUTCDate(d.getUTCDate()-Math.floor(days));due=d.toISOString().slice(0,10);}}
+      return {source_key:val('source_key')||null,customer_name:val('customer_name'),area:val('area')||null,phone:val('phone')||null,assigned_rep:assigned,opening_total:total,opening_overdue:overdue,weekly_required:map.weekly_required&&val('weekly_required')?num('weekly_required'):0,oldest_due_date:due};
     });
     const keys=parsed.filter(r=>r.source_key).map(r=>r.source_key);if(new Set(keys).size!==keys.length)throw new Error('يوجد رقم عميل مكرر في الملف.');
     const pairs=parsed.filter(r=>r.phone).map(r=>`${r.customer_name.trim().toLowerCase()}|${r.phone.replace(/\D/g,'')}`);if(new Set(pairs).size!==pairs.length)throw new Error('يوجد عميل مكرر بالاسم ورقم الجوال في الملف.');
     return parsed;
   }
   async function importSnapshot(){
-    if(!isAccounts()&&!isAdmin())return;
+    if(!isFull())return;
     try{const parsed=importValues();if(!confirm(`سيتم استبدال بيانات أعمار الديون فقط بـ ${parsed.length} عميل. لن تتأثر بيانات المبيعات أو المتابعات. تتابع؟`))return;$('debtImportBtn').disabled=true;$('debtImportMsg').textContent='جاري الاستيراد…';const {data,error}=await APP.sb.rpc('debt_aging_replace_snapshot',{p_rows:parsed});if(error)throw error;$('debtImportMsg').textContent=`تم استيراد ${parsed.length} عميل.`;await loadAll();}catch(e){$('debtImportMsg').textContent=e.message||'فشل الاستيراد.';}finally{$('debtImportBtn').disabled=false;}
   }
   function exportPdf(){
@@ -236,7 +248,6 @@
     const w=window.open('','_blank');if(!w){APP.flash?.('اسمح بفتح نافذة التقرير أولاً',true);return;}w.document.open();w.document.write(html);w.document.close();
   }
 
-  const oldLanguage=window.applyLanguage;
   document.addEventListener('DOMContentLoaded',()=>{if(APP.state.profile)restrictAccounts();});
   window.DANA_DEBT_AGING={open:goDebt,reload:loadAll};
   window.addEventListener('load',()=>{if(APP.state.profile?.role==='accounts')goDebt();});

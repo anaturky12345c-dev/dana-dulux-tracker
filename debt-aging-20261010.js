@@ -182,8 +182,9 @@
   ];
 
   function goDebt(){
-    if (!APP.state.profile) return;
+    if (!APP.state.profile || APP.state.securityGateMode || APP.state.profile.must_change_password || !$('login').classList.contains('hidden')) return;
     APP.gotoPage('debtAging');
+    if (!page.classList.contains('active')) return;
     navBtn.classList.add('active');
     $('pageTitle').textContent='أعمار الديون';
     loadAll();
@@ -200,8 +201,14 @@
     const b=e.target.closest('.nav-grid button[data-page]'); if(!b)return;
     if(isAccounts() || b===navBtn){e.preventDefault();e.stopImmediatePropagation();goDebt();}
   },true);
-  const gateObserver = new MutationObserver(restrictAccounts);
-  gateObserver.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
+  // Do not observe our own visibility/navigation mutations.
+  const gateObserverOptions = {subtree:true,attributes:true,attributeFilter:['class']};
+  const gateObserver = new MutationObserver(() => {
+    gateObserver.disconnect();
+    try { restrictAccounts(); }
+    finally { gateObserver.observe(document.body,gateObserverOptions); }
+  });
+  gateObserver.observe(document.body,gateObserverOptions);
 
 
   function renderRoleUI(){

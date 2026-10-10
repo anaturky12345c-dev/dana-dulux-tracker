@@ -278,7 +278,7 @@ async function enforceSecurityBeforeData(){
     if(aal.error){ showSecurityGate('تعذر التحقق من حماية الإدارة','<div class="security-error">تعذر فحص التحقق بخطوتين.</div>','mfa-error'); return; }
     if(aal.data.currentLevel!=='aal2'){ if(aal.data.nextLevel==='aal2') await showMFAChallengeGate(); else await showMFAEnrollGate(); return; }
   }
-  hideSecurityGate(); showApp(); await refreshAll(); await renderSecurityStatus();
+  hideSecurityGate(); showApp(); if(state.profile?.role==='accounts'){ if(window.DANA_DEBT_AGING) await window.DANA_DEBT_AGING.reload(); return; } await refreshAll(); await renderSecurityStatus();
 }
 
 async function login(){
@@ -302,7 +302,7 @@ async function loadProfile(){
   state.profile=data; await enforceSecurityBeforeData();
 }
 function showLogin(message=''){ hideSecurityGate(); $('login').classList.remove('hidden'); $('loginPass').value=''; if(message) $('loginMsg').textContent=message; }
-function showApp(){ prepareAppShell(); gotoPage('dashboard'); }
+function showApp(){ prepareAppShell(); if(state.profile?.role==='accounts' && window.DANA_DEBT_AGING){ window.DANA_DEBT_AGING.open(); return; } gotoPage('dashboard'); }
 async function logout(message=''){
   try{ if(sb) await sb.auth.signOut(); }catch(_){}
   state.session=null;state.profile=null;state.customers=[];state.sales=[];state.reports=[];state.profiles=[];state.goals=[];state.salesFollowupStates=[];state.activityCache.clear();state.lastActivity=Date.now();

@@ -5229,3 +5229,22 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
 #debtAging #debtRepCards .debt-rep-card{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box}
 #debtAging #debtRepCards .debt-rep-metrics{width:100%;min-width:0;grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:420px){#debtAging #debtRepCards .debt-rep-metrics{grid-template-columns:minmax(0,1fr)}#debtAging #debtRepCards .debt-rep-metric{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;text-align:right}#debtAging #debtRepCards .debt-rep-metric span{min-height:0}#debtAging #debtRepCards .debt-rep-metric b,#debtAging #debtRepCards .debt-rep-metric small{grid-column:2}}
+
+/* Compact management table with on-demand customer details. */
+#debtAging .debt-table{table-layout:auto}
+#debtAging .debt-table th,#debtAging .debt-table td{vertical-align:middle}
+#debtAging .debt-table th{font-size:12px}
+#debtAging .debt-table td{font-size:13px}
+#debtAging .debt-detail-row>td{padding:12px!important;background:#f6f8fb!important;border-bottom:1px solid var(--debt-line)!important}
+#debtAging .debt-detail-panel{padding:14px;border:1px solid var(--debt-line);border-radius:12px;background:#fff}
+#debtAging .debt-detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#debtAging .debt-detail-buckets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #edf1f5}
+#debtAging .debt-detail-item{min-width:0;padding:9px 11px;border:1px solid #edf1f5;border-radius:9px;background:#f8fafc}
+#debtAging .debt-detail-item span{display:block;color:var(--debt-muted);font-size:12px;line-height:1.45}
+#debtAging .debt-detail-item b{display:block;margin-top:4px;font-size:13px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#debtAging .debt-detail-item small{display:block;font-size:11px;color:var(--debt-muted)}
+#debtAging .debt-promise-summary{display:grid;gap:4px;justify-items:start}
+#debtAging .debt-promise-summary small{color:var(--debt-muted);font-size:11px}
+#debtAging .debt-table .debt-actions{align-items:center;gap:5px}
+@media(max-width:1100px){#debtAging .debt-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#debtAging .debt-detail-buckets{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){#debtAging .debt-detail-grid{grid-template-columns:1fr}#debtAging .debt-detail-buckets{grid-template-columns:repeat(2,minmax(0,1fr))}}

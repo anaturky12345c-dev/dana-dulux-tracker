@@ -5223,3 +5223,9 @@ html[dir="rtl"] .mo-selected-district{text-align:right}
   background:#dcfce7;
   color:#166534;
 }
+
+/* Debt aging representative cards: keep each customer full-width at every viewport. */
+#debtAging #debtRepCards.debt-rep-card-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;max-width:100%;min-width:0;align-self:stretch}
+#debtAging #debtRepCards .debt-rep-card{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+#debtAging #debtRepCards .debt-rep-metrics{width:100%;min-width:0;grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:420px){#debtAging #debtRepCards .debt-rep-metrics{grid-template-columns:minmax(0,1fr)}#debtAging #debtRepCards .debt-rep-metric{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;text-align:right}#debtAging #debtRepCards .debt-rep-metric span{min-height:0}#debtAging #debtRepCards .debt-rep-metric b,#debtAging #debtRepCards .debt-rep-metric small{grid-column:2}}

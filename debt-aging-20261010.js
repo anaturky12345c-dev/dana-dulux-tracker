@@ -48,6 +48,27 @@
     #debtAging .debt-request-top{align-items:center;margin-bottom:5px}
     #debtAging .debt-request-top b{font-size:15px}
     #debtAging .debt-requests-shell{margin-top:16px;padding:16px;border:1px solid var(--debt-line);border-radius:16px;background:var(--debt-soft)}\n    #debtRequestsWrap{margin-top:16px!important;padding:16px;border:1px solid var(--debt-line);border-radius:16px;background:var(--debt-soft);box-shadow:none}
+    #debtAging .debt-metric{min-width:0;overflow:hidden}
+    #debtAging .debt-metric b{min-width:0;max-width:100%;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;overflow:hidden}
+    #debtAging .debt-metric-number{min-width:0;max-width:100%;font-size:clamp(15px,1.7vw,19px);line-height:1.25;overflow-wrap:anywhere;word-break:break-word;font-variant-numeric:tabular-nums}
+    #debtAging .debt-metric b small{font-size:12px;line-height:1.3;white-space:nowrap;color:var(--debt-muted)}
+    #debtAging .debt-table td{overflow-wrap:anywhere;word-break:normal;font-variant-numeric:tabular-nums}
+    #debtAging .debt-table.debt-rep-table{display:block;border:0;box-shadow:none;background:transparent}
+    #debtAging .debt-table.debt-rep-table thead{display:none}
+    #debtAging .debt-table.debt-rep-table tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    #debtAging .debt-table.debt-rep-table .debt-rep-row{display:block;min-width:0}
+    #debtAging .debt-table.debt-rep-table .debt-rep-row>td{display:block;padding:0;border:0}
+    #debtAging .debt-rep-card{min-width:0;height:100%;padding:15px;border:1px solid var(--debt-line);border-radius:15px;background:#fff;box-shadow:0 2px 9px rgba(15,23,42,.05)}
+    #debtAging .debt-rep-card-head{font-size:15px;line-height:1.55;overflow-wrap:anywhere}
+    #debtAging .debt-rep-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:11px 0}
+    #debtAging .debt-rep-actions .btn{flex:1 1 130px;min-height:40px;font-size:13px}
+    #debtAging .debt-rep-promise{flex:1 1 130px;min-height:40px;display:flex;justify-content:center;align-items:center;gap:5px;padding:7px 10px;border:1px solid var(--debt-line);border-radius:10px;background:var(--debt-soft);font-size:12px;color:var(--debt-muted)}
+    #debtAging .debt-rep-promise b{color:var(--debt-ink);font-size:13px}
+    #debtAging .debt-rep-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    #debtAging .debt-rep-metric{min-width:0;padding:10px 8px;border:1px solid #edf1f5;border-radius:10px;background:#f8fafc;text-align:center}
+    #debtAging .debt-rep-metric span{display:block;min-height:36px;font-size:12px;line-height:1.45;color:var(--debt-muted)}
+    #debtAging .debt-rep-metric b{display:block;max-width:100%;font-size:16px;line-height:1.4;overflow-wrap:anywhere;word-break:break-word;font-variant-numeric:tabular-nums}
+    #debtAging .debt-rep-metric small{display:block;font-size:11px;line-height:1.3;color:var(--debt-muted)}
     #debtAging .debt-table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;font-size:13px}
     #debtAging .table-wrap{border:1px solid var(--debt-line);border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
     #debtAging .debt-table th{position:sticky;top:0;z-index:1;background:#f1f5f9;color:#334155;font-size:12px;font-weight:700;line-height:1.45;white-space:normal}
@@ -97,7 +118,7 @@
       #debtAging .debt-requests-shell{padding:12px}\n      #debtRequestsWrap{padding:12px}
       #debtAging .debt-request-card{padding:13px}
       #debtAging .debt-table{min-width:980px}
-      #debtAging .debt-table.debt-rep-table{min-width:0}
+      #debtAging .debt-metric-number{font-size:15px}\n      #debtAging .debt-table.debt-rep-table tbody{grid-template-columns:minmax(0,1fr);gap:9px}\n      #debtAging .debt-rep-card{padding:13px}\n      #debtAging .debt-rep-metric{padding:9px 6px}\n      #debtAging .debt-rep-metric span{font-size:11px;min-height:32px}\n      #debtAging .debt-rep-metric b{font-size:15px}\n      #debtAging .debt-table.debt-rep-table{min-width:0}
       #debtAging .debt-table.debt-rep-table th,#debtAging .debt-table.debt-rep-table td{font-size:13px;padding:10px 6px}
       #debtAging .debt-table.debt-rep-table th{font-size:12px}
       #debtAging .debt-table.debt-rep-table th:nth-child(1),#debtAging .debt-table.debt-rep-table td:nth-child(1){width:42%}
@@ -267,7 +288,7 @@
     if(head)head.innerHTML=simpleRep?'<th>اسم العميل</th><th>المتأخرات</th><th>الدفعة المطلوبة</th><th>المتبقي</th>':'<th>العميل</th><th>رقم العميل</th><th>المندوب</th><th>0–15</th><th>16–30</th><th>31–45</th><th>46–60</th><th>أكثر من 60</th><th>إجمالي الدين</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>موعد الدفعة</th><th>الإجراء</th>';
     table?.classList.toggle('debt-rep-table',simpleRep);
     const sums=view.reduce((a,r)=>{a.total+=Number(r.current_total||0);a.overdue+=Number(r.current_overdue||0);a.required+=Number(r.weekly_required||0);a.recovered+=Number(r.recovered_this_week||0);return a;},{total:0,overdue:0,required:0,recovered:0});
-    $('debtTotal').textContent=money(sums.total);$('debtOverdue').textContent=money(sums.overdue);$('debtRequired').textContent=money(sums.required);$('debtRecovered').textContent=money(sums.recovered);
+    const setDebtMetric=(id,value)=>{$(id).innerHTML='<span class="debt-metric-number">'+escText(fmt(value))+'</span><small>ر.س</small>';};setDebtMetric('debtTotal',sums.total);setDebtMetric('debtOverdue',sums.overdue);setDebtMetric('debtRequired',sums.required);setDebtMetric('debtRecovered',sums.recovered);
     $('debtRows').innerHTML=view.length?view.map(r=>{
       const rep=reps.find(p=>p.id===r.assigned_rep)?.full_name||(r.assigned_rep===PRIMARY_ADMIN_ID?'تركي توفيق':r.assigned_rep_name)||'—';
       const action=isFull()?'<button class="btn secondary mini" data-debt-action="edit" data-id="'+r.id+'">تعديل</button><button class="btn bad mini" data-debt-action="delete" data-id="'+r.id+'">حذف</button>':'';
@@ -277,7 +298,7 @@
       const promise=r.payment_promise;
       const promiseCell=promise?'<div>'+escText(promise.promise_date)+(promise.promise_amount?'<div class="small">'+money(promise.promise_amount)+'</div>':'')+(isPrimaryAdmin()?'<button class="btn secondary mini" data-debt-action="promiseEdit" data-id="'+r.id+'">تعديل الموعد</button>':'')+'</div>':(canCreatePaymentPromise()?'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد</button>':'—');
       const editRow=editingCustomerId===r.id?inlineEditHtml(r):'';
-      if(simpleRep){const promiseAction=promise?'<small>موعد الدفعة: '+escText(promise.promise_date)+'</small>':'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد دفعة</button>';return '<tr><td><b>'+escText(r.customer_name)+'</b><div class="debt-rep-actions"><button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل تحصيل</button>'+promiseAction+'</div></td><td>'+money(r.current_overdue)+'</td><td>'+money(r.weekly_required)+'</td><td>'+money(r.weekly_remaining)+'</td></tr>';}
+      if(simpleRep){const promiseAction=promise?'<span class="debt-rep-promise">موعد الدفعة <b>'+escText(promise.promise_date)+'</b></span>':'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد دفعة</button>';const metric=(label,value)=>'<div class="debt-rep-metric"><span>'+label+'</span><b dir="ltr">'+escText(fmt(value))+'</b><small>ر.س</small></div>';return '<tr class="debt-rep-row"><td colspan="4"><article class="debt-rep-card"><div class="debt-rep-card-head"><b>'+escText(r.customer_name)+'</b></div><div class="debt-rep-actions"><button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل دفعة / كاش</button>'+promiseAction+'</div><div class="debt-rep-metrics">'+metric('المتأخرات',r.current_overdue)+metric('الدفعة المطلوبة',r.weekly_required)+metric('المتبقي للأسبوع',r.weekly_remaining)+'</div></article></td></tr>';}
       return '<tr><td>'+escText(r.customer_name)+'</td><td>'+escText(r.source_key||'—')+'</td><td>'+escText(rep)+'</td>'+buckets+'<td><b>'+money(r.current_total)+'</b></td><td>'+money(r.weekly_required)+'</td><td>'+money(r.recovered_this_week)+'</td><td>'+money(r.weekly_remaining)+'</td><td>'+promiseCell+'</td><td><div class="debt-actions">'+collect+history+action+'</div></td></tr>'+editRow;
     }).join(''):'<tr><td colspan="'+(simpleRep?4:14)+'" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
   }

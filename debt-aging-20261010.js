@@ -51,6 +51,7 @@
   const isManagement = () => ['admin','manager','accounts'].includes(APP.state.profile?.role);
   const isAccounts = () => APP.state.profile?.role === 'accounts';
   let rows = [], reps = [], requests = [], entries = [], currentFileRows = [], recorder = null, recordedBlob = null;
+  let lastRole = null;
   const audioCache = new Map();
 
   function goDebt(){
@@ -61,6 +62,7 @@
     loadAll();
   }
   function restrictAccounts(){
+    renderRoleUI();
     const only = isAccounts();
     document.querySelectorAll('.nav-grid button').forEach(b=>{if(b!==navBtn)b.classList.toggle('hidden',only);});
     document.querySelectorAll('.section').forEach(s=>{if(s!==page)s.classList.toggle('hidden',only);});
@@ -75,10 +77,25 @@
   gateObserver.observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
   window.setInterval(restrictAccounts,1200);
 
-  $('debtAdminActions').innerHTML = isFull()?'<button class="btn" id="debtShowImport" type="button">رفع ملف السبت</button>':'';
-  $('debtImportBox').classList.toggle('hidden',!isFull());
-  $('debtRepFilter').classList.toggle('hidden',!isManagement());
-  $('debtShowImport')?.addEventListener('click',()=>{$('debtImportBox').classList.toggle('hidden');});
+  function renderRoleUI(){
+    const role=APP.state.profile?.role||null;
+    if(role===lastRole)return;
+    lastRole=role;
+    $('debtAdminActions').innerHTML=isFull()?`<button class="btn" id="debtShowImport" type="button">رفع ملف السبت</button>${role==='admin'?'<button class="btn secondary" id="debtCreateAccountUsers" type="button">تهيئة حسابات علي وأحمد</button>':''}`:'';
+    $('debtImportBox').classList.toggle('hidden',!isFull());
+    $('debtRepFilter').classList.toggle('hidden',!isManagement());
+  }
+  $('debtAdminActions').addEventListener('click',async e=>{
+    if(e.target.closest('#debtShowImport')){$('debtImportBox').classList.toggle('hidden');return;}
+    if(!e.target.closest('#debtCreateAccountUsers'))return;
+    if(!confirm('إنشاء حسابي أعمار الديون باسم حسابات علي وحسابات أحمد وإظهار كلمة مرور مؤقتة لكل حساب؟'))return;
+    const b=$('debtCreateAccountUsers');b.disabled=true;b.textContent='جاري الإنشاء…';
+    const {data,error}=await APP.sb.functions.invoke('create-debt-aging-users');
+    b.disabled=false;b.textContent='تهيئة حسابات علي وأحمد';
+    if(error||data?.error){APP.flash?.('تعذر تهيئة الحسابات. '+(data?.error||error?.message||''),true);return;}
+    const creds=(data.users||[]).map(u=>`<div class="debt-request-card"><b>${escText(u.full_name)}</b><br>اسم الدخول: <code>${escText(u.username)}</code><br>كلمة المرور المؤقتة: <code>${escText(u.password)}</code></div>`).join('');
+    APP.openModal?.('بيانات الدخول المؤقتة',`<div class="notice">احفظ بيانات الدخول الآن وشارك كل حساب مع صاحبه. لن تظهر كلمات المرور مرة أخرى.</div>${creds}`);
+  });
   $('debtNewRequest').addEventListener('click',openRequestForm);
   $('debtSearch').addEventListener('input',renderRows);
   $('debtRepFilter').addEventListener('change',renderRows);
@@ -88,7 +105,8 @@
     const row=rows.find(x=>x.id===b.dataset.id); if(!row)return;
     if(b.dataset.debtAction==='entry')openEntryForm(row);
     if(b.dataset.debtAction==='edit')editCustomer(row);
-      if(b.dataset.debtAction==='history')showHistory(row);
+    if(b.dataset.debtAction==='history')showHistory(row);
+    if(b.dataset.debtAction==='delete')deleteCustomer(row);
   });
   $('debtRequests').addEventListener('click',e=>{
     const b=e.target.closest('[data-request-action]'); if(!b)return;
@@ -129,7 +147,7 @@
     $('debtRows').innerHTML=view.length?view.map(r=>{
       const rep=reps.find(p=>p.id===r.assigned_rep)?.full_name||r.assigned_rep_name||'—';
       const age=r.oldest_due_date?Math.max(0,Math.floor((Date.now()-new Date(`${r.oldest_due_date}T00:00:00Z`))/86400000)):null;
-      const action=isFull()?`<button class="btn secondary mini" data-debt-action="edit" data-id="${r.id}">تعديل</button>`:'';
+      const action=isFull()?`<button class="btn secondary mini" data-debt-action="edit" data-id="${r.id}">تعديل</button><button class="btn bad mini" data-debt-action="delete" data-id="${r.id}">حذف</button>`:'';
       const collect=APP.state.profile?.role==='rep'?`<button class="btn mini" data-debt-action="entry" data-id="${r.id}">تسجيل دفعة / طلبية كاش</button>`:'';
       const history=`<button class="btn secondary mini" data-debt-action="history" data-id="${r.id}">الحركات</button>`;
       return `<tr><td>${escText(r.customer_name)}</td><td>${escText(r.area||'—')}</td><td>${escText(rep)}</td><td>${money(r.current_total)}</td><td><b>${money(r.current_overdue)}</b></td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td><td>${age===null?'—':`${age} يوم`}</td><td><div class="debt-actions">${collect}${history}${action}</div></td></tr>`;
@@ -162,15 +180,23 @@
   }
   function editCustomer(row){
     const options=reps.map(r=>`<option value="${r.id}" ${r.id===row.assigned_rep?'selected':''}>${escText(r.full_name)}</option>`).join('');
-    const form=`<div class="form-grid"><div><label>المطلوب أسبوعياً</label><input id="debtEditWeekly" type="number" min="0" step="0.01" value="${Number(row.weekly_required||0)}"></div><div><label>المندوب المسؤول</label><select id="debtEditRep"><option value="">بدون تعيين</option>${options}</select></div><div><label>أقدم تاريخ استحقاق</label><input id="debtEditDue" type="date" value="${row.oldest_due_date||''}"></div><div class="full"><button class="btn" id="debtEditSave">حفظ التعديل</button><span id="debtEditMsg" class="small"></span></div></div>`;
+    const form=`<div class="form-grid"><div><label>اسم العميل</label><input id="debtEditName" maxlength="180" value="${escText(row.customer_name)}"></div><div><label>الحي</label><input id="debtEditArea" maxlength="120" value="${escText(row.area||'')}"></div><div><label>الجوال</label><input id="debtEditPhone" maxlength="40" value="${escText(row.phone||'')}"></div><div><label>المندوب المسؤول</label><select id="debtEditRep"><option value="">بدون تعيين</option>${options}</select></div><div><label>إجمالي الدين عند الاستيراد</label><input id="debtEditTotal" type="number" min="0" step="0.01" value="${Number(row.opening_total||0)}"></div><div><label>المتأخرات عند الاستيراد</label><input id="debtEditOverdue" type="number" min="0" step="0.01" value="${Number(row.opening_overdue||0)}"></div><div><label>المطلوب أسبوعياً</label><input id="debtEditWeekly" type="number" min="0" step="0.01" value="${Number(row.weekly_required||0)}"></div><div><label>أقدم تاريخ استحقاق</label><input id="debtEditDue" type="date" value="${row.oldest_due_date||''}"></div><div class="full"><button class="btn" id="debtEditSave">حفظ التعديل</button><span id="debtEditMsg" class="small"></span></div></div>`;
     APP.openModal?.('تعديل بيانات أعمار الديون',form);
-    setTimeout(()=>{const b=document.getElementById('debtEditSave');if(b)b.onclick=async()=>{const {error}=await APP.sb.from('debt_aging_customers').update({weekly_required:Number(document.getElementById('debtEditWeekly').value||0),assigned_rep:document.getElementById('debtEditRep').value||null,oldest_due_date:document.getElementById('debtEditDue').value||null,updated_at:new Date().toISOString()}).eq('id',row.id);document.getElementById('debtEditMsg').textContent=error?'تعذر الحفظ':'تم الحفظ';if(!error){document.getElementById('modal')?.classList.remove('open');await loadAll();}};},0);
+    setTimeout(()=>{const b=document.getElementById('debtEditSave');if(b)b.onclick=async()=>{const total=Number(document.getElementById('debtEditTotal').value||0),overdue=Number(document.getElementById('debtEditOverdue').value||0);if(!document.getElementById('debtEditName').value.trim()||total<0||overdue<0||overdue>total){document.getElementById('debtEditMsg').textContent='تحقق من الاسم والمبالغ؛ المتأخرات لا تتجاوز إجمالي الدين.';return;}const {error}=await APP.sb.from('debt_aging_customers').update({customer_name:document.getElementById('debtEditName').value.trim(),area:document.getElementById('debtEditArea').value.trim()||null,phone:document.getElementById('debtEditPhone').value.trim()||null,opening_total:total,opening_overdue:overdue,weekly_required:Number(document.getElementById('debtEditWeekly').value||0),assigned_rep:document.getElementById('debtEditRep').value||null,oldest_due_date:document.getElementById('debtEditDue').value||null,updated_at:new Date().toISOString()}).eq('id',row.id);document.getElementById('debtEditMsg').textContent=error?'تعذر الحفظ':'تم الحفظ';if(!error){document.getElementById('modal')?.classList.remove('open');await loadAll();}};},0);
   }
   function showHistory(row){
     const history=entries.filter(x=>x.customer_id===row.id);
-    const html=`<div class="notice">الحركات هنا خاصة بأعمار الديون. لا تُسجل كفواتير أو مبيعات.</div><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحركة</th><th>المبلغ</th><th>ملاحظة</th></tr></thead><tbody>${history.length?history.map(x=>`<tr><td>${escText(x.business_date)}</td><td>${x.entry_type==='payment'?'دفعة تحصيل':'طلبية كاش مدفوعة'}</td><td>${money(x.amount)}</td><td>${escText(x.note||'—')}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">لا توجد حركات لهذا العميل.</td></tr>'}</tbody></table></div>`;
+    const actions=isFull()?'<th>تعديل</th>':'';
+    const html=`<div class="notice">الحركات هنا خاصة بأعمار الديون. لا تُسجل كفواتير أو مبيعات.</div><div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>الحركة</th><th>المبلغ</th><th>ملاحظة</th>${actions}</tr></thead><tbody>${history.length?history.map(x=>`<tr><td>${escText(x.business_date)}</td><td>${x.entry_type==='payment'?'دفعة تحصيل':'طلبية كاش مدفوعة'}</td><td>${money(x.amount)}</td><td>${escText(x.note||'—')}</td>${isFull()?`<td><button class="btn secondary mini" data-edit-debt-entry="${x.id}">تعديل</button> <button class="btn bad mini" data-delete-debt-entry="${x.id}">حذف</button></td>`:''}</tr>`).join(''):`<tr><td colspan="${isFull()?5:4}" class="empty">لا توجد حركات لهذا العميل.</td></tr>`}</tbody></table></div>`;
     APP.openModal?.(`حركات ${escText(row.customer_name)}`,html);
+    if(isFull())$('modalContent').addEventListener('click',async e=>{const edit=e.target.closest('[data-edit-debt-entry]'),del=e.target.closest('[data-delete-debt-entry]');if(edit){const item=history.find(x=>x.id===edit.dataset.editDebtEntry);if(item)editEntry(item,row);return;}if(del){const item=history.find(x=>x.id===del.dataset.deleteDebtEntry);if(item&&confirm('حذف حركة أعمار الديون هذه نهائياً؟')){const {error}=await APP.sb.from('debt_aging_entries').delete().eq('id',item.id);if(error){APP.flash?.('تعذر حذف الحركة',true);return;}await loadAll();showHistory(row);}}},{once:true});
   }
+  function editEntry(item,row){
+    const form=`<div class="form-grid"><div><label>نوع الحركة</label><select id="debtEditEntryType"><option value="payment" ${item.entry_type==='payment'?'selected':''}>دفعة تحصيل</option><option value="cash_order" ${item.entry_type==='cash_order'?'selected':''}>طلبية كاش مدفوعة</option></select></div><div><label>المبلغ</label><input id="debtEditEntryAmount" type="number" min="0.01" step="0.01" value="${Number(item.amount)}"></div><div><label>التاريخ</label><input id="debtEditEntryDate" type="date" value="${item.business_date}"></div><div><label>ملاحظة</label><input id="debtEditEntryNote" maxlength="250" value="${escText(item.note||'')}"></div><div class="full"><button class="btn" id="debtEditEntrySave">حفظ</button><span id="debtEditEntryMsg" class="small"></span></div></div>`;
+    APP.openModal?.(`تعديل حركة ${escText(row.customer_name)}`,form);
+    setTimeout(()=>{const b=$('debtEditEntrySave');if(b)b.onclick=async()=>{const amount=Number($('debtEditEntryAmount').value);if(amount<=0){$('debtEditEntryMsg').textContent='أدخل مبلغاً صحيحاً.';return;}const {error}=await APP.sb.from('debt_aging_entries').update({entry_type:$('debtEditEntryType').value,amount,business_date:$('debtEditEntryDate').value,note:$('debtEditEntryNote').value.trim()||null}).eq('id',item.id);if(error){$('debtEditEntryMsg').textContent='تعذر الحفظ؛ قد يتجاوز المبلغ الرصيد الحالي.';return;}await loadAll();showHistory(row);};},0);
+  }
+  async function deleteCustomer(row){if(!confirm(`حذف ${row.customer_name} وكل حركات أعمار دينه نهائياً؟`))return;const {error}=await APP.sb.from('debt_aging_customers').delete().eq('id',row.id);if(error){APP.flash?.('تعذر حذف العميل',true);return;}await loadAll();}
 
   function openRequestForm(){
     if(APP.state.profile?.role!=='rep')return;

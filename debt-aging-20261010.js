@@ -23,6 +23,14 @@
     #debtAging .debt-rec-status{font-size:12px;color:#64748b;margin-top:6px}
     #debtAging .debt-danger{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:10px;padding:10px;font-size:12px}
     @media(max-width:720px){#debtAging .debt-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#debtAging .debt-metric b{font-size:18px}#debtAging .debt-toolbar input,#debtAging .debt-toolbar select{min-width:100%}#debtAging .debt-head .btn{width:100%;min-height:46px}}
+    #debtAging .debt-table.debt-rep-table{min-width:0;width:100%;table-layout:fixed}
+    #debtAging .debt-table.debt-rep-table th,#debtAging .debt-table.debt-rep-table td{font-size:12px;padding:8px 5px;white-space:normal;overflow-wrap:anywhere}
+    #debtAging .debt-table.debt-rep-table th:nth-child(1),#debtAging .debt-table.debt-rep-table td:nth-child(1){width:40%}
+    #debtAging .debt-table.debt-rep-table th:nth-child(n+2),#debtAging .debt-table.debt-rep-table td:nth-child(n+2){width:20%}
+    #debtAging .debt-rep-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+    #debtTodayCollections .debt-today-items{display:grid;gap:8px;margin-top:10px}
+    #debtTodayCollections .debt-today-item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
+    #debtTodayCollections .debt-today-item small{display:block;color:#64748b;margin-top:3px}
     @media print{@page{size:A3 landscape;margin:12mm}body.debt-printing>*{display:none!important}body.debt-printing #debtPrintRoot{display:block!important;position:static!important;width:100%;direction:rtl;font-family:Tahoma,Arial,sans-serif;color:#111}#debtPrintRoot h1{font-size:18pt;margin:0 0 4mm}#debtPrintRoot p{font-size:9pt;margin:0 0 4mm;color:#444}#debtPrintRoot table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}#debtPrintRoot th,#debtPrintRoot td{border:1px solid #888;padding:4px 5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}#debtPrintRoot th{background:#e8edf3!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}#debtPrintRoot tr{break-inside:avoid;page-break-inside:avoid}#debtPrintRoot .debt-print-total{font-weight:bold;margin-top:4mm;font-size:10pt}}
   `;
   document.head.appendChild(style);
@@ -94,6 +102,7 @@
     lastRole=role;
     $('debtAdminActions').innerHTML=isFull()?`${role==='admin'?'<button class="btn secondary" id="debtCreateAccountUsers" type="button">تهيئة حسابات علي وأحمد</button>':''}`:'';
     $('debtRepFilter').classList.toggle('hidden',!isManagement());
+    $('debtPdf').classList.toggle('hidden',role==='rep');
   }
   $('debtAdminActions').addEventListener('click',async e=>{
     if(!e.target.closest('#debtCreateAccountUsers'))return;
@@ -144,6 +153,7 @@
     if(balanceRes.error) console.error('debt aging load',balanceRes.error);
     $('debtRepFilter').innerHTML='<option value="">كل المندوبين</option>'+reps.map(r=>`<option value="${r.id}">${escText(r.full_name)}</option>`).join('');
     renderRows(); renderRequests();
+    loadTodayCollections(true);
   }
   function currentRows(){
     const search=$('debtSearch').value.trim().toLowerCase(),rep=$('debtRepFilter').value,filter=$('debtAgingFilter').value;
@@ -170,10 +180,15 @@
   }
   function renderRows(){
     const view=currentRows();
+    const simpleRep=APP.state.profile?.role==='rep';
+    const table=document.querySelector('#debtAging .debt-table');
+    const head=table?.querySelector('thead tr');
+    if(head)head.innerHTML=simpleRep?'<th>اسم العميل</th><th>المتأخرات</th><th>الدفعة المطلوبة</th><th>المتبقي</th>':'<th>العميل</th><th>رقم العميل</th><th>المندوب</th><th>0–15</th><th>16–30</th><th>31–45</th><th>46–60</th><th>أكثر من 60</th><th>إجمالي الدين</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>موعد الدفعة</th><th>الإجراء</th>';
+    table?.classList.toggle('debt-rep-table',simpleRep);
     const sums=view.reduce((a,r)=>{a.total+=Number(r.current_total||0);a.overdue+=Number(r.current_overdue||0);a.required+=Number(r.weekly_required||0);a.recovered+=Number(r.recovered_this_week||0);return a;},{total:0,overdue:0,required:0,recovered:0});
     $('debtTotal').textContent=money(sums.total);$('debtOverdue').textContent=money(sums.overdue);$('debtRequired').textContent=money(sums.required);$('debtRecovered').textContent=money(sums.recovered);
     $('debtRows').innerHTML=view.length?view.map(r=>{
-      const rep=reps.find(p=>p.id===r.assigned_rep)?.full_name||r.assigned_rep_name||'—';
+      const rep=reps.find(p=>p.id===r.assigned_rep)?.full_name||(isPrimaryAdmin()&&r.assigned_rep===APP.state.profile?.id?'تركي توفيق':r.assigned_rep_name)||'—';
       const action=isFull()?'<button class="btn secondary mini" data-debt-action="edit" data-id="'+r.id+'">تعديل</button><button class="btn bad mini" data-debt-action="delete" data-id="'+r.id+'">حذف</button>':'';
       const collect=APP.state.profile?.role==='rep'?'<button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل دفعة / طلبية كاش</button>':'';
       const history='<button class="btn secondary mini" data-debt-action="history" data-id="'+r.id+'">الحركات</button>';
@@ -181,6 +196,7 @@
       const promise=r.payment_promise;
       const promiseCell=promise?'<div>'+escText(promise.promise_date)+(promise.promise_amount?'<div class="small">'+money(promise.promise_amount)+'</div>':'')+(isPrimaryAdmin()?'<button class="btn secondary mini" data-debt-action="promiseEdit" data-id="'+r.id+'">تعديل الموعد</button>':'')+'</div>':(canCreatePaymentPromise()?'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد</button>':'—');
       const editRow=editingCustomerId===r.id?inlineEditHtml(r):'';
+      if(simpleRep){const promiseAction=promise?'<small>موعد الدفعة: '+escText(promise.promise_date)+'</small>':'<button class="btn secondary mini" data-debt-action="promiseCreate" data-id="'+r.id+'">تحديد موعد دفعة</button>';return '<tr><td><b>'+escText(r.customer_name)+'</b><div class="debt-rep-actions"><button class="btn mini" data-debt-action="entry" data-id="'+r.id+'">تسجيل تحصيل</button>'+promiseAction+'</div></td><td>'+money(r.current_overdue)+'</td><td>'+money(r.weekly_required)+'</td><td>'+money(r.weekly_remaining)+'</td></tr>';}
       return '<tr><td>'+escText(r.customer_name)+'</td><td>'+escText(r.source_key||'—')+'</td><td>'+escText(rep)+'</td>'+buckets+'<td><b>'+money(r.current_total)+'</b></td><td>'+money(r.weekly_required)+'</td><td>'+money(r.recovered_this_week)+'</td><td>'+money(r.weekly_remaining)+'</td><td>'+promiseCell+'</td><td><div class="debt-actions">'+collect+history+action+'</div></td></tr>'+editRow;
     }).join(''):'<tr><td colspan="14" class="empty">لا توجد بيانات أعمار ديون حالياً.</td></tr>';
   }
@@ -288,6 +304,36 @@
     const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير أعمار الديون</title><style>@page{size:A3 landscape;margin:12mm}body{font-family:Tahoma,Arial,sans-serif;color:#111;margin:0}h1{font-size:18pt;margin:0 0 4mm}p{font-size:9pt;color:#444;margin:0 0 4mm}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}th,td{border:1px solid #888;padding:4px 5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}th{background:#e8edf3}tr{break-inside:avoid;page-break-inside:avoid}.total{font-weight:bold;margin-top:4mm;font-size:10pt}col.customer{width:14%}col.key{width:6%}col.rep{width:8%}col.bucket{width:5.5%}col.overdue{width:8%}col.week{width:7%}col.recovered{width:8%}col.remaining{width:12%}col.promise{width:9.5%}</style></head><body><h1>تقرير أعمار الديون</h1><p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA',{timeZone:'Asia/Riyadh'})} · عدد العملاء: ${data.length}</p><table><colgroup><col class="customer"><col class="key"><col class="rep">${AGE_BUCKETS.map(()=>'<col class="bucket">').join('')}<col class="overdue"><col class="week"><col class="recovered"><col class="remaining"><col class="promise"></colgroup><thead><tr><th>اسم العميل</th><th>رقم العميل</th><th>المندوب</th>${bucketHeaders}<th>إجمالي الدين</th><th>المطلوب أسبوعياً</th><th>المحصّل/المخفّض</th><th>المتبقي للأسبوع</th><th>موعد الدفعة</th></tr></thead><tbody>${data.map(r=>`<tr><td>${escText(r.customer_name)}</td><td>${escText(r.source_key||'—')}</td><td>${escText(reps.find(x=>x.id===r.assigned_rep)?.full_name||'بدون تعيين')}</td>${bucketCells(r)}<td>${money(r.current_total)}</td><td>${money(r.weekly_required)}</td><td>${money(r.recovered_this_week)}</td><td>${money(r.weekly_remaining)}</td><td>${escText(r.payment_promise?.promise_date||'—')}</td></tr>`).join('')}<tr><th colspan="3">الإجمالي</th>${bucketTotals}<th>${money(totals.total)}</th><th>${money(totals.required)}</th><th>${money(totals.recovered)}</th><th>—</th><th>—</th></tr></tbody></table><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`;
     const w=window.open('','_blank');if(!w){APP.flash?.('اسمح بفتح نافذة التقرير أولاً',true);return;}w.document.open();w.document.write(html);w.document.close();
   }
+
+  let todayCollectionBusy=false,todayCollectionLoadedAt=0;
+  function ensureTodayCollectionsCard(){
+    const dashboard=document.getElementById('dashboard');if(!dashboard)return null;
+    const isRep=APP.state.profile?.role==='rep';let card=document.getElementById('debtTodayCollections');
+    if(!isRep){card?.remove();return null;}
+    if(!card){card=document.createElement('div');card.id='debtTodayCollections';card.className='card';card.style.margin='12px 0';dashboard.insertBefore(card,dashboard.querySelector('.dashboard-cards')||null);}
+    return card;
+  }
+  async function loadTodayCollections(force=false){
+    const profile=APP.state.profile,card=ensureTodayCollectionsCard();if(!card||!profile||profile.role!=='rep'||todayCollectionBusy)return;
+    if(!force&&Date.now()-todayCollectionLoadedAt<30000)return;
+    todayCollectionBusy=true;card.innerHTML='<div class="dashboard-head"><h3 style="margin:0">تحصيلات اليوم</h3></div><div class="small">مواعيد الدفعات المسجلة لهذا اليوم…</div>';
+    try{
+      const today=APP.todayRiyadh();
+      const {data:promises,error:promiseError}=await APP.sb.from('debt_aging_payment_promises').select('customer_id,promise_amount').eq('promise_date',today);
+      if(promiseError)throw promiseError;
+      const ids=(promises||[]).map(p=>p.customer_id);
+      if(!ids.length){card.innerHTML='<div class="dashboard-head"><h3 style="margin:0">تحصيلات اليوم</h3></div><div class="small">ما عندك مواعيد دفعات مسجلة اليوم.</div>';todayCollectionLoadedAt=Date.now();return;}
+      const {data:balances,error:balanceError}=await APP.sb.from('debt_aging_balances').select('id,customer_name,current_overdue,weekly_remaining').eq('assigned_rep',profile.id).in('id',ids).order('customer_name');
+      if(balanceError)throw balanceError;
+      const byId=new Map((promises||[]).map(p=>[p.customer_id,p]));
+      const items=balances||[];
+      card.innerHTML='<div class="dashboard-head"><div><h3 style="margin:0">تحصيلات اليوم</h3><div class="small">مواعيد الدفعات المسجلة لهذا اليوم</div></div><span class="badge b-warn">'+items.length+'</span></div><div class="debt-today-items">'+(items.length?items.map(r=>{const p=byId.get(r.id);const amount=p?.promise_amount?money(p.promise_amount):'غير محدد';return '<div class="debt-today-item"><div><b>'+escText(r.customer_name)+'</b><small>المتأخرات: '+money(r.current_overdue)+'</small></div><div class="small"><b>'+amount+'</b><small>'+(p?.promise_amount?'المبلغ المتوقع':'المتبقي من المطلوب الأسبوعي: '+money(r.weekly_remaining))+'</small></div></div>';}).join(''):'<div class="empty">ما عندك مواعيد دفعات مستحقة اليوم.</div>')+'</div>';
+      todayCollectionLoadedAt=Date.now();
+    }catch(error){console.error('today debt collections',error);card.innerHTML='<div class="dashboard-head"><h3 style="margin:0">تحصيلات اليوم</h3></div><div class="small">تعذر تحميل مواعيد التحصيل اليوم.</div>';}
+    finally{todayCollectionBusy=false;}
+  }
+  window.addEventListener('dana:render',()=>loadTodayCollections());
+  window.addEventListener('load',()=>loadTodayCollections(true));
 
   document.addEventListener('DOMContentLoaded',()=>{if(APP.state.profile)restrictAccounts();});
   window.DANA_DEBT_AGING={open:goDebt,reload:loadAll};
